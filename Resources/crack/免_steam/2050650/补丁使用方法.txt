@@ -1,0 +1,7 @@
+游戏补丁
+
+全DLC，部分DLC内容需要解锁后才能用
+
+如果后续有入正想法，可以通过快捷修改steamid.bat修改steamid为自己steam账号的steamid
+
+搬运工：鲸落_hi    B站主页：https://space.bilibili.com/405707676

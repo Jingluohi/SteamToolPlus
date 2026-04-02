@@ -1,0 +1,19 @@
+局域网联机补丁要连接局域网。需要同一WiFi或热点，或者局域网工具
+
+初次安装必须打开【快捷修改无缝联机信息.bat】填写你们的专属信息
+
+SteamID：必填，推荐填写你之前存档的17位ID，没有的话填写自己Steam的ID（最大程度的避免ID重复，导致无法联机）
+联机密码：必填，联机伙伴们必须填写相同的联机密码才能联机
+联机名称：随便填即可，没用，不是游戏里的角色名称（可以在游戏中按Shift+Tab查看左上角的局域网内名字）
+
+
+通过双击ersc_launcher.exe开始游戏。
+
+
+如果开游戏白屏闪退，将steam_settings文件夹内的configs.overlay.ini文件删掉。（会少个遮罩层，可有可无）
+或者将steam_settings文件夹内的steam_api64.dll-防白屏闪退版替换掉Game文件夹的steam_api64.dll，记得改文件名。
+
+
+若有联机后锁30帧情况，则尝试将steam_settings\解锁帧数mod文件夹里面的所有东西放到游戏目录。（也就是和eldenring.exe放一起）
+
+搬运工：鲸落_hi    B站主页：https://space.bilibili.com/405707676

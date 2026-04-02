@@ -1,0 +1,44 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ApplicationIcon></ApplicationIcon>
+    <AssemblyName>SteamToolPlus</AssemblyName>
+    <RootNamespace>SteamToolPlus</RootNamespace>
+    <StartupObject>SteamToolPlus.App</StartupObject>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>true</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <Version>1.01</Version>
+    <AssemblyVersion>1.01</AssemblyVersion>
+    <FileVersion>1.01</FileVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.2.2" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="8.0.0" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- 排除 Resources 和 PublishOutput 目录下的所有代码文件，避免重复编译 -->
+    <Compile Remove="Resources\**\*.cs" />
+    <Compile Remove="Resources\**\*.xaml" />
+    <Compile Remove="PublishOutput\**\*.cs" />
+    <Compile Remove="PublishOutput\**\*.xaml" />
+    <Page Remove="Resources\**\*.xaml" />
+    <Page Remove="PublishOutput\**\*.xaml" />
+    
+    <!-- 只包含非代码资源文件 -->
+    <Resource Include="Resources\**\*" Exclude="Resources\**\*.cs;Resources\**\*.xaml" />
+    <None Include="pic\**\*" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,16 @@
+盗版游戏存档路径：C:\用户\名字\AppData\Roaming\Goldberg SteamEmu Saves\582010
+
+如果有正版存档或者想要的别的存档可以手动复制粘贴进去。
+正版存档(网上找的存档不了解)还要改
+C:\用户\名字\AppData\Roaming\Goldberg SteamEmu Saves\settings文件夹内的user_steam_id.txt，
+将里面的steamid改成你steam游戏存档对应的steamid
+具体方法是按Win+R然后输入appdata回车，找到Goldberg SteamEmu Saves文件夹进行修改。
+
+
+此补丁包适用于15.23版本，区分不同版本的文件是游戏启动文件，即MonsterHunterWorld.exe。
+如果有旧版本，比如15.22，可以尝试用steamless给启动文件加工后使用。具体方法看图1和2。
+需要过剧情到剿灭大贼龙后才能联机，这是游戏设定的。
+房主使用求援，其他人在任务面板处寻找求援。
+加入集会只需要在同一局域网内，一人创建集会，其他人直接搜索即可。
+
+搬运工：鲸落_hi    B站主页：https://space.bilibili.com/405707676
