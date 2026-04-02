@@ -55,3 +55,9 @@ node_modules/
 # Uncomment if you want to publish source code only
 # *.exe
 # *.dll
+
+# Temporary guides (keep only README.md)
+GitHub Desktop 指南.md
+GITHUB_GUIDE.md
+QUICK_START.md
+开源准备完成.md
