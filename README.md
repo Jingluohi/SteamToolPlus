@@ -1,26 +1,53 @@
 # SteamToolPlus
 
-> **版本**：v1.01 &nbsp;|&nbsp; **.NET 10.0** &nbsp;|&nbsp; **[开源许可证](LICENSE)**: MIT
+> **版本**：v1.02  |  **.NET 10.0**  |  **[开源许可证](LICENSE)**: MIT
 
-[![GitHub](https://img.shields.io/badge/platform-windows-blue)](https://github.com)
-[![.NET](https://img.shields.io/badge/.NET-10.0-purple)](https://dotnet.microsoft.com/)
-[![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+[!\[GitHub\](https://img.shields.io/badge/platform-windows-blue null)](https://github.com)
+[!\[.NET\](https://img.shields.io/badge/.NET-10.0-purple null)](https://dotnet.microsoft.com/)
+[!\[License\](https://img.shields.io/badge/license-MIT-green null)](LICENSE)
 
 > ⚠️ **免责声明**：本项目仅供学习和研究使用。请使用正版游戏，尊重游戏开发者劳动成果。本工具不存储、不提供任何游戏文件，仅作为 Goldberg Emulator 的配置管理工具。
 >
-> 📥 **网盘下载**：[https://pan.baidu.com/s/19HPSTSj7v8IVa3k7rvt2dQ?pwd=519y](https://pan.baidu.com/s/19HPSTSj7v8IVa3k7rvt2dQ?pwd=519y)  提取码：`519y`
+> 📥 **网盘下载**：<https://pan.baidu.com/s/19HPSTSj7v8IVa3k7rvt2dQ?pwd=519y>  提取码：`519y`
 >
 > 💝 转存至您的网盘（最好用手机），将会给 up 主带来微薄的 rmb 和满满的更新动力
 >
-> 📺 B 站空间：[https://space.bilibili.com/405707676](https://space.bilibili.com/405707676)
+> 📺 B 站空间：<https://space.bilibili.com/405707676>
 
----
+***
 
 ## 📑 目录
 
-[快速开始](#-快速开始) · [游戏补丁](#-游戏补丁) · [存档配置](#-存档配置) · [局域网联机](#-局域网联机) · [成就统计](#-成就统计) · [高级功能](#-高级功能) · [常见问题](#-常见问题)
+[📥 清单下载](#-清单下载) · [快速开始](#-快速开始) · [游戏补丁](#-游戏补丁) · [存档配置](#-存档配置) · [局域网联机](#-局域网联机) · [成就统计](#-成就统计) · [高级功能](#-高级功能) · [常见问题](#-常见问题)
 
----
+***
+
+## 📥 清单下载
+
+> **提示**：在使用本工具前，需要先下载游戏清单文件（manifest）
+
+### 下载方式
+
+**方式一：GitHub 下载（推荐）**
+
+- 📦 **[ManifestHub](https://github.com/SteamAutoCracks/ManifestHub)**
+- 访问上述 GitHub 仓库，下载对应的游戏清单文件夹
+
+**方式二：百度网盘下载**
+
+- 📥 **[网盘下载](https://pan.baidu.com/s/1FTZyknIObyzMuLAJC-Uj9g?pwd=8uwx)**
+- 提取码：`8uwx`
+- 下载后解压到任意位置
+
+### 清单文件说明
+
+清单文件夹应包含以下文件：
+
+- `game.json` - 游戏信息
+- `manifest` - 清单文件
+- 其他相关文件
+
+***
 
 ## 🚀 快速开始
 
@@ -32,7 +59,7 @@
 
 **步骤 4**：点击【💉 注入补丁】→ 等待完成
 
----
+***
 
 ## 🎮 游戏补丁
 
@@ -41,6 +68,7 @@
 **适用**：热门游戏（艾尔登法环、怪物猎人等）
 
 **操作步骤**：
+
 1. 主界面选择游戏卡片
 2. 确认补丁类型（局域网/Steam/免 Steam/D 加密）
 3. 点击【💉 注入补丁】
@@ -49,14 +77,15 @@
 6. 等待注入完成
 
 **补丁类型**：
-| 类型 | 说明 |
-|------|------|
-| 🌐 局域网联机 | 同一网络内多人游戏 |
-| 🌍 Steam 联机 | 需要正版 Steam 客户端 |
-| 🚫 免 Steam 启动 | 完全离线运行 |
-| 🔒 D 加密游戏 | Denuvo 加密游戏专用 |
 
----
+| 类型            | 说明             |
+| ------------- | -------------- |
+| 🌐 局域网联机      | 同一网络内多人游戏      |
+| 🌍 Steam 联机   | 需要正版 Steam 客户端 |
+| 🚫 免 Steam 启动 | 完全离线运行         |
+| 🔒 D 加密游戏     | Denuvo 加密游戏专用  |
+
+***
 
 ### 方式二：基础配置（通用）
 
@@ -64,19 +93,19 @@
 
 #### 1️⃣ 选择模拟器模式
 
-| 模式 | 特点 |
-|------|------|
+| 模式             | 特点                 |
+| -------------- | ------------------ |
 | **免 Steam 启动** | 离线运行，无需 Steam，适合单机 |
-| **局域网联机** | 支持本地多人，需配置网络 |
-| **Steam 联机** | 需正版 Steam，支持在线联机 |
+| **局域网联机**      | 支持本地多人，需配置网络       |
+| **Steam 联机**   | 需正版 Steam，支持在线联机   |
 
 #### 2️⃣ 配置路径
 
-| 路径项 | 说明 | 示例 |
-|--------|------|------|
-| ddv20.exe | Steam 下载工具 | `Resources/ddv20.exe` |
-| 游戏清单文件夹 | 含 game.json、manifest 等 | 从 ManifestHub 下载 |
-| 游戏保存目录 | 下载游戏保存位置 | `D:\Games\` |
+| 路径项       | 说明                     | 示例                    |
+| --------- | ---------------------- | --------------------- |
+| ddv20.exe | Steam 下载工具             | `Resources/ddv20.exe` |
+| 游戏清单文件夹   | 含 game.json、manifest 等 | 从 ManifestHub 下载      |
+| 游戏保存目录    | 下载游戏保存位置               | `D:\Games\`           |
 
 #### 3️⃣ 配置参数
 
@@ -96,30 +125,33 @@
 4. 等待进度条完成
 
 **成功标志**：
+
 - ✅ 日志显示"注入完成"
 - ✅ 游戏目录出现补丁文件
 - ✅ 游戏可正常运行
 
----
+***
 
 ## 💾 存档配置
 
 ### 选择存档模式
 
-| 模式 | 适用人群 | 存档位置 |
-|------|----------|----------|
-| 默认存档路径 | 新手 | `%appdata%\GSE Saves\` |
-| 便携存档 | 大多数玩家 | 游戏目录 `\Saves` |
-| 自定义路径 | 高级用户 | 用户指定位置 |
+| 模式     | 适用人群  | 存档位置                   |
+| ------ | ----- | ---------------------- |
+| 默认存档路径 | 新手    | `%appdata%\GSE Saves\` |
+| 便携存档   | 大多数玩家 | 游戏目录 `\Saves`          |
+| 自定义路径  | 高级用户  | 用户指定位置                 |
 
 ### 操作步骤
 
 **1. 选择模式**：点击对应单选按钮
 
 **2. 自定义路径**（仅自定义模式）：
-   - 点击【浏览】
-   - 选择/创建文件夹
-   - 推荐结构：
+
+- 点击【浏览】
+- 选择/创建文件夹
+- 推荐结构：
+
 ```
 D:\GameSaves\
 ├── TheWitness\
@@ -132,29 +164,33 @@ D:\GameSaves\
 ### 备份与恢复
 
 **备份存档**：
+
 1. 点击【备份存档】
 2. 选择存档文件夹
 3. 选择备份保存位置
 4. 自动创建压缩包
 
 **恢复存档**：
+
 1. 点击【恢复存档】
 2. 选择备份文件
 3. 选择恢复目标位置
 4. 自动解压恢复
 
----
+***
 
 ## 🌐 局域网联机
 
 ### 联机前准备
 
 **网络环境**：
+
 - ✅ 所有电脑连接同一网络
 - ✅ 能互相 ping 通
 - ✅ 关闭防火墙或添加例外
 
 **游戏版本**：
+
 - ✅ 所有电脑安装相同版本
 - ✅ 使用相同补丁版本
 - ✅ 游戏语言一致
@@ -162,6 +198,7 @@ D:\GameSaves\
 ### 配置步骤
 
 **1. 基础配置**
+
 - 进入【局域网联机】标签页
 - 选择游戏目录和主程序
 - 设置 Steam AppID
@@ -169,18 +206,22 @@ D:\GameSaves\
 **2. 网络配置**
 
 **订阅组（Subscribed Groups）**
+
 - 一行一个 Group ID
 - 用于识别同一联机房间的玩家
 
 **订阅组 Clans**
+
 - 格式：`groupid|name|tag`
 - 示例：
+
 ```
 1234567890|My Clan|MC
 0987654321|Friends|FR
 ```
 
 **自定义网段**（解决搜不到主机）
+
 ```
 192.168.1.0/24
 192.168.0.0/24
@@ -192,6 +233,7 @@ D:\GameSaves\
 **4. 注入补丁**：所有参与联机的电脑重复注入
 
 **5. 启动游戏**
+
 - 主机先启动，创建房间
 - 其他玩家启动，搜索房间
 - 加入游戏，开始联机
@@ -199,36 +241,42 @@ D:\GameSaves\
 ### 防火墙配置
 
 **方法一：自动配置**（推荐）
+
 - 程序自动添加防火墙规则
 - 提示时点击"允许访问"
 
 **方法二：手动配置**
+
 1. 打开 Windows 防火墙
 2. "允许应用通过防火墙"
 3. 添加游戏主程序
 4. 勾选"专用"和"公用"网络
 
 **需要放行的端口**：
+
 - UDP 27015-27030（游戏端口）
 - UDP 4380（语音聊天）
 
----
+***
 
 ## 🏆 成就统计
 
 ### 配置步骤
 
 **1. 选择成就文件**
+
 - 点击【选择成就文件】
 - 选择 `achievements.json`
 - 自动加载成就列表
 
 **2. 查看成就**
+
 - 已解锁：绿色显示
 - 未解锁：灰色显示
 - 点击查看详情
 
 **3. 手动解锁成就**
+
 - 输入成就 ID
 - 填写名称和描述（可选）
 - 点击【添加成就】
@@ -254,6 +302,7 @@ D:\GameSaves\
 ```
 
 **字段说明**：
+
 - `name`：成就唯一标识符
 - `title`：显示名称
 - `desc`：描述文字
@@ -264,34 +313,37 @@ D:\GameSaves\
 ### 解锁成就方法
 
 **方法一：通过程序**
+
 1. 进入【成就统计配置】
 2. 输入成就 ID
 3. 点击解锁按钮
 
 **方法二：修改文件**
+
 1. 找到 `account_data.vdf`
 2. 添加成就记录
 3. 重启游戏
 
 **方法三：控制台**（如果游戏支持）
+
 1. 游戏中按控制台键
 2. 输入解锁命令
 3. 成就立即解锁
 
----
+***
 
 ## 🔧 高级功能
 
 ### 配置项
 
-| 功能 | 说明 | 配置文件 |
-|------|------|----------|
-| SteamHTTP 模拟 | 模拟 Steam HTTP API 响应 | `configs.main.ini` |
-| 自定义头像 | 设置玩家头像图片 | `account_avatar.png` |
-| 语言配置 | 指定支持的语言列表 | `supported_languages.txt` |
-| Mods 支持 | 加载游戏模组 | `mods/` 文件夹 |
-| 手柄配置 | XInput 手柄支持 | `controller/` 文件夹 |
-| 授权 Token | EncryptedAppTicket 支持 | `configs.user.ini` |
+| 功能           | 说明                    | 配置文件                      |
+| ------------ | --------------------- | ------------------------- |
+| SteamHTTP 模拟 | 模拟 Steam HTTP API 响应  | `configs.main.ini`        |
+| 自定义头像        | 设置玩家头像图片              | `account_avatar.png`      |
+| 语言配置         | 指定支持的语言列表             | `supported_languages.txt` |
+| Mods 支持      | 加载游戏模组                | `mods/` 文件夹               |
+| 手柄配置         | XInput 手柄支持           | `controller/` 文件夹         |
+| 授权 Token     | EncryptedAppTicket 支持 | `configs.user.ini`        |
 
 ### 操作步骤
 
@@ -304,21 +356,82 @@ D:\GameSaves\
 ### 自定义头像配置
 
 **图片要求**：
+
 - 格式：PNG、JPG、JPEG
 - 尺寸：建议 64x64 像素
 - 文件名：`account_avatar`
 
 **放置位置**：
+
 - 全局：`%appdata%\GSE Saves\settings\`
 - 本地：游戏目录的 `steam_settings\` 文件夹
 
----
+### D 加密虚拟机使用教程
+
+**⚠️ 重要提示**：本教程仅适用于 D 加密（Denuvo）游戏，需要以管理员身份运行所有 cmd 命令。
+
+**步骤 1：开启 CPU 虚拟化**
+
+- **AMD 用户**：在 BIOS 中搜索并开启 `SVM`
+- **Intel 用户**：在 BIOS 中搜索并开启 `Intel Virtualization Technology` 或 `Intel VT-x`
+
+**步骤 2：关闭 Hyper-V**
+
+- Win+R 运行 `optionalfeatures`，找到并关闭 Hyper-V
+
+**步骤 3：通过命令关闭 Hyper-V**
+
+```cmd
+bcdedit /set hypervisorlaunchtype off
+```
+
+**步骤 4：关闭内存完整性**
+
+- 在 Windows 安全中心中找到并关闭"内存完整性"
+
+**步骤 5：创建兼容性修复服务**
+
+- **AMD CPU 用户**：
+
+```cmd
+sc create denuvo type=kernel start=demand binPath=C:\dummy\SimpleSvm.sys
+```
+
+- **Intel CPU 用户**：
+
+```cmd
+sc create denuvo type=kernel start=demand binPath=C:\dummy\hyperkd.sys
+```
+
+**步骤 6：选择以下任一方法**
+
+**方法一：关闭安全启动 + 测试模式**
+
+```cmd
+bcdedit /set testsigning on    # 开启测试模式（需要重启）
+bcdedit /set testsigning off   # 关闭测试模式
+```
+
+**方法二：高级启动**
+
+- 高级启动 → 疑难解答 → 启动设置 → 重启 → 按 F7
+
+**步骤 7：启用兼容性修复服务**
+
+```cmd
+sc start denuvo    # 启用服务
+sc stop denuvo     # 停止服务
+sc delete denuvo   # 卸载服务
+```
+
+***
 
 ## ❓ 常见问题
 
 ### 注入补丁后游戏无法启动
 
 **解决方案**：
+
 1. 检查补丁是否匹配游戏版本
 2. 查看日志区的错误信息
 3. 尝试还原游戏后重新注入
@@ -327,6 +440,7 @@ D:\GameSaves\
 ### 游戏闪退或崩溃
 
 **解决方案**：
+
 1. 关闭 Overlay 覆盖层功能
 2. 检查游戏文件完整性
 3. 尝试其他版本的补丁
@@ -335,6 +449,7 @@ D:\GameSaves\
 ### 无法识别游戏路径
 
 **解决方案**：
+
 1. 确认路径不包含中文字符
 2. 检查路径权限
 3. 以管理员身份运行程序
@@ -343,6 +458,7 @@ D:\GameSaves\
 ### 存档配置后游戏不认
 
 **解决方案**：
+
 1. 检查存档路径是否正确
 2. 确认存档格式兼容
 3. 查看游戏是否支持 Goldberg
@@ -351,6 +467,7 @@ D:\GameSaves\
 ### 局域网联机搜不到主机
 
 **解决方案**：
+
 1. 检查所有电脑是否在同一网段
 2. 关闭防火墙或添加例外
 3. 配置自定义网段
@@ -360,6 +477,7 @@ D:\GameSaves\
 ### 成就解锁后不显示弹窗
 
 **解决方案**：
+
 1. 检查 Overlay 是否启用
 2. 确认成就文件配置正确
 3. 重启游戏
@@ -368,53 +486,60 @@ D:\GameSaves\
 ### 如何重置所有成就
 
 **方法**：
+
 1. 删除 `account_data.vdf`
 2. 或使用程序的【重置成就】功能
 3. 重新启动游戏
 
----
+***
 
 ## 📞 技术支持
 
 **遇到问题？**
+
 1. 查看日志区错误信息
 2. 检查配置文件是否正确
 3. 联系开发者或社区
 
 **相关链接**：
-- 📦 [ManifestHub GitHub](https://github.com/SteamAutoCracks/ManifestHub)
-- 📺 [Bilibili：鲸落_hi](https://space.bilibili.com/405707676)
 
----
+- 📦 [ManifestHub GitHub](https://github.com/SteamAutoCracks/ManifestHub)
+- 📺 [Bilibili：鲸落\_hi](https://space.bilibili.com/405707676)
+
+***
 
 ## 📝 更新日志
 
-### v1.01
+### v1.02
 
 **界面优化**
+
 - ✅ 优化游戏封面显示（275×160）
 - ✅ 统一字体大小（13-19 号）
 - ✅ 优化搜索栏样式
 - ✅ 标签页高亮显示
 
 **功能增强**
+
 - ✅ 为所有功能界面添加【一键配置】按钮
 - ✅ 添加网盘下载标签页
 - ✅ 添加 ManifestHub 跳转按钮
 
 **性能提升**
+
 - ✅ 优化日志追加函数（节流优化）
 - ✅ 减少 Dispatcher 调用频率
 - ✅ 使用颜色缓存减少对象创建
 - ✅ 优化 UI 响应速度
 
 **修复问题**
+
 - ✅ 修复教程编号错误
 - ✅ 修复注入补丁备份逻辑
 - ✅ 修复还原游戏逻辑
 - ✅ 修复脱壳功能路径问题
 
----
+***
 
 ## 📄 开源信息
 
@@ -423,11 +548,13 @@ D:\GameSaves\
 **贡献**: 欢迎提交 Issue 和 Pull Request！
 
 **开发环境**:
+
 - .NET 10.0
 - Windows 10/11
 - Visual Studio 2022
 
 **构建项目**:
+
 ```bash
 # 克隆仓库
 git clone https://github.com/你的用户名/SteamToolPlus.git
@@ -445,6 +572,6 @@ dotnet build
 dotnet run
 ```
 
----
+***
 
 **感谢使用 SteamToolPlus！** 🎉

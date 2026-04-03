@@ -1,0 +1,394 @@
+[
+  {
+    "description": "",
+    "displayName": "Déjà vu",
+    "hidden": 1,
+    "icon": "achievement_images/b348dd6703d7634fad4cba22f3728ea6db8d0dd8.jpg",
+    "icongray": "achievement_images/7d925f1866baeed9d9ce8fbc0f58f905e15d7610.jpg",
+    "name": "1"
+  },
+  {
+    "description": "",
+    "displayName": "Descent Into Darkness",
+    "hidden": 1,
+    "icon": "achievement_images/50a45d1969baeea1a594fc6f80a515ce71ebc1fa.jpg",
+    "icongray": "achievement_images/127827d2a2af61cc8809b5b9bcb24a6b9bf9e0b1.jpg",
+    "name": "2"
+  },
+  {
+    "description": "",
+    "displayName": "It's Been a Long Night",
+    "hidden": 1,
+    "icon": "achievement_images/81cca1fee65a414a3078358e381ba39935a12aa2.jpg",
+    "icongray": "achievement_images/c61b27515539e16833830af1317dc7decd4e2b49.jpg",
+    "name": "3"
+  },
+  {
+    "description": "",
+    "displayName": "A Harsh Reality",
+    "hidden": 1,
+    "icon": "achievement_images/4b9821bd83adbdba47b9871bec11fed86a24d99b.jpg",
+    "icongray": "achievement_images/916f4378b043a1ba2b0869392cbdcab1dfc7b5ca.jpg",
+    "name": "4"
+  },
+  {
+    "description": "",
+    "displayName": "Going Down?",
+    "hidden": 1,
+    "icon": "achievement_images/4742edabc6da9c22dcfbe3b8eba2593d14253f88.jpg",
+    "icongray": "achievement_images/d54742fba64e93f967be5977b3b1906ca1f39c29.jpg",
+    "name": "5"
+  },
+  {
+    "description": "",
+    "displayName": "The Hero Returns",
+    "hidden": 1,
+    "icon": "achievement_images/862bf225eb5d2be8f630f6bab58a38636f7f087d.jpg",
+    "icongray": "achievement_images/f02e488c09d46d8154f22d12eda3199bc023724a.jpg",
+    "name": "6"
+  },
+  {
+    "description": "",
+    "displayName": "I Remember That, Too",
+    "hidden": 1,
+    "icon": "achievement_images/36d6947818c8fe910f797227ce4d78a9c7f66a99.jpg",
+    "icongray": "achievement_images/1bca83503d61220219f1427e27ea1aa3f8302252.jpg",
+    "name": "7"
+  },
+  {
+    "description": "",
+    "displayName": "Umbrella's Legacy",
+    "hidden": 1,
+    "icon": "achievement_images/fb7097c54af91995a06b2e945adc28a73426de19.jpg",
+    "icongray": "achievement_images/9402f6f3d7229f2635838bd5f25432965fd42385.jpg",
+    "name": "8"
+  },
+  {
+    "description": "",
+    "displayName": "The Final Mission",
+    "hidden": 1,
+    "icon": "achievement_images/b70b17addb883238a4c8655a1ef934505cefe6d2.jpg",
+    "icongray": "achievement_images/48800f462f670ae9ceee0ba035f7078642536265.jpg",
+    "name": "9"
+  },
+  {
+    "description": "",
+    "displayName": "Hope and Requiem",
+    "hidden": 1,
+    "icon": "achievement_images/38320c1c46265dc355e51c551801aefdc385ee1a.jpg",
+    "icongray": "achievement_images/477979d97909d4327d44e626a05f0631f99da349.jpg",
+    "name": "10"
+  },
+  {
+    "description": "Complete the main story on at least Casual difficulty.",
+    "displayName": "Rookie Agent",
+    "hidden": 0,
+    "icon": "achievement_images/2dc631b63009d72482689559286968149f5d380b.jpg",
+    "icongray": "achievement_images/52c4b6fd92b554de83312a21b8d362a9d04090b3.jpg",
+    "name": "11"
+  },
+  {
+    "description": "Complete the main story on at least Standard (Modern) difficulty.",
+    "displayName": "Rising Agent",
+    "hidden": 0,
+    "icon": "achievement_images/fac79242784e8bfd0babf1ea4f2d7cc98e99254b.jpg",
+    "icongray": "achievement_images/9fa5a3f44fa82b66bdad8eda5d1d45d1473b3ec8.jpg",
+    "name": "12"
+  },
+  {
+    "description": "Complete the main story on at least Standard (Classic) difficulty.",
+    "displayName": "Resolute Agent",
+    "hidden": 0,
+    "icon": "achievement_images/05f3955798103f857a3542f3532203fe0cfd9b9b.jpg",
+    "icongray": "achievement_images/e81302c56449ad49df1292e533e5a6370b214c6c.jpg",
+    "name": "13"
+  },
+  {
+    "description": "",
+    "displayName": "Remarkable Agent",
+    "hidden": 1,
+    "icon": "achievement_images/98a05e8213f531206d40d750c7e540bafcf1093f.jpg",
+    "icongray": "achievement_images/f26f21d3347e70cefe0585a4520f3dd35863cb68.jpg",
+    "name": "14"
+  },
+  {
+    "description": "Store an item in the item box as Grace.",
+    "displayName": "Out of Sight, Out of Mind",
+    "hidden": 0,
+    "icon": "achievement_images/854da90cd2c365292ca4ff149d0286a2947298aa.jpg",
+    "icongray": "achievement_images/272e97758837a740f947f09f539ef09458ce7cbc.jpg",
+    "name": "15"
+  },
+  {
+    "description": "",
+    "displayName": "The Ol' Fashioned Way",
+    "hidden": 1,
+    "icon": "achievement_images/27307dd9a196b2f0d8dafb64c41e7eabcdcd647b.jpg",
+    "icongray": "achievement_images/b44de4a69b984ea079cb4b3f3a4ee85849694421.jpg",
+    "name": "16"
+  },
+  {
+    "description": "Unlock a drawer with a lockpick.",
+    "displayName": "Like Mother, Like Daughter",
+    "hidden": 0,
+    "icon": "achievement_images/33e5b1162ae1100813c81bac7c84cc34709c3e47.jpg",
+    "icongray": "achievement_images/abe79cc501fd06813787baab091e1e5ff778879a.jpg",
+    "name": "17"
+  },
+  {
+    "description": "",
+    "displayName": "Fatal Dose",
+    "hidden": 1,
+    "icon": "achievement_images/d72306eded4d515b32b5936fa65d0db8a4155952.jpg",
+    "icongray": "achievement_images/f2830ce2e5ba02fb78b2a803061fe4602e7d32fe.jpg",
+    "name": "18"
+  },
+  {
+    "description": "",
+    "displayName": "Science!",
+    "hidden": 1,
+    "icon": "achievement_images/f8df6ee1d158003c332ddff760c334403f387c09.jpg",
+    "icongray": "achievement_images/6715544bd2fe04a13bc0cabb4b5cc64257b0789d.jpg",
+    "name": "19"
+  },
+  {
+    "description": "",
+    "displayName": "The Power of Blood",
+    "hidden": 1,
+    "icon": "achievement_images/54cc1fa6a31bb18c50c6fb14019d8c89e2933e9c.jpg",
+    "icongray": "achievement_images/40263965e1bbed55b70e10c23cc16f49d2cdeb4c.jpg",
+    "name": "20"
+  },
+  {
+    "description": "",
+    "displayName": "Blood! More Blood!",
+    "hidden": 1,
+    "icon": "achievement_images/fa97b91cdd4a1eefe433bc5dc2203216c8220fdf.jpg",
+    "icongray": "achievement_images/5e222b2eeaf021febe3012acfc5ad432072e72fd.jpg",
+    "name": "21"
+  },
+  {
+    "description": "",
+    "displayName": "Bring Out the Big Guns",
+    "hidden": 1,
+    "icon": "achievement_images/6eea5415e29f45458ff344ef7d563c9d78acb120.jpg",
+    "icongray": "achievement_images/602f31ca7b4f4bd260b171dd9c458c14d8078a0e.jpg",
+    "name": "22"
+  },
+  {
+    "description": "Destroy one Mr. Raccoon memoriam.",
+    "displayName": "The Hunt Begins",
+    "hidden": 0,
+    "icon": "achievement_images/658a7d2170695ecdf413f6cdede27c5f65c72d19.jpg",
+    "icongray": "achievement_images/ddaa493f5c885d8f269436b958af289864045ee9.jpg",
+    "name": "23"
+  },
+  {
+    "description": "Parry an enemy attack.",
+    "displayName": "Untouchable",
+    "hidden": 0,
+    "icon": "achievement_images/5d46f64d5953ab56817417093ab36d541f216cf3.jpg",
+    "icongray": "achievement_images/f4adbc975716c5d00fbf52b7bcb760912ad6b675.jpg",
+    "name": "24"
+  },
+  {
+    "description": "Throw a weapon dropped by an enemy.",
+    "displayName": "Can I Borrow This?",
+    "hidden": 0,
+    "icon": "achievement_images/babc692cd22cf2278cab9f63d223f7b2c0fa30dd.jpg",
+    "icongray": "achievement_images/9f71c5251d37b5511bdfa39e546b9daaa324f0b4.jpg",
+    "name": "25"
+  },
+  {
+    "description": "Defeat three zombies with a hatchet finishing attack.",
+    "displayName": "Chop Chop",
+    "hidden": 0,
+    "icon": "achievement_images/a1b16439b5c1739be5383962608cf9892fa77f33.jpg",
+    "icongray": "achievement_images/bb402cd1cf9e7c10a261377ac90d41b44dd9d70e.jpg",
+    "name": "26"
+  },
+  {
+    "description": "Purchase an item from the supply box.",
+    "displayName": "Retail Therapy",
+    "hidden": 0,
+    "icon": "achievement_images/35e694d735ad359498d4f0e9359498d195430132.jpg",
+    "icongray": "achievement_images/d40f98180ded0af3d1793a728ff9605d8ae4d924.jpg",
+    "name": "27"
+  },
+  {
+    "description": "Upgrade a weapon.",
+    "displayName": "Tailor Made",
+    "hidden": 0,
+    "icon": "achievement_images/189f83269c132a98dc3a617f8c0a3fb2265fa016.jpg",
+    "icongray": "achievement_images/4784bcd3b05bd8d23edbb5144a0c19b7e0a39119.jpg",
+    "name": "28"
+  },
+  {
+    "description": "",
+    "displayName": "Road Rage",
+    "hidden": 1,
+    "icon": "achievement_images/6b3b99cb50f69c947f7a35c3a74b566c96f76b9d.jpg",
+    "icongray": "achievement_images/d89028767429e3ceec9043c22a931312e46bcfec.jpg",
+    "name": "29"
+  },
+  {
+    "description": "Craft every possible item with Leon.",
+    "displayName": "Master Craftsman",
+    "hidden": 0,
+    "icon": "achievement_images/ca8c3b37f4dedcbdb3faa99835f5bea293021d1d.jpg",
+    "icongray": "achievement_images/11d9506ed2ddd174037a6b1cddd81d697076f515.jpg",
+    "name": "30"
+  },
+  {
+    "description": "Defeat at least three enemies with a single Requiem shot.",
+    "displayName": "Bang For Your Buck",
+    "hidden": 0,
+    "icon": "achievement_images/239539ae9b8445b5d27ec5e4b25585d722fc51f1.jpg",
+    "icongray": "achievement_images/4d1798a29b344351a8c80f9994ae5dfe33876ead.jpg",
+    "name": "31"
+  },
+  {
+    "description": "",
+    "displayName": "Cat Got Your Tongue?",
+    "hidden": 1,
+    "icon": "achievement_images/68efd6343fdb61e9b1080749b2bf887ac6cf96d4.jpg",
+    "icongray": "achievement_images/c08e298ec2bc6a9b0d8ae3521b15b8c7c5fa212f.jpg",
+    "name": "32"
+  },
+  {
+    "description": "",
+    "displayName": "Order Up!",
+    "hidden": 1,
+    "icon": "achievement_images/f93e65d72fff91fddf9bf47ada3ac3487b5a80b1.jpg",
+    "icongray": "achievement_images/3840291f21b3143291d9593dc85c656462c65a32.jpg",
+    "name": "33"
+  },
+  {
+    "description": "",
+    "displayName": "Deadly Duet",
+    "hidden": 1,
+    "icon": "achievement_images/6c06d18c86540a59f7e9729c8afced0db907055c.jpg",
+    "icongray": "achievement_images/9f48c834aab7db42ff838ecad8b590e610521649.jpg",
+    "name": "34"
+  },
+  {
+    "description": "",
+    "displayName": "Grace and Goliath",
+    "hidden": 1,
+    "icon": "achievement_images/cf9f18110e2f68622706cc299e6aba88a2f54c26.jpg",
+    "icongray": "achievement_images/972f97ef6b78e2c460a6eb41ab72ac32251c6a01.jpg",
+    "name": "35"
+  },
+  {
+    "description": "",
+    "displayName": "Internal Dispute",
+    "hidden": 1,
+    "icon": "achievement_images/afbece2f3c4f35b3b28101238edfdc82b970541b.jpg",
+    "icongray": "achievement_images/817c8e8d89863e08d5c1ca31c2dce6210b6643d9.jpg",
+    "name": "36"
+  },
+  {
+    "description": "Defeat 300 enemies.",
+    "displayName": "Seasoned Pro",
+    "hidden": 0,
+    "icon": "achievement_images/696e1108cfb58507fa56df7628635c9e08c48639.jpg",
+    "icongray": "achievement_images/f1eb1087d1091522aba9213395b0ac9a712d7945.jpg",
+    "name": "37"
+  },
+  {
+    "description": "",
+    "displayName": "Not Today, Buds!",
+    "hidden": 1,
+    "icon": "achievement_images/8f8e23c0c65a73cf980475c2cdc89f0ccca136a3.jpg",
+    "icongray": "achievement_images/e3ff8a704e0dc84ca1b21c746a370039b3839caf.jpg",
+    "name": "38"
+  },
+  {
+    "description": "",
+    "displayName": "No Safe is Safe",
+    "hidden": 1,
+    "icon": "achievement_images/af19071d0aa2c4dda8e31504591567b8bfcb9057.jpg",
+    "icongray": "achievement_images/812995a1b4118b9efebd159f6c61b85126360ac4.jpg",
+    "name": "39"
+  },
+  {
+    "description": "",
+    "displayName": "Crate Expectations",
+    "hidden": 1,
+    "icon": "achievement_images/8fd1243ae7653ad2e7a27d40a6c19fc6e360583a.jpg",
+    "icongray": "achievement_images/8495f57899c42d89d9d1a40109ad75e45c1103f7.jpg",
+    "name": "40"
+  },
+  {
+    "description": "Read all the files in the main story.",
+    "displayName": "Case Closed",
+    "hidden": 0,
+    "icon": "achievement_images/e65d64e6012028d778e3ff427ee766b90b4c5d8d.jpg",
+    "icongray": "achievement_images/f8f5bc1320f543c4c398ca08da2e610eee936891.jpg",
+    "name": "41"
+  },
+  {
+    "description": "Destroy every Mr. Raccoon memoriam.",
+    "displayName": "You Little Rascal!",
+    "hidden": 0,
+    "icon": "achievement_images/9f5687a1b465f697c36406d45dd9cbf3d8b4d3f1.jpg",
+    "icongray": "achievement_images/7f436bef4913a3d28a85e186a1365abf22877f60.jpg",
+    "name": "42"
+  },
+  {
+    "description": "",
+    "displayName": "Speed Demon",
+    "hidden": 1,
+    "icon": "achievement_images/9056da5c40a6872536a76682d8dd0a4bc6e7928d.jpg",
+    "icongray": "achievement_images/3293fc91a5f1870bd75de9b22a26e9e888fcaa4e.jpg",
+    "name": "43"
+  },
+  {
+    "description": "",
+    "displayName": "Credit Where Credit Is Due",
+    "hidden": 1,
+    "icon": "achievement_images/74cd077e010267a280593ef3b7b47561ddbd28a1.jpg",
+    "icongray": "achievement_images/4b130aa6df0e620d82d9e5a8d1d4324d7fe1c5d9.jpg",
+    "name": "44"
+  },
+  {
+    "description": "",
+    "displayName": "Bloodlust",
+    "hidden": 1,
+    "icon": "achievement_images/8daf8e8ea90499a4731d66a2fabd2a0e93753491.jpg",
+    "icongray": "achievement_images/5a2a0fe1726c8c4bd201f3dc9e8d80bc004807da.jpg",
+    "name": "45"
+  },
+  {
+    "description": "View all models.",
+    "displayName": "Model Mania",
+    "hidden": 0,
+    "icon": "achievement_images/cb135525843cf9a3e9e327f777fd5d9147765b56.jpg",
+    "icongray": "achievement_images/9b2113df28ca84f8dcf663abe5ca862a53833268.jpg",
+    "name": "46"
+  },
+  {
+    "description": "View all concept art.",
+    "displayName": "Curator",
+    "hidden": 0,
+    "icon": "achievement_images/6c1a41cb5c3805f8c0d0a0da866a4ab524f40e6e.jpg",
+    "icongray": "achievement_images/1a919a31058648320a4b05e9326c22ffc28e1a35.jpg",
+    "name": "47"
+  },
+  {
+    "description": "Complete the main story without using herbs or med injectors.",
+    "displayName": "Never Touch the Stuff",
+    "hidden": 0,
+    "icon": "achievement_images/3c75d323d8b191729eeeaed2a1bb23e4e3b1db8f.jpg",
+    "icongray": "achievement_images/fb40f60e5d9a2947c3d844f644ca7a7fb1ead3ed.jpg",
+    "name": "48"
+  },
+  {
+    "description": "",
+    "displayName": "Minimalist",
+    "hidden": 1,
+    "icon": "achievement_images/2041d7995ef15d5011887712ebfec8929646c3fc.jpg",
+    "icongray": "achievement_images/bd3748493b47aece109cb8deb4d87729472ca007.jpg",
+    "name": "49"
+  }
+]

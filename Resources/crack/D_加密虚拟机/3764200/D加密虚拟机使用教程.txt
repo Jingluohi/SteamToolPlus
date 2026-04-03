@@ -1,0 +1,26 @@
+！！！所有cmd命令都要以管理员身份运行
+1.在主板bios中开启虚拟功能
+AMD主板用戸搜索SVM
+英特尔主板用戸搜索Intel Virtualization Technology
+或IntelVT-x，
+然后开启它。
+
+2.Win+R 运行 optionalfeatures    关闭Hyper-V
+
+3.bcdedit /set hypervisorlaunchtype off，再次关闭Hyper-V
+
+4.安全中心关闭 内存完整性
+
+5.sc create denuvo type=kernel start=demand binPath=C:\dummy\SimpleSvm.sys，创建兼容修复服务-AMD CPU
+sc create denuvo type=kernel start=demand binPath=C:\dummy\hyperkd.sys，创建兼容修复服务英特尔 CPU
+
+方法一.关闭安全启动 (Secure Boot)+测试模式
+bcdedit /set testsigning on，测试模式开（开后要重启）
+bcdedit /set testsigning off，测试模式关
+
+方法二.高级启动 ->疑难解答 -> 启动设置 ->重启 -> 按f7
+
+
+sc start denuvo，启用兼容性修复服务
+sc stop denuvo，停止兼容性修复服务
+sc delete denuvo，卸载兼容性修复服务

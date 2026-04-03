@@ -1,0 +1,36 @@
+使用方法：
+简单概括：买游戏（或登录别人的正版账号），进一次游戏，退款，装补丁玩。
+
+Steam退款条款：游玩时长不超过2小时，购买时间不超过14天。(用家庭共享玩也算时长)
+
+
+具体方法：
+1.买退。在Steam上登录任意一个账号进行购买红色沙漠普通版即可。就能玩到全DLC豪华版。
+下载安装好之后直接进入游戏，创建一个存档到出生地之后退出游戏并且找到客服申请退款。不要超过2小时。
+在等待退款到账时，可继续下面操作游玩并且不影响退款。越早配置好越早玩上。
+
+2.记录信息。需要查看当前账号的SteamID和Steam好友代码（如图片示例内所示），SteamID是17位纯数字。
+查看SteamID的方法为：https://search.bilibili.com/article?keyword=如何查看steamed
+可以把查看的信息贴在这里备用。
+SteamID：
+好友代码：
+
+3.将补丁包解压。将解压得到的补丁文件放入游戏目录，即"Steam\steamapps\common\Crimson Desert\bin64"文件夹内。（如图片示例内的补丁安装）
+
+4.打开快捷修改模拟器信息.bat，修改玩家名称，填写SteamiD，创建存放授权文件夹。
+
+5.将"Steam\userdata\好友代码\3321460"内的授权文件(如图片示例内的授权文件)放入"steamclient_experimental\userdata\好友代码\3321460"内。
+
+6.完成。通过steamclient_experimental\steamclient_loader_x64.exe开始游戏。
+
+
+重点：此方法不能更新Windows系统版本，显卡及各种驱动版本，游戏版本(任何方式)，都会导致现有授权无法作用于新的系统环境。若发生只能尝试回退版本或者重新买退。
+
+
+其他：
+7.内置成就(不装也能玩)。经测试目前补丁显示成就方面会因为修改游戏图像设置即分辨率，画质，超分，帧生成等各种选项导致闪退。
+在确定不需要修改图像设置后，将steamclient_experimental\steam_settings文件夹内的“成就文件configs.overlay.ini”改名为“configs.overlay.ini”
+此功能也很容易导致游戏闪退，卡死等，建议不用。
+
+
+搬运工：鲸落_hi    B站主页：https://space.bilibili.com/405707676

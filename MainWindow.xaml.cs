@@ -500,12 +500,20 @@ public partial class MainWindow : Window
         if (CardEldenRing != null) CardEldenRing.Visibility = Visibility.Visible;
         if (CardEldenRingSteam != null) CardEldenRingSteam.Visibility = Visibility.Visible;
         if (CardForzaHorizon5 != null) CardForzaHorizon5.Visibility = Visibility.Visible;
+        if (CardCrimsonDesert != null) CardCrimsonDesert.Visibility = Visibility.Visible;
+        if (CardNioh3 != null) CardNioh3.Visibility = Visibility.Visible;
+        if (CardResidentEvilRequiem != null) CardResidentEvilRequiem.Visibility = Visibility.Visible;
+        if (CardResidentEvilRequiemDEncrypted != null) CardResidentEvilRequiemDEncrypted.Visibility = Visibility.Visible;
         
         if (ListCardResidentEvil4 != null) ListCardResidentEvil4.Visibility = Visibility.Visible;
         if (ListCardMonsterHunter != null) ListCardMonsterHunter.Visibility = Visibility.Visible;
         if (ListCardEldenRing != null) ListCardEldenRing.Visibility = Visibility.Visible;
         if (ListCardEldenRingSteam != null) ListCardEldenRingSteam.Visibility = Visibility.Visible;
         if (ListCardForzaHorizon5 != null) ListCardForzaHorizon5.Visibility = Visibility.Visible;
+        if (ListCardCrimsonDesert != null) ListCardCrimsonDesert.Visibility = Visibility.Visible;
+        if (ListCardNioh3 != null) ListCardNioh3.Visibility = Visibility.Visible;
+        if (ListCardResidentEvilRequiem != null) ListCardResidentEvilRequiem.Visibility = Visibility.Visible;
+        if (ListCardResidentEvilRequiemDEncrypted != null) ListCardResidentEvilRequiemDEncrypted.Visibility = Visibility.Visible;
     }
 
     /// <summary>
@@ -579,6 +587,10 @@ public partial class MainWindow : Window
         if (CardEldenRing != null) CardEldenRing.Visibility = Visibility.Collapsed;
         if (CardEldenRingSteam != null) CardEldenRingSteam.Visibility = Visibility.Collapsed;
         if (CardForzaHorizon5 != null) CardForzaHorizon5.Visibility = Visibility.Collapsed;
+        if (CardCrimsonDesert != null) CardCrimsonDesert.Visibility = Visibility.Collapsed;
+        if (CardNioh3 != null) CardNioh3.Visibility = Visibility.Collapsed;
+        if (CardResidentEvilRequiem != null) CardResidentEvilRequiem.Visibility = Visibility.Collapsed;
+        if (CardResidentEvilRequiemDEncrypted != null) CardResidentEvilRequiemDEncrypted.Visibility = Visibility.Collapsed;
         
         // 隐藏列表视图卡片
         if (ListCardResidentEvil4 != null) ListCardResidentEvil4.Visibility = Visibility.Collapsed;
@@ -586,6 +598,10 @@ public partial class MainWindow : Window
         if (ListCardEldenRing != null) ListCardEldenRing.Visibility = Visibility.Collapsed;
         if (ListCardEldenRingSteam != null) ListCardEldenRingSteam.Visibility = Visibility.Collapsed;
         if (ListCardForzaHorizon5 != null) ListCardForzaHorizon5.Visibility = Visibility.Collapsed;
+        if (ListCardCrimsonDesert != null) ListCardCrimsonDesert.Visibility = Visibility.Collapsed;
+        if (ListCardNioh3 != null) ListCardNioh3.Visibility = Visibility.Collapsed;
+        if (ListCardResidentEvilRequiem != null) ListCardResidentEvilRequiem.Visibility = Visibility.Collapsed;
+        if (ListCardResidentEvilRequiemDEncrypted != null) ListCardResidentEvilRequiemDEncrypted.Visibility = Visibility.Collapsed;
     }
 
     /// <summary>
@@ -638,6 +654,42 @@ public partial class MainWindow : Window
                 : Visibility.Collapsed;
         }
         
+        // 网格视图 - Crimson Desert
+        if (CardCrimsonDesert != null)
+        {
+            var game = GetGameInfoByTag("cd");
+            CardCrimsonDesert.Visibility = (game != null && IsGameMatchPatchType(game, patchType)) 
+                ? Visibility.Visible 
+                : Visibility.Collapsed;
+        }
+        
+        // 网格视图 - Nioh 3
+        if (CardNioh3 != null)
+        {
+            var game = GetGameInfoByTag("nioh3");
+            CardNioh3.Visibility = (game != null && IsGameMatchPatchType(game, patchType)) 
+                ? Visibility.Visible 
+                : Visibility.Collapsed;
+        }
+        
+        // 网格视图 - Resident Evil Requiem
+        if (CardResidentEvilRequiem != null)
+        {
+            var game = GetGameInfoByTag("rer");
+            CardResidentEvilRequiem.Visibility = (game != null && IsGameMatchPatchType(game, patchType)) 
+                ? Visibility.Visible 
+                : Visibility.Collapsed;
+        }
+        
+        // 网格视图 - Resident Evil Requiem D 加密版
+        if (CardResidentEvilRequiemDEncrypted != null)
+        {
+            var game = GetGameInfoByTag("rer_denuvo");
+            CardResidentEvilRequiemDEncrypted.Visibility = (game != null && IsGameMatchPatchType(game, patchType)) 
+                ? Visibility.Visible 
+                : Visibility.Collapsed;
+        }
+        
         // 列表视图 - Resident Evil 4
         if (ListCardResidentEvil4 != null)
         {
@@ -682,6 +734,42 @@ public partial class MainWindow : Window
                 ? Visibility.Visible 
                 : Visibility.Collapsed;
         }
+        
+        // 列表视图 - Crimson Desert
+        if (ListCardCrimsonDesert != null)
+        {
+            var game = GetGameInfoByTag("cd");
+            ListCardCrimsonDesert.Visibility = (game != null && IsGameMatchPatchType(game, patchType)) 
+                ? Visibility.Visible 
+                : Visibility.Collapsed;
+        }
+        
+        // 列表视图 - Nioh 3
+        if (ListCardNioh3 != null)
+        {
+            var game = GetGameInfoByTag("nioh3");
+            ListCardNioh3.Visibility = (game != null && IsGameMatchPatchType(game, patchType)) 
+                ? Visibility.Visible 
+                : Visibility.Collapsed;
+        }
+        
+        // 列表视图 - Resident Evil Requiem
+        if (ListCardResidentEvilRequiem != null)
+        {
+            var game = GetGameInfoByTag("rer");
+            ListCardResidentEvilRequiem.Visibility = (game != null && IsGameMatchPatchType(game, patchType)) 
+                ? Visibility.Visible 
+                : Visibility.Collapsed;
+        }
+        
+        // 列表视图 - Resident Evil Requiem D 加密版
+        if (ListCardResidentEvilRequiemDEncrypted != null)
+        {
+            var game = GetGameInfoByTag("rer_denuvo");
+            ListCardResidentEvilRequiemDEncrypted.Visibility = (game != null && IsGameMatchPatchType(game, patchType)) 
+                ? Visibility.Visible 
+                : Visibility.Collapsed;
+        }
     }
     
     /// <summary>
@@ -691,8 +779,8 @@ public partial class MainWindow : Window
     {
         if (patchType == PatchType.DEncrypted)
         {
-            // D 加密游戏：目前没有游戏属于这个分类
-            return false;
+            // D 加密游戏：检查游戏是否是 D 加密类型
+            return game.PatchType == PatchType.DEncrypted;
         }
         else
         {
@@ -912,6 +1000,46 @@ public partial class MainWindow : Window
                 PatchType = PatchType.SteamOnline,  // Steam 联机补丁
                 IsDEncrypted = true
             },
+            "cd" => new PatchGameInfo
+            {
+                GameName = "Crimson Desert",
+                GameId = "3321460",
+                CoverImage = "Resources/pic/inside/3321460.jpg",
+                ListCoverImage = "Resources/pic/outside/3321460.jpg",
+                PatchSourcePath = "Resources/crack/免_steam/3321460",
+                PatchType = PatchType.NoSteam,  // 免 Steam 启动补丁
+                IsDEncrypted = true
+            },
+            "nioh3" => new PatchGameInfo
+            {
+                GameName = "Nioh 3",
+                GameId = "3681010",
+                CoverImage = "Resources/pic/inside/3681010.jpg",
+                ListCoverImage = "Resources/pic/outside/3681010.jpg",
+                PatchSourcePath = "Resources/crack/steam_联机/3681010",
+                PatchType = PatchType.SteamOnline,  // Steam 联机补丁
+                IsDEncrypted = true
+            },
+            "rer" => new PatchGameInfo
+            {
+                GameName = "Resident Evil Requiem",
+                GameId = "3764200",
+                CoverImage = "Resources/pic/inside/3764200.jpg",
+                ListCoverImage = "Resources/pic/outside/3764200.jpg",
+                PatchSourcePath = "Resources/crack/免_steam/3764200",
+                PatchType = PatchType.NoSteam,  // 免 Steam 启动补丁
+                IsDEncrypted = true
+            },
+            "rer_denuvo" => new PatchGameInfo
+            {
+                GameName = "Resident Evil Requiem",
+                GameId = "3764200",
+                CoverImage = "Resources/pic/inside/3764200.jpg",
+                ListCoverImage = "Resources/pic/outside/3764200.jpg",
+                PatchSourcePath = "Resources/crack/D_加密虚拟机/3764200",
+                PatchType = PatchType.DEncrypted,  // D 加密虚拟机补丁
+                IsDEncrypted = true
+            },
             _ => null
         };
     }
@@ -981,6 +1109,9 @@ public partial class MainWindow : Window
         
         // 加载补丁文件列表
         LoadPatchFilesList(game.PatchSourcePath);
+        
+        // 加载使用说明
+        LoadUsageInstructions(game.PatchSourcePath);
         
         // 切换界面显示
         PatchSpecialPanel.Visibility = Visibility.Collapsed;
@@ -1076,6 +1207,64 @@ public partial class MainWindow : Window
         }
         
         BtnInjectPatch.IsEnabled = true;
+    }
+
+    /// <summary>
+    /// 加载使用说明
+    /// </summary>
+    /// <param name="patchSourcePath">补丁源路径</param>
+    private void LoadUsageInstructions(string patchSourcePath)
+    {
+        TxtUsageInstructions.Text = "";
+        
+        try
+        {
+            if (Directory.Exists(patchSourcePath))
+            {
+                // 查找包含"使用"二字的 txt 文件
+                var txtFiles = Directory.GetFiles(patchSourcePath, "*.txt", SearchOption.TopDirectoryOnly);
+                
+                // 筛选出包含"使用"的文件，并按文件名排序
+                var usageFiles = txtFiles
+                    .Where(f => Path.GetFileName(f).Contains("使用"))
+                    .OrderBy(f => Path.GetFileName(f))
+                    .ToList();
+                
+                if (usageFiles.Count == 0)
+                {
+                    TxtUsageInstructions.Text = ""; // 空白文本框
+                    return;
+                }
+                
+                // 遍历所有包含"使用"的文件
+                for (int i = 0; i < usageFiles.Count; i++)
+                {
+                    var txtFile = usageFiles[i];
+                    var fileName = Path.GetFileName(txtFile);
+                    
+                    // 添加文件分隔线（第一个文件前不加）
+                    if (i > 0)
+                    {
+                        TxtUsageInstructions.Text += "\n\n─────────────────────────────────────\n\n";
+                    }
+                    
+                    // 添加文件名作为标题
+                    TxtUsageInstructions.Text += $"【{fileName}】\n\n";
+                    
+                    // 读取并添加文件内容
+                    var content = File.ReadAllText(txtFile, System.Text.Encoding.UTF8);
+                    TxtUsageInstructions.Text += content;
+                }
+            }
+            else
+            {
+                TxtUsageInstructions.Text = ""; // 路径不存在也保持空白
+            }
+        }
+        catch (Exception ex)
+        {
+            TxtUsageInstructions.Text = $"❌ 加载使用说明失败：{ex.Message}";
+        }
     }
 
     /// <summary>
@@ -1280,6 +1469,16 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
+    /// 百度网盘下载链接点击事件
+    /// </summary>
+    /// <param name="sender">发送者</param>
+    /// <param name="e">事件参数</param>
+    private void PanDownloadLink_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        Process.Start(new ProcessStartInfo { FileName = "https://pan.baidu.com/s/1XbcZOLQcn4500z-SL1RDug?pwd=v1xm", UseShellExecute = true });
+    }
+
+    /// <summary>
     /// 选择 ddv20.exe 按钮点击事件
     /// </summary>
     /// <param name="sender">发送者</param>
@@ -1383,6 +1582,29 @@ public partial class MainWindow : Window
                 UseShellExecute = true
             });
             AppendDownloadLog("🔗 已打开清单库 GitHub 页面");
+        }
+        catch (Exception ex)
+        {
+            AppendDownloadLog($"❌ 无法打开浏览器：{ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// 打开百度网盘下载链接
+    /// </summary>
+    /// <param name="sender">发送者</param>
+    /// <param name="e">事件参数</param>
+    private void OpenPanDownload_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            // 使用默认浏览器打开百度网盘页面
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = "https://pan.baidu.com/s/1FTZyknIObyzMuLAJC-Uj9g?pwd=8uwx",
+                UseShellExecute = true
+            });
+            AppendDownloadLog("📥 已打开百度网盘下载链接（提取码：8uwx）");
         }
         catch (Exception ex)
         {
