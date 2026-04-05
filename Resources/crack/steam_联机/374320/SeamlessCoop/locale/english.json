@@ -1,0 +1,56 @@
+{
+	"GENERIC_INVALID": "Nothing interesting happens",
+	
+	"GOODSNAME_HOSTINGITEM": "Crystalline Pendant",	
+	"GOODSNAME_JOININGITEM": "Stone Pendant",	
+	"GOODSNAME_BREAKINITEM": "Blasphemous Pendant",	
+	"GOODSNAME_LEAVINGITEM": "Rusted Pendant",	
+	"GOODSNAME_GAMERULECHANGEITEM": "Ominous Tome",	
+	"GOODSNAME_DRIEDFINGERITEM": "Taunter's Orb",	
+	
+	"GOODSINFO_HOSTINGITEM": "Create a seamless co-operative session",	
+	"GOODSINFO_JOININGITEM": "Join a seamless co-operative session",	
+	"GOODSINFO_BREAKINITEM": "Invade a seamless co-operative session",	
+	"GOODSINFO_LEAVINGITEM": "Disband a seamless co-operative session",	
+	"GOODSINFO_GAMERULECHANGEITEM": "Change the world rules",	
+	"GOODSINFO_DRIEDFINGERITEM": "Taunt invaders into joining",	
+		
+	"GOODSDESC_HOSTINGITEM": "- Hosting Item Description -",	
+	"GOODSDESC_JOININGITEM": "- Joining Item Description -",	
+	"GOODSDESC_BREAKINITEM": "- Breakin Item Description -",	
+	"GOODSDESC_LEAVINGITEM": "- Leaving Item Description -",	
+	"GOODSDESC_GAMERULECHANGEITEM": "- Game rule Item Description -",	
+	"GOODSDESC_DRIEDFINGERITEM": "-",	
+	
+	"MODMSG_FVFPLAYER": "Wanderer",	
+	"MODMSG_FVBPLAYER": "Malcontent",	
+	"MODMSG_BVFPLAYER": "Target",	
+	"MODMSG_BVBPLAYER": "Malcontent",
+	
+	"MODMSG_WELCOMEFRIENDLY": "Wanderer {} has joined",
+	"MODMSG_WELCOMEBREAKIN": "Malcontent {} has invaded",
+	
+	"MODMSG_DEADFRIENDLY": "Wanderer {} has died",
+	"MODMSG_DEADBREAKIN": "Malcontent {} has died",
+	
+	"MODMSG_INVASIONWIN": "Objective completed\nReturning to your world...",
+	
+	"MODMSG_JOININGINPROGRESS": "Joining another world as a Wanderer",	
+	"MODMSG_INVADINGINPROGRESS": "Invading another world as a Malcontent",
+	"MODMSG_JOINBLOCKED": "Joining failed: You have been blocked by the host of the session",
+	"MODMSG_JOINFAILED": "Joining failed: Not enough open slots player slots",
+	"MODMSG_BLOCKEDJOIN": "Joining failed: You have blocked the host of the session",
+	"MODMSG_FAILEDJOIN": "Joining failed: No host",
+	"MODMSG_NOLOBBYFRIEND": "No sessions found",
+	"MODMSG_NOLOBBYINVADE": "Failed to find session to invade",
+	"MODMSG_INVASIONINTRODUCTION": "Invaded another world\n Defeat {} Wanderers",
+	
+	"MODMSG_NOAOALICENCE": "The host has warped to a DLC map that you do not own\nReturning to your world...",
+	"MODMSG_NORCLICENCE": "The host has warped to a DLC map that you do not own\nReturning to your world...",
+	
+	"MODMSG_TOOGGLEFRIENDFIREON": "Friendly fire is now on",	
+	"MODMSG_TOOGGLEFRIENDFIGHTON": "Friendly fire is now on (PvP)",	
+	"MODMSG_TOOGGLEFRIENDFIGHTOFF": "Friendly fire is now off",
+	
+	"CREDITS": "LukeYui"
+}

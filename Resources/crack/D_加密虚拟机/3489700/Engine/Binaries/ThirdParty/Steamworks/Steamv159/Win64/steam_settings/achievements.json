@@ -1,0 +1,362 @@
+[
+  {
+    "description": "You have unlocked all achievements in the main game.",
+    "displayName": "EVE Protocol",
+    "hidden": 0,
+    "icon": "achievement_images/6b4a48027864e62ff22d12d5ef19e8b3a77af21c.jpg",
+    "icongray": "achievement_images/df1f2aee5b6e5281b515226d1d1f634a91494d82.jpg",
+    "name": "01_Platinum"
+  },
+  {
+    "description": "Activated the first Camp.",
+    "displayName": "Camp Preparation",
+    "hidden": 0,
+    "icon": "achievement_images/13e362ef7aa23d4fcd4a5660cddbbb040a28127a.jpg",
+    "icongray": "achievement_images/eb72715c12aaa81390f11ce6dfa36330661a3bbf.jpg",
+    "name": "02_Activate_FirstCamp"
+  },
+  {
+    "description": "",
+    "displayName": "Abaddon",
+    "hidden": 1,
+    "icon": "achievement_images/3069db9059a93f10fbdac20083b22da657f09686.jpg",
+    "icongray": "achievement_images/437995cc4b176fafcabae7c15d9d1c47495f15bc.jpg",
+    "name": "03_KillCharacter_Opener"
+  },
+  {
+    "description": "",
+    "displayName": "Corrupter",
+    "hidden": 1,
+    "icon": "achievement_images/d096ff1f659928c6f238715e3500def12dccd01b.jpg",
+    "icongray": "achievement_images/ec813e87e978bc705927371553509a5a5f17a95d.jpg",
+    "name": "04_KillCharacter_GrubShooter"
+  },
+  {
+    "description": "",
+    "displayName": "Gigas",
+    "hidden": 1,
+    "icon": "achievement_images/c7def2d6ec8cd4511142d4bc3ce7d7612a1f6e5a.jpg",
+    "icongray": "achievement_images/cd3d7925fbe3d3f521ce7b185aa35b26745adf61.jpg",
+    "name": "05_KillCharacter_Gigas_Kill"
+  },
+  {
+    "description": "",
+    "displayName": "Brute",
+    "hidden": 1,
+    "icon": "achievement_images/9efcf9bf09897bdea96d5acdd30986a06330b1c9.jpg",
+    "icongray": "achievement_images/8a797b96f7063ba0f4cba6bf3df3877f10de2ac3.jpg",
+    "name": "06_KillCharacter_Brute"
+  },
+  {
+    "description": "",
+    "displayName": "Altess Levoire",
+    "hidden": 1,
+    "icon": "achievement_images/af5d5562f130eb33f25393ab9330f42017dc53a8.jpg",
+    "icongray": "achievement_images/b773b9b6b9a4e745eb922b01e16d9b9fd8ca696c.jpg",
+    "name": "07_CompleteLevel_AltesLabor"
+  },
+  {
+    "description": "",
+    "displayName": "Stalker",
+    "hidden": 1,
+    "icon": "achievement_images/44ca6fde5ba71e75697a6f47c400335472f40728.jpg",
+    "icongray": "achievement_images/f85d4cc8f54baece3d7087555a41d5212fa08b11.jpg",
+    "name": "08_KillCharacter_Stalker_Kill"
+  },
+  {
+    "description": "",
+    "displayName": "Juggernaut",
+    "hidden": 1,
+    "icon": "achievement_images/cfb3d64e4841841a0dff101c67630029862c17c5.jpg",
+    "icongray": "achievement_images/4878f6ff0b14e910bbf70cd83b1ecde4d429ca39.jpg",
+    "name": "09_KillCharacter_Juggernaut_Kill"
+  },
+  {
+    "description": "",
+    "displayName": "Tachy",
+    "hidden": 1,
+    "icon": "achievement_images/b257827573460ab6afaa34b6385c391ef7e12264.jpg",
+    "icongray": "achievement_images/808da5228a1e1df1d44d22260f5a88a08b921421.jpg",
+    "name": "10_KillCharacter_Tachy_Kill"
+  },
+  {
+    "description": "",
+    "displayName": "Behemoth",
+    "hidden": 1,
+    "icon": "achievement_images/238fc74430ec56675cfc291a43723d3c23d2704b.jpg",
+    "icongray": "achievement_images/4273a5161072272d70adb98a55ae3edc657cbbbd.jpg",
+    "name": "11_KillCharacter_Behemoth"
+  },
+  {
+    "description": "",
+    "displayName": "Abyss Levoire",
+    "hidden": 1,
+    "icon": "achievement_images/b40492eaa5badedda89e9bbb75de4764f019f2f0.jpg",
+    "icongray": "achievement_images/43a91c3b0174a1be23f9e93773e7c6e3445ec529.jpg",
+    "name": "12_CompleteLevel_AbyssLabor"
+  },
+  {
+    "description": "",
+    "displayName": "Belial",
+    "hidden": 1,
+    "icon": "achievement_images/540064d0dd28f9d984f21634f381dd2a1093b920.jpg",
+    "icongray": "achievement_images/c8009bd93ca48c5d247f7e1d2e2a8038538fd250.jpg",
+    "name": "13_KillCharacter_Belial_A_Kill"
+  },
+  {
+    "description": "",
+    "displayName": "Karakuri",
+    "hidden": 1,
+    "icon": "achievement_images/8ef60e5b2d795891a320ddbf4a3d5f30175307da.jpg",
+    "icongray": "achievement_images/379a35d671474d300f12bf9be90f3745853b8eaf.jpg",
+    "name": "14_KillCharacter_Marionette_Kill"
+  },
+  {
+    "description": "",
+    "displayName": "Demogorgon",
+    "hidden": 1,
+    "icon": "achievement_images/841ce1fb7bb9ab355534fe548d2604657e99f360.jpg",
+    "icongray": "achievement_images/aca6f0d1f79b22b1e27e082632d6a3a0394bebd4.jpg",
+    "name": "15_KillCharacter_Gorgon_Kill"
+  },
+  {
+    "description": "",
+    "displayName": "Raven",
+    "hidden": 1,
+    "icon": "achievement_images/4b9a0839bb0a6a9264deff8adfc2c82af90825d1.jpg",
+    "icongray": "achievement_images/c945185b5331a92b34fcbe84d483380c96abb22e.jpg",
+    "name": "16_KillCharacter_Raven_Kill"
+  },
+  {
+    "description": "",
+    "displayName": "Return to the Colony",
+    "hidden": 1,
+    "icon": "achievement_images/c45187c9c145188f222fd97b9ec2f13790cfea20.jpg",
+    "icongray": "achievement_images/33e3c7204110210c1bff5fa496d6d02fbd1baa2b.jpg",
+    "name": "17_Ending_Colony"
+  },
+  {
+    "description": "",
+    "displayName": "Cost of Lost Memories",
+    "hidden": 1,
+    "icon": "achievement_images/ce13b556d73b153f6bfddc48bcb9167f514343b9.jpg",
+    "icongray": "achievement_images/2bca25bbc4b2f598e5514899f1b9af09efdd0119.jpg",
+    "name": "18_Ending_LostMemory"
+  },
+  {
+    "description": "",
+    "displayName": "Making New Memories",
+    "hidden": 1,
+    "icon": "achievement_images/2989a52550d78fa242f6fe690b569ed8b6b3b36b.jpg",
+    "icongray": "achievement_images/65603a6ebd5343bd31861019b765fc16914d3ff6.jpg",
+    "name": "19_Ending_NewMemory"
+  },
+  {
+    "description": "Collected all cans.",
+    "displayName": "Can Collector",
+    "hidden": 0,
+    "icon": "achievement_images/fe9bb49e1f3e238aa0a5eca1ff1624c318bcf1f0.jpg",
+    "icongray": "achievement_images/813682d75b72a643972ffde190848e37d2af27b5.jpg",
+    "name": "20_Acquire_AllCan"
+  },
+  {
+    "description": "Acquired 30 Nano Suits.",
+    "displayName": "Nano Suit Collector",
+    "hidden": 0,
+    "icon": "achievement_images/6d7e430737b1ce111d53ade73f0e940acaf23a43.jpg",
+    "icongray": "achievement_images/b5050c5c26ea17caa18bf5e4e065cd0b860620c8.jpg",
+    "name": "21_Acquire_AllNanoSuit"
+  },
+  {
+    "description": "Collected 200 Data Bank entries (Memorysticks, Documents, or Passcodes).",
+    "displayName": "Records Collector",
+    "hidden": 0,
+    "icon": "achievement_images/7133085f0facf0a389531773fdd4fc5b41ab6b81.jpg",
+    "icongray": "achievement_images/046f3dece50939998e49450193f076c652e6a09f.jpg",
+    "name": "22_Acquire_AllRecords"
+  },
+  {
+    "description": "Caught 20 different fish.",
+    "displayName": "Lonely Fisherman",
+    "hidden": 0,
+    "icon": "achievement_images/7cd6a658d69dcde42ca1864bcd505219bd534335.jpg",
+    "icongray": "achievement_images/810dca89ea6b8e111725c87636e05c2723a4ede8.jpg",
+    "name": "23_Album_AllFish"
+  },
+  {
+    "description": "Opened 200 boxes.",
+    "displayName": "Box Hunter",
+    "hidden": 0,
+    "icon": "achievement_images/7d021ab4a8013a58caf864f576e102127139d1ef.jpg",
+    "icongray": "achievement_images/7fb75b92309d6d43ca00a96ee8e6f2ad28283763.jpg",
+    "name": "24_Open_AllBox"
+  },
+  {
+    "description": "Got information on all Naytibas.",
+    "displayName": "Naytiba Researcher",
+    "hidden": 0,
+    "icon": "achievement_images/afdb755ab5213c792ae95f43cc2ad38ebc389575.jpg",
+    "icongray": "achievement_images/0ae264e18ec6b51eca71d844806da99ab4302289.jpg",
+    "name": "25_KillCharacter_AllNative"
+  },
+  {
+    "description": "Activated all Camps.",
+    "displayName": "Meticulous Explorer",
+    "hidden": 0,
+    "icon": "achievement_images/edf7219f728dbb7355faa6fecc4fc422104d7681.jpg",
+    "icongray": "achievement_images/0ff9fd5db10da03bebe6de447d3ebcdf341fa538.jpg",
+    "name": "26_Activate_AllCamp"
+  },
+  {
+    "description": "Enhanced 10 Exospines to their max.",
+    "displayName": "Perfect Exospine",
+    "hidden": 0,
+    "icon": "achievement_images/59e92a7850ca44f4b09dcc2750ba01c4c238cd40.jpg",
+    "icongray": "achievement_images/80c5a9bf0aa19346fa4af2698a25856edabf4ff5.jpg",
+    "name": "27_LevelUpMax_AllExoSpine"
+  },
+  {
+    "description": "Enhanced Blood Edge to its max.",
+    "displayName": "Perfect Blood Edge",
+    "hidden": 0,
+    "icon": "achievement_images/c78d409081bdeda5ec1ee81118c44520d7a379f8.jpg",
+    "icongray": "achievement_images/8d002cbf7aa87b3c5eed3f95f3f42fbb74880da1.jpg",
+    "name": "28_WeaponMaxUpgrade"
+  },
+  {
+    "description": "Enhanced the Rechargeable Tumbler to its max.",
+    "displayName": "Perfect Rechargeable Tumbler",
+    "hidden": 0,
+    "icon": "achievement_images/03c142994002f0a3971b51e6ddbbad733ce3a7f5.jpg",
+    "icongray": "achievement_images/b35a50d28a86790e558acaf10a9a4adda8eb235f.jpg",
+    "name": "29_TumblerMaxUpgrade"
+  },
+  {
+    "description": "Enhanced HP to its max.",
+    "displayName": "Perfect Physical Enhancement",
+    "hidden": 0,
+    "icon": "achievement_images/43fcddb38a4508ececdacf4df90342065aaf87ef.jpg",
+    "icongray": "achievement_images/371f6cb3ffbe6b45caa681bdb7cd1bf09bbfe337.jpg",
+    "name": "30_BodyMaxUpgrade"
+  },
+  {
+    "description": "Enhanced Beta Energy to its max.",
+    "displayName": "Perfect Beta Energy Enhancement",
+    "hidden": 0,
+    "icon": "achievement_images/470c98f75895cdf9deddeec504e025686ca090d2.jpg",
+    "icongray": "achievement_images/8b779b1bbbe8495adb56c59129ae94a569e7fe13.jpg",
+    "name": "31_BetaMaxUpgrade"
+  },
+  {
+    "description": "Learned all skills.",
+    "displayName": "Thorough Technician",
+    "hidden": 0,
+    "icon": "achievement_images/551c855756f37579ec4e3e40b165a9138d24e58d.jpg",
+    "icongray": "achievement_images/16577751adcc82ba33b963cdb1e4507c82bdc737.jpg",
+    "name": "32_Acquire_AllSkill"
+  },
+  {
+    "description": "",
+    "displayName": "Beyond Fate",
+    "hidden": 1,
+    "icon": "achievement_images/3bdfe77405552464205d5b3fd33769d98198a04c.jpg",
+    "icongray": "achievement_images/e8a0181a3a6ffe0bb3b2d3fa0defc578ab8e4b34.jpg",
+    "name": "33_CompleteQuest_Enya"
+  },
+  {
+    "description": "",
+    "displayName": "Sisterly Love",
+    "hidden": 1,
+    "icon": "achievement_images/92e02eb36e9f57676ed617d9eeb9f4e2ad790677.jpg",
+    "icongray": "achievement_images/936e0f8833e3be9e29aec80bf0f966e4fccb1b0e.jpg",
+    "name": "34_CompleteQuest_Kaya"
+  },
+  {
+    "description": "",
+    "displayName": "Beep!",
+    "hidden": 1,
+    "icon": "achievement_images/5ab77cd41fcfeb55fe20d1419d6576d7e9e0dca4.jpg",
+    "icongray": "achievement_images/011bc02b3ccee12bd3d60774de7ed02915ca6a5b.jpg",
+    "name": "35_CompleteQuest_Digger"
+  },
+  {
+    "description": "Perfect Dodged 200 enemy attacks.",
+    "displayName": "Battlefield Martial Artist",
+    "hidden": 0,
+    "icon": "achievement_images/11b8fa54887942e825d88052cafd9ef2f07f32d8.jpg",
+    "icongray": "achievement_images/01424fdb8fc6ac3ceab415f8a84fbd3a1833cca3.jpg",
+    "name": "36_JustEvade"
+  },
+  {
+    "description": "Perfect Parried 300 enemy attacks.",
+    "displayName": "Agile Gladiator",
+    "hidden": 0,
+    "icon": "achievement_images/1871de3703775247bf4ee31d41334b44d06a29b2.jpg",
+    "icongray": "achievement_images/e72125041ef0ce04408ed6ca7eb653d7cbbce565.jpg",
+    "name": "37_JustParry"
+  },
+  {
+    "description": "Defeated 50 enemies by execution.",
+    "displayName": "Silent Executioner",
+    "hidden": 0,
+    "icon": "achievement_images/74e17381385d70773fc0d7e889ce00511f2edbf7.jpg",
+    "icongray": "achievement_images/fdb3c0ea31d10f04861e45c10bcf32bd94a54c7b.jpg",
+    "name": "38_CharKill_AssassinationSkills"
+  },
+  {
+    "description": "Defeated 100 enemies with Beta Skills.",
+    "displayName": "Naytiba Hunter",
+    "hidden": 0,
+    "icon": "achievement_images/b854455823fb7a4835768c8603840ba3fe26af5b.jpg",
+    "icongray": "achievement_images/091d59c772a6253a7ccfdae43f324e1500dd514b.jpg",
+    "name": "39_CharKill_BetaSkill"
+  },
+  {
+    "description": "Defeated 50 enemies with Burst Skills.",
+    "displayName": "Relentless Destroyer",
+    "hidden": 0,
+    "icon": "achievement_images/a659ea82458f26c4fefbd876368c1f133a3523e6.jpg",
+    "icongray": "achievement_images/7c7325119d991499027ceb5f40b9888f12731a3a.jpg",
+    "name": "40_CharKill_BurstSkill"
+  },
+  {
+    "description": "",
+    "displayName": "Revenging Agent",
+    "hidden": 1,
+    "icon": "achievement_images/6a0d5aa41e2604d75c64f9f72c9e67aeaef597ff.jpg",
+    "icongray": "achievement_images/b3d9ddf2623431b57f42af0d458b361ca2ee6a50.jpg",
+    "name": "41_CharKill_TachySkill"
+  },
+  {
+    "description": "Defeated 150 enemies with ranged attacks.",
+    "displayName": "Cold-blooded Sniper",
+    "hidden": 0,
+    "icon": "achievement_images/d86f93e8d6acbe7b05403093ae80ef212d528101.jpg",
+    "icongray": "achievement_images/3bec5987bcd74e1394a72a1cf0f1d7fc97eb206a.jpg",
+    "name": "42_CharKill_RangeSkill"
+  },
+  {
+    "description": "Defeated 1,500 enemies.",
+    "displayName": "Cruel Liberator",
+    "hidden": 0,
+    "icon": "achievement_images/85bd0961f3ee9596a1709b90d6e9d32997c101f0.jpg",
+    "icongray": "achievement_images/359e03479fd923790adc9b4d48b43a6df9817def.jpg",
+    "name": "43_KillCharacter"
+  },
+  {
+    "description": "Completed New Game +.",
+    "displayName": "Repeating Protocols",
+    "hidden": 0,
+    "icon": "achievement_images/307edc2977f8c0301b550d40a4aa7bbabb8c89ac.jpg",
+    "icongray": "achievement_images/d97530a9865419d333894726a7cf97436c5c95ac.jpg",
+    "name": "44_Complete_NewGamePlus"
+  },
+  {
+    "description": "Learned all skills in New Game +.",
+    "displayName": "Infinite Blade",
+    "hidden": 0,
+    "icon": "achievement_images/90f3a5eda284e03ce6bb34bc79314bdb463480ea.jpg",
+    "icongray": "achievement_images/889d6afa736b1b69b4c46b9b5e4b43c3e90bc18a.jpg",
+    "name": "45_Acquire_AllSkill_NewGamePlus"
+  }
+]

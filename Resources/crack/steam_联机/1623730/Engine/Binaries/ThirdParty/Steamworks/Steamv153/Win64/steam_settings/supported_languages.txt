@@ -1,0 +1,17 @@
+english
+schinese
+tchinese
+japanese
+french
+italian
+german
+spanish
+brazilian
+russian
+koreana
+indonesian
+latam
+thai
+turkish
+vietnamese
+polish

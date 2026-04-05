@@ -1,0 +1,6 @@
+SteamOverlay64.dll
+OnlineFix64.dll
+MonoBleedingEdge\EmbedRuntime\mono-2.0-bdwgc.dll
+PEAK_Data\Managed\Assembly-CSharp.net.org
+PEAK_Data\Managed\UnityEngine.JSONSerializeModule.net.org
+Custom.net

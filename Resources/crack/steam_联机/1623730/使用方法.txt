@@ -1,0 +1,12 @@
+将所有文件放入游戏目录内并替换。
+
+先修改Steam名字和SteamID，修改方法参考：https://search.bilibili.com/article?keyword=如何查看steamid
+
+双击开始游戏即可。
+
+
+注：开始游戏后会有个UE-Pal弹窗报错，只要游戏不卡死，不闪退，就没事。
+
+若打开游戏卡白屏界面或闪退，先看是不是路径有中文，不然就删除Engine\Binaries\ThirdParty\Steamworks\Steamv153\Win64\steam_settings文件夹里的configs.overlay.ini。
+
+搬运工：鲸落_hi    B站主页：https://space.bilibili.com/405707676

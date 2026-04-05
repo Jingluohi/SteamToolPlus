@@ -1,6 +1,6 @@
 # SteamToolPlus
 
-> **版本**：v1.02  |  **.NET 10.0**  |  **[开源许可证](LICENSE)**: MIT
+> **版本**：v1.03  |  **.NET 10.0**  |  **[开源许可证](LICENSE)**: MIT
 
 [!\[GitHub\](https://img.shields.io/badge/platform-windows-blue null)](https://github.com)
 [!\[.NET\](https://img.shields.io/badge/.NET-10.0-purple null)](https://dotnet.microsoft.com/)

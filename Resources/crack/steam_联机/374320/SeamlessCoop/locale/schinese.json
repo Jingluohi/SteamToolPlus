@@ -1,0 +1,56 @@
+{
+	"GENERIC_INVALID": "无事发生",
+	
+	"GOODSNAME_HOSTINGITEM": "水晶项链",	
+	"GOODSNAME_JOININGITEM": "石质项链",	
+	"GOODSNAME_BREAKINITEM": "亵渎项链",	
+	"GOODSNAME_LEAVINGITEM": "锈蚀项链",	
+	"GOODSNAME_GAMERULECHANGEITEM": "不祥法典",	
+	"GOODSNAME_DRIEDFINGERITEM": "嘲弄者宝珠",	
+	
+	"GOODSINFO_HOSTINGITEM": "作为世界主人，开放你的世界。",	
+	"GOODSINFO_JOININGITEM": "作为流浪者，加入其他世界。",	
+	"GOODSINFO_BREAKINITEM": "作为敌对者，入侵其他世界。",	
+	"GOODSINFO_LEAVINGITEM": "切断联系，离开当前世界，或关闭你的世界。",	
+	"GOODSINFO_GAMERULECHANGEITEM": "修改本世界的流浪者之间的关系，开启中立篝火或PvP。",	
+	"GOODSINFO_DRIEDFINGERITEM": "发出嘲讽，吸引入侵者。",	
+		
+	"GOODSDESC_HOSTINGITEM": "无缝联机 MOD 道具。\n用于向其他流浪者开放你的世界，允许他们加入。",	
+	"GOODSDESC_JOININGITEM": "无缝联机 MOD 道具。\n用于加入一个已经开放的世界。",	
+	"GOODSDESC_BREAKINITEM": "无缝联机 MOD 道具。\n用于入侵其他世界。",	
+	"GOODSDESC_LEAVINGITEM": "无缝联机 MOD 道具。\n用于离开当前世界，或关闭你的世界。",	
+	"GOODSDESC_GAMERULECHANGEITEM": "无缝联机 MOD 道具。\n用于修改流浪者之间的关系，例如友好或敌对。",	
+	"GOODSDESC_DRIEDFINGERITEM": "无缝联机 MOD 道具。\n可以发出嘲讽，吸引入侵者。",	
+	
+	"MODMSG_FVFPLAYER": "流浪者",	
+	"MODMSG_FVBPLAYER": "敌对者",	
+	"MODMSG_BVFPLAYER": "目标",	
+	"MODMSG_BVBPLAYER": "敌对者",
+	
+	"MODMSG_WELCOMEFRIENDLY": "流浪者 {} 已加入。",
+	"MODMSG_WELCOMEBREAKIN": "遭到敌对者 {} 入侵！",
+
+	"MODMSG_DEADFRIENDLY": "流浪者 {} 已死亡。",
+	"MODMSG_DEADBREAKIN": "敌对者 {} 已死亡。",
+
+	"MODMSG_INVASIONWIN": "目标已达成\n正在返回你的世界...",
+	
+	"MODMSG_JOININGINPROGRESS": "正在作为流浪者，加入其他世界...",	
+	"MODMSG_INVADINGINPROGRESS": "正在作为敌对者，入侵其他世界...",
+	"MODMSG_JOINBLOCKED": "加入世界失败：你在世界主人的黑名单中。",
+	"MODMSG_JOINFAILED": "加入世界失败：人数已满。",
+	"MODMSG_BLOCKEDJOIN": "加入世界失败：世界主人在你的黑名单中。",
+	"MODMSG_FAILEDJOIN": "加入世界失败：没有世界主人。",
+	"MODMSG_NOLOBBYFRIEND": "未找到可加入的世界，检查你的密码和网络连接。",
+	"MODMSG_NOLOBBYINVADE": "未找到可入侵的世界。",
+	"MODMSG_INVASIONINTRODUCTION": "已入侵其他世界\n请击败流浪者 {} 及其同伴！",
+	
+	"MODMSG_NOAOALICENCE": "世界主人已传送至你未拥有的 DLC 地图区域\n正在返回你的世界...",
+	"MODMSG_NORCLICENCE": "世界主人已传送至你未拥有的 DLC 地图区域\n正在返回你的世界...",
+	
+	"MODMSG_TOOGGLEFRIENDFIREON": "中立篝火已启用。",	
+	"MODMSG_TOOGGLEFRIENDFIGHTON": "中立篝火已启用 （PvP）。",	
+	"MODMSG_TOOGGLEFRIENDFIGHTOFF": "中立篝火已禁用。",
+	
+	"CREDITS": "LukeYui，中文翻译：梅琳娜的刀"
+}

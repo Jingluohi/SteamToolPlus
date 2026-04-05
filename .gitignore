@@ -3,62 +3,45 @@
 *.user
 *.suo
 *.userosscache
-*.sln.docstates
+*.userprefs
+*.resharper.user
 
-# Build results
-[Dd]ebug/
-[Rr]elease/
-x64/
-x86/
-bld/
-[Bb]in/
-[Oo]bj/
-[Ll]og/
-[Ll]ogs/
+# 编译输出
+bin/
+obj/
+PublishOutput/
 
-# Visual Studio cache/options
-*.cache
-project.lock.json
-project.fragment.lock.json
-artifacts/
+# 构建结果
+*.dll
+*.exe
+*.pdb
+*.ilk
+*.exp
+*.lastcodeanalysissucceeded
 
-# MSTest test Results
-[Tt]est[Rr]esult*/
-[Bb]uild[Ll]og.*
-
-# NuGet Packages
+# NuGet
+packages/
 *.nupkg
 *.snupkg
-**/packages/*
-!**/packages/build/
 
-# Visual Studio profiler
-*.psess
-*.vsp
-*.vspx
-*.sap
+# 更新日志文件
+v1.* 更新内容.txt
 
-# Mac
-.DS_Store
+# 打包脚本
+打包.bat
 
-# JetBrains Rider
+# 其他
+*.log
+*.tmp
+*.cache
+ReSharper.*
+
+# Rider
 .idea/
-*.sln.iml
 
-# Output of the pnpm
-node_modules/
+# VS Code
+.vscode/
 
-# Crash reports
-*.dmp
-
-# Never publish dll/exe files (unless they are examples or templates)
-# Uncomment if you want to publish source code only
-# *.exe
-# *.dll
-
-# Temporary guides (keep only README.md)
-GitHub Desktop 指南.md
-GITHUB_GUIDE.md
-QUICK_START.md
-开源准备完成.md
-README_EN.md
+# 用户特定文件
+appsettings.local.json
+appsettings.*.local.json

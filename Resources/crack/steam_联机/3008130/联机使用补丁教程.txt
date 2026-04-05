@@ -1,0 +1,19 @@
+联机补丁使用教程
+
+
+覆盖游戏目录
+
+1. 启动 Steam，进入个人资料。
+2. 通过 ph_ft\work\bin\x64\DyingLightGame_TheBeast_x64_rwdi.exe 启动游戏。
+3. 在打开的浏览器窗口中登录你的 Epic Games 商店账户。
+
+不要登陆其他人的EPIC账户
+必须登录自己的EPIC账户
+
+俩人用同一个EPIC的后果自负。
+
+
+创建服务器：
+活动  选择留存  邀请好友并期待他们加入。（机翻，具体联机方法自行尝试）
+
+搬运工：鲸落_hi    B站主页：https://space.bilibili.com/405707676

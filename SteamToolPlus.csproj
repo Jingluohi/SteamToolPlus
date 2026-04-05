@@ -33,12 +33,23 @@
     <Compile Remove="Resources\**\*.xaml" />
     <Compile Remove="PublishOutput\**\*.cs" />
     <Compile Remove="PublishOutput\**\*.xaml" />
+    
+    <!-- 只包含非代码资源文件 -->
     <Page Remove="Resources\**\*.xaml" />
     <Page Remove="PublishOutput\**\*.xaml" />
     
-    <!-- 只包含非代码资源文件 -->
-    <Resource Include="Resources\**\*" Exclude="Resources\**\*.cs;Resources\**\*.xaml" />
-    <None Include="pic\**\*" CopyToOutputDirectory="PreserveNewest" />
+    <!-- 将图片资源嵌入到 EXE 中（包括 inside 和 outside 目录） -->
+    <Resource Include="Resources\pic\inside\**\*.jpg" />
+    <Resource Include="Resources\pic\outside\**\*.jpg" />
+    
+    <!-- 其他资源文件也嵌入（但不包括已单独声明的图片） -->
+    <Resource Include="Resources\**\*" 
+              Exclude="Resources\**\*.cs;Resources\**\*.xaml;Resources\pic\inside\**\*.jpg;Resources\pic\outside\**\*.jpg" />
+    
+    <!-- 将 games_config.json 复制到输出目录（不嵌入 EXE） -->
+    <None Include="Resources\games_config.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
 </Project>

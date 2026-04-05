@@ -1,0 +1,78 @@
+    ███████▓▒░  ████████▓▒  ████████▓▒ █▓▒░        ████████▓▒░ █▓▒░   █▓▒░ 
+    █▓▒░   █▓▒░ █▓▒░        █▓▒░       █▓▒░        █▓▒░        █▓▒░   █▓▒░ 
+    █▓▒░   █▓▒░ █▓▒░        █▓▒░       █▓▒░        █▓▒░        █▓▒░   █▓▒░ 
+    ███████▓▒░  ██████▓▒░   ██████▓▒░  █▓▒░        ██████▓▒░    ██████▓▒░  
+    █▓▒░   █▓▒░ █▓▒░        █▓▒░       █▓▒░        █▓▒░        █▓▒░   █▓▒░ 
+    █▓▒░   █▓▒░ █▓▒░        █▓▒░       █▓▒░        █▓▒░        █▓▒░   █▓▒░ 
+    █▓▒░   █▓▒░ ████████▓▒░ █▓▒░       ████████▓▒░ ████████▓▒░ █▓▒░   █▓▒░		 
+
+
+                             P  R  E  S  E  N  T  S         
+
+                   ▒░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░▒
+                   ░     GAME       :: Stellar Blade        ░
+                   ░     GENRE      :: Action               ░
+                   ░     DATE       :: 16/02/2026           ░
+                   ░     PROTECTION :: Steam + Denuvo       ░
+                   ▒░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░▒
+
+    Release Notes
+    -------------
+    This is an hypervisor release, long term stability testing is still 
+    going on.
+
+    Game is updated to the latest version and includes all DLCs
+
+    Thanks to Mr Goldberg for the Steam emu.
+
+    Hypervisor Notes
+    ----------------
+    Enable SVM/VT-x in your BIOS settings.
+
+    Kernel anticheats will be problematic (e.g. Vanguard),
+    make sure they are off before performing the rest of the steps.
+
+    Enable test signing mode via bcdedit (bcdedit /set testsigning on)
+    For users with Hyper-V windows feature enabled, it's required to
+    keep Microsoft's hypervisor off with the following command:
+    bcdedit /set hypervisorlaunchtype off
+
+    Keep Secure Boot disabled
+    Keep Windows Defender memory integrity and credential guard off
+    (VBS and HVCI)
+	
+	Intel users (8th generation or lower CPUs only) will have to turn 
+	off OS Meltdown mitigations, this can be done with InSpectre tool
+
+    Alternative method
+
+    EfiGuard is a bootkit that allows us to set DSE (Driver Signature
+    Enforcement) mode on the go without triggering PatchGuard, so we can
+    load the hypervisor when game is launched easily. Also, it will
+    disable VBS at boot time automatically if needed.
+
+    Secure Boot is supported as well, after enrolling loader and
+    EfiGuardDxe EFI files in the MOK list. This can be done from HashTool,
+    provided inside EFI.zip and shown if these files aren't enrolled yet.
+
+    The latest build of EfiGuard is included in this release, there are
+    several methods to use it:
+        a) USB drive (recommended)
+        b) Physical folder in hard disk
+        c) Virtual Hard Disk file
+        
+    For method A, simply extract the contents of EFI.zip inside a FAT32 
+    formatted pendrive and choose it from the boot menu.
+	
+	Installation steps
+	------------------
+	1 - Copy and paste everything except EFI.zip to the main game folder
+	
+	2 - Load the hypervisor SimpleSvm.sys (AMD) or hyperkd.sys (Intel)
+	driver
+	
+	3 - Launch SB-Win64-Shipping.exe
+
+    Special Thanks
+    --------------
+    Special For, MKDEV, testers and friends :)

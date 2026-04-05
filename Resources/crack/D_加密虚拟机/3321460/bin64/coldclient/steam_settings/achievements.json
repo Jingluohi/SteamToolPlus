@@ -1,0 +1,274 @@
+[
+  {
+    "description": "Complete chapter 1 of main quests.",
+    "displayName": "Novice Adventurer",
+    "hidden": 0,
+    "icon": "achievement_images/c05f04fc5033ff67d2078db084751b45eba3b91d.jpg",
+    "icongray": "achievement_images/9c663d35bef6c1851a0646efc4c8ff69d2f43ff9.jpg",
+    "name": "NoviceAdventurer"
+  },
+  {
+    "description": "Complete the activation of the camp at Howling Hill.",
+    "displayName": "Master Camper",
+    "hidden": 0,
+    "icon": "achievement_images/2df91d42db90145457a0561585d88108054d66f7.jpg",
+    "icongray": "achievement_images/93d03a8d684ee0a2aa55cae660b209da11418a78.jpg",
+    "name": "MasterCamper"
+  },
+  {
+    "description": "Complete all maze challenges.",
+    "displayName": "Maze Pathfinder",
+    "hidden": 0,
+    "icon": "achievement_images/119768c5fce4b96db3c8a45c5b918f75844c1d2d.jpg",
+    "icongray": "achievement_images/1c02a4dd34c24b2995f38fb8bcfaab0cf668ca2a.jpg",
+    "name": "MazeHunter"
+  },
+  {
+    "description": "Complete all spire challenges.",
+    "displayName": "Conqueror of Spires",
+    "hidden": 0,
+    "icon": "achievement_images/9c791e66809413ced99624b9e0fe2ac18d0f1101.jpg",
+    "icongray": "achievement_images/18fd38df3b32380aae784715f5dcd63528cfbffb.jpg",
+    "name": "TowerBreaker"
+  },
+  {
+    "description": "Complete all constellation challenges.",
+    "displayName": "Navigator of the Stars",
+    "hidden": 0,
+    "icon": "achievement_images/6abf780b94efe545a78862dd886ab29012e126e2.jpg",
+    "icongray": "achievement_images/155a1cdfd1d3d740ac932d7654d60213c21f4089.jpg",
+    "name": "StarpathNavigator"
+  },
+  {
+    "description": "Complete all sword challenges.",
+    "displayName": "Master of Swords",
+    "hidden": 0,
+    "icon": "achievement_images/076ddb13bb16683a13fff314b792314a133a0ded.jpg",
+    "icongray": "achievement_images/2a7e919ca92781c9e048f5e483a0a1522b11994c.jpg",
+    "name": "Swordmaster"
+  },
+  {
+    "description": "Complete all shield challenges.",
+    "displayName": "Master of Shields",
+    "hidden": 0,
+    "icon": "achievement_images/3b1df180431b87706ad49798cb1361b9fa5bb6e4.jpg",
+    "icongray": "achievement_images/f26ab36b0c19f4ee2476782aa1974b1acc681be9.jpg",
+    "name": "Shieldmaster"
+  },
+  {
+    "description": "Complete all bow challenges.",
+    "displayName": "Master of Bows",
+    "hidden": 0,
+    "icon": "achievement_images/8c3495c4c5e0a4ae6f4475aca2cf2a0210c9b92c.jpg",
+    "icongray": "achievement_images/056bbeaaf533a2e1dabc673c38f430a144838f14.jpg",
+    "name": "Bowmaster"
+  },
+  {
+    "description": "Complete all spear challenges.",
+    "displayName": "Master of Spears",
+    "hidden": 0,
+    "icon": "achievement_images/257444acc5d9411a3d3324d7cc8b814de492a070.jpg",
+    "icongray": "achievement_images/732775acff20d36fe99c965fb1278ad4d6cadc3c.jpg",
+    "name": "Spearmaster"
+  },
+  {
+    "description": "Complete all two-handed weapon challenges.",
+    "displayName": "Master of Two-Handed Weapons",
+    "hidden": 0,
+    "icon": "achievement_images/69affa1164fe87c2b391b5ccf54e92ad6b09d5d7.jpg",
+    "icongray": "achievement_images/16bfb51317e195c8e7cf349b4e20588b2bf3194b.jpg",
+    "name": "GreatWeaponMaster"
+  },
+  {
+    "description": "Complete all cannon challenges.",
+    "displayName": "Master of Artillery",
+    "hidden": 0,
+    "icon": "achievement_images/7cbe129dc0bb025e7bfc7dc4913b52559eff2eaf.jpg",
+    "icongray": "achievement_images/61ebe974b3648d3ff41d250feb72fb164a600239.jpg",
+    "name": "SiegeMaster"
+  },
+  {
+    "description": "Complete all rapier and shield challenges.",
+    "displayName": "Master of Rapiers",
+    "hidden": 0,
+    "icon": "achievement_images/aec1f62bdb827b93d02c51a36b13eedbd236bb5e.jpg",
+    "icongray": "achievement_images/8b5256a561eeb4e476d3af3b1563d0e13d0d20f8.jpg",
+    "name": "RapierMaster"
+  },
+  {
+    "description": "Complete all gun challenges.",
+    "displayName": "Master of Firearms",
+    "hidden": 0,
+    "icon": "achievement_images/a28700b6deeca57541ec26322afbdf969f6576e7.jpg",
+    "icongray": "achievement_images/3afc85f92b2178503ddd5fbefd391e119770d823.jpg",
+    "name": "Gunmaster"
+  },
+  {
+    "description": "Complete all training challenges.",
+    "displayName": "Relentless Warrior",
+    "hidden": 0,
+    "icon": "achievement_images/e4767ae4b05c1ae6e0914947e6bc354284d3baa6.jpg",
+    "icongray": "achievement_images/16e0556e390607104259103407ec6ec5fcf2a246.jpg",
+    "name": "UnbreakableFighter"
+  },
+  {
+    "description": "Complete all battle challenges.",
+    "displayName": "Battlefield Conqueror",
+    "hidden": 0,
+    "icon": "achievement_images/7dfe8c02c6cb6015df9e46c384cfe998ca9d2ae7.jpg",
+    "icongray": "achievement_images/cc9e1c7497433ec1b5b05626f416b00ecdf982a6.jpg",
+    "name": "BattlefieldWarlord"
+  },
+  {
+    "description": "Complete all operation challenges.",
+    "displayName": "Brilliant Tactician",
+    "hidden": 0,
+    "icon": "achievement_images/625609b8e7ba322dc2135986505ce3713fbb1dbb.jpg",
+    "icongray": "achievement_images/fa00bea68f39ee497446a0e2bbbb4e3fabe4723a.jpg",
+    "name": "BrilliantTactician"
+  },
+  {
+    "description": "Complete all trade challenges.",
+    "displayName": "The Golden Merchant",
+    "hidden": 0,
+    "icon": "achievement_images/3865607b5e7f544e121f971e3e635b1d30c8a382.jpg",
+    "icongray": "achievement_images/0f09859166f36be64e8ce5354ff6d931225f600d.jpg",
+    "name": "GoldenMerchant"
+  },
+  {
+    "description": "Complete all New Power challenges.",
+    "displayName": "Beast Slayer",
+    "hidden": 0,
+    "icon": "achievement_images/385743dbdbce3c3d363191a279e557a95f3f6848.jpg",
+    "icongray": "achievement_images/a0862858bc4dd1d655ddfbdf79ee6afa278f77ec.jpg",
+    "name": "BeastButcherer"
+  },
+  {
+    "description": "Complete all Above the Law challenges.",
+    "displayName": "Shadowlord",
+    "hidden": 0,
+    "icon": "achievement_images/3d5bcf197cad22d785aa622a1159a831c18acbd9.jpg",
+    "icongray": "achievement_images/2b90974e492690717784a5240d220a4143e54a23.jpg",
+    "name": "ShadowRuler"
+  },
+  {
+    "description": "Complete all Challenges and Changes challenges.",
+    "displayName": "Lord of Honor",
+    "hidden": 0,
+    "icon": "achievement_images/dd97c5172615b7176bd786ef086c89446238f02a.jpg",
+    "icongray": "achievement_images/bf3d7ce16c23613b6f4f2f1314ced1841419d473.jpg",
+    "name": "HonorarySovereign"
+  },
+  {
+    "description": "Complete the camp relocation to Pailune.",
+    "displayName": "Proud Returnee",
+    "hidden": 0,
+    "icon": "achievement_images/52e174374d915e41a99d58304b4f98f312192cbc.jpg",
+    "icongray": "achievement_images/15c862f80c986b21c0e93445d5e84c4d89f08c11.jpg",
+    "name": "ConfidentReturnee"
+  },
+  {
+    "description": "Complete all secret place challenges.",
+    "displayName": "Pilgrim of Wonders",
+    "hidden": 0,
+    "icon": "achievement_images/5e61be52f0a5f57b48c3e28df350927ecc5fb25f.jpg",
+    "icongray": "achievement_images/c987f556550056815e778a3bb6ae40792bb443b0.jpg",
+    "name": "SceneryPilgrim"
+  },
+  {
+    "description": "Complete all ancient ruins challenges.",
+    "displayName": "Puzzle Solver",
+    "hidden": 0,
+    "icon": "achievement_images/0482a83ab0498e6cce5f95027ab58c2c9ca4d2d3.jpg",
+    "icongray": "achievement_images/532674601897d1273817bacba77238970e46efc9.jpg",
+    "name": "PuzzleSolver"
+  },
+  {
+    "description": "Complete all sanctum challenges.",
+    "displayName": "Lightbringer",
+    "hidden": 0,
+    "icon": "achievement_images/99d2b0f01339cfe3937e4e92652f0e65417eb3d4.jpg",
+    "icongray": "achievement_images/501e9286d71c9e43f0cd64a635b3283f5a6e3151.jpg",
+    "name": "LightLeader"
+  },
+  {
+    "description": "Complete all special equipment challenges.",
+    "displayName": "Grand Collector of Arms",
+    "hidden": 0,
+    "icon": "achievement_images/1f75d635084e5553ca24e699fa4fbbea2db9b451.jpg",
+    "icongray": "achievement_images/04844114c5abcd5a899187a985c0810c5f255e8c.jpg",
+    "name": "UltimateWeaponCollector"
+  },
+  {
+    "description": "Complete all horse challenges.",
+    "displayName": "Tamer of Legends",
+    "hidden": 0,
+    "icon": "achievement_images/0ddc1f406a0e400e644f53befb2df3800e2bc0a8.jpg",
+    "icongray": "achievement_images/19cb19efacdaf5ccae44c298ddbd6d075307be70.jpg",
+    "name": "LegendaryTrainer"
+  },
+  {
+    "description": "Complete all minigame challenges.",
+    "displayName": "True Gamer",
+    "hidden": 0,
+    "icon": "achievement_images/6a3435f25c05104b43c0b9f0c581cf9e4bc611b2.jpg",
+    "icongray": "achievement_images/d86a7c061ec0618a129719c6862084b1e1d0c698.jpg",
+    "name": "GameConqueror"
+  },
+  {
+    "description": "Complete chapter 7 of main quests.",
+    "displayName": "Protector of Pailune",
+    "hidden": 0,
+    "icon": "achievement_images/30efce32e45de2979d7405ca7a6df2b5bc957cae.jpg",
+    "icongray": "achievement_images/19446c5736708aee5d9e0302ba222c92e60382f8.jpg",
+    "name": "PailuneseGuardian"
+  },
+  {
+    "description": "Complete all hunting challenges.",
+    "displayName": "Ultimate Hunter",
+    "hidden": 0,
+    "icon": "achievement_images/aea72c848e3819ce2d1f880c4b72e1be49d9123e.jpg",
+    "icongray": "achievement_images/4816ebcbf819ac01ae1ef6531de8e968dd63fc4f.jpg",
+    "name": "UltimateHunter"
+  },
+  {
+    "description": "Complete all life challenges.",
+    "displayName": "Natural Collector",
+    "hidden": 0,
+    "icon": "achievement_images/0fd8de88f3ab48b55e74812105b932c81a57e30b.jpg",
+    "icongray": "achievement_images/878c303574325644e763f1f89e7ddf6d0475f17d.jpg",
+    "name": "NaturalGatherer"
+  },
+  {
+    "description": "Complete all main quests.",
+    "displayName": "Expert Storyteller",
+    "hidden": 0,
+    "icon": "achievement_images/790e5659ae8d8b915e47e57d753080df8724eb98.jpg",
+    "icongray": "achievement_images/40334f1caf8253b49bc393c9829124179419713f.jpg",
+    "name": "ExpertStoryteller"
+  },
+  {
+    "description": "Complete all Abyss challenges.",
+    "displayName": "Conqueror of the Abysses",
+    "hidden": 0,
+    "icon": "achievement_images/686a3c4abed8551b5de3c9e7cf06d7742bf7a6f8.jpg",
+    "icongray": "achievement_images/84c2fa89c144fc147e3a0da1f342e588c351aa48.jpg",
+    "name": "ConqueroroftheAbysses"
+  },
+  {
+    "description": "Complete all exploration challenges.",
+    "displayName": "Expert Explorer",
+    "hidden": 0,
+    "icon": "achievement_images/eabcf404e3d39552127b70c60f422a515217f825.jpg",
+    "icongray": "achievement_images/b927c724860f9aebd5bc3ee0cc03356ee61fe881.jpg",
+    "name": "ExpertExplorer"
+  },
+  {
+    "description": "Complete all mastery challenges.",
+    "displayName": "Unvanquished Strategist",
+    "hidden": 0,
+    "icon": "achievement_images/90b42713d14ac72b8e87f54342c18e17bb541776.jpg",
+    "icongray": "achievement_images/d9e572150d4f2ab25a6d47f32abc4034a60158f2.jpg",
+    "name": "TheUltimateWarrior"
+  }
+]

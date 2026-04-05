@@ -1,0 +1,242 @@
+[
+  {
+    "tag": "re4",
+    "game_name": "Resident Evil 4",
+    "chinese_name": "生化危机 4",
+    "game_id": "2050650",
+    "patch_source_path": "Resources/crack/免_steam/2050650",
+    "patch_type": 0,
+    "is_d_encrypted": true,
+    "pinyin_initials": "shwj4"
+  },
+  {
+    "tag": "mhw",
+    "game_name": "Monster Hunter: World",
+    "chinese_name": "怪物猎人：世界",
+    "game_id": "582010",
+    "patch_source_path": "Resources/crack/局域网联机/582010",
+    "patch_type": 1,
+    "is_d_encrypted": true,
+    "pinyin_initials": "wrlrsw"
+  },
+  {
+    "tag": "er",
+    "game_name": "ELDEN RING",
+    "chinese_name": "艾尔登法环",
+    "game_id": "1245620",
+    "patch_source_path": "Resources/crack/局域网联机/1245620",
+    "patch_type": 1,
+    "is_d_encrypted": true,
+    "pinyin_initials": "eldrfh"
+  },
+  {
+    "tag": "er_steam",
+    "game_name": "ELDEN RING",
+    "chinese_name": "艾尔登法环",
+    "game_id": "1245620",
+    "patch_source_path": "Resources/crack/steam_联机/1245620",
+    "patch_type": 2,
+    "is_d_encrypted": true,
+    "pinyin_initials": "eldrfh"
+  },
+  {
+    "tag": "fh5",
+    "game_name": "Forza Horizon 5",
+    "chinese_name": "极限竞速：地平线 5",
+    "game_id": "1551360",
+    "patch_source_path": "Resources/crack/steam_联机/1551360",
+    "patch_type": 2,
+    "is_d_encrypted": true,
+    "pinyin_initials": "jxsdphx5"
+  },
+  {
+    "tag": "cd",
+    "game_name": "Crimson Desert",
+    "chinese_name": "红色沙漠",
+    "game_id": "3321460",
+    "patch_source_path": "Resources/crack/免_steam/3321460",
+    "patch_type": 0,
+    "is_d_encrypted": true,
+    "pinyin_initials": "hssm"
+  },
+  {
+    "tag": "cd_denuvo",
+    "game_name": "Crimson Desert",
+    "chinese_name": "红色沙漠",
+    "game_id": "3321460",
+    "patch_source_path": "Resources/crack/D_加密虚拟机/3321460",
+    "patch_type": 3,
+    "is_d_encrypted": true,
+    "pinyin_initials": "hssm"
+  },
+  {
+    "tag": "nioh3",
+    "game_name": "Nioh 3",
+    "chinese_name": "仁王 3",
+    "game_id": "3681010",
+    "patch_source_path": "Resources/crack/steam_联机/3681010",
+    "patch_type": 2,
+    "is_d_encrypted": true,
+    "pinyin_initials": "rw3"
+  },
+  {
+    "tag": "rer",
+    "game_name": "Resident Evil Requiem",
+    "chinese_name": "生化危机：安魂曲",
+    "game_id": "3764200",
+    "patch_source_path": "Resources/crack/免_steam/3764200",
+    "patch_type": 0,
+    "is_d_encrypted": true,
+    "pinyin_initials": "shwjaqq"
+  },
+  {
+    "tag": "rer_denuvo",
+    "game_name": "Resident Evil Requiem",
+    "chinese_name": "生化危机：安魂曲",
+    "game_id": "3764200",
+    "patch_source_path": "Resources/crack/D_加密虚拟机/3764200",
+    "patch_type": 3,
+    "is_d_encrypted": true,
+    "pinyin_initials": "shwjaqq"
+  },
+  {
+    "tag": "mhw_denuvo",
+    "game_name": "Monster Hunter Wilds",
+    "chinese_name": "怪物猎人：荒野",
+    "game_id": "2246340",
+    "patch_source_path": "Resources/crack/D_加密虚拟机/2246340",
+    "patch_type": 3,
+    "is_d_encrypted": true,
+    "pinyin_initials": "wrlrhk"
+  },
+  {
+    "tag": "sb_denuvo",
+    "game_name": "Stellar Blade",
+    "chinese_name": "剑星",
+    "game_id": "3489700",
+    "patch_source_path": "Resources/crack/D_加密虚拟机/3489700",
+    "patch_type": 3,
+    "is_d_encrypted": true,
+    "pinyin_initials": "jx"
+  },
+  {
+    "tag": "mhs3_denuvo",
+    "game_name": "Monster Hunter Stories 3: Twisted Reflection",
+    "chinese_name": "怪物猎人物语 3：命运双龙",
+    "game_id": "2852190",
+    "patch_source_path": "Resources/crack/D_加密虚拟机/2852190",
+    "patch_type": 3,
+    "is_d_encrypted": true,
+    "pinyin_initials": "wrlrwy3"
+  },
+  {
+    "tag": "sts2_steam",
+    "game_name": "Slay the Spire 2",
+    "chinese_name": "杀戮尖塔 2",
+    "game_id": "2868840",
+    "patch_source_path": "Resources/crack/steam_联机/2868840",
+    "patch_type": 2,
+    "is_d_encrypted": true,
+    "pinyin_initials": "sljt2"
+  },
+  {
+    "tag": "ern_lan",
+    "game_name": "ELDEN RING NIGHTREIGN",
+    "chinese_name": "艾尔登法环 黑夜君临",
+    "game_id": "2622380",
+    "patch_source_path": "Resources/crack/局域网联机/2622380",
+    "patch_type": 1,
+    "is_d_encrypted": true,
+    "pinyin_initials": "eldrfhhyjl"
+  },
+  {
+    "tag": "ern_steam",
+    "game_name": "ELDEN RING NIGHTREIGN",
+    "chinese_name": "艾尔登法环 黑夜君临",
+    "game_id": "2622380",
+    "patch_source_path": "Resources/crack/steam_联机/2622380",
+    "patch_type": 2,
+    "is_d_encrypted": true,
+    "pinyin_initials": "eldrfhhyjl"
+  },
+  {
+    "tag": "raft_steam",
+    "game_name": "Raft",
+    "chinese_name": "木筏求生",
+    "game_id": "648800",
+    "patch_source_path": "Resources/crack/steam_联机/648800",
+    "patch_type": 2,
+    "is_d_encrypted": true,
+    "pinyin_initials": "mfqs"
+  },
+  {
+    "tag": "palworld_steam",
+    "game_name": "Palworld",
+    "chinese_name": "幻兽帕鲁",
+    "game_id": "1623730",
+    "patch_source_path": "Resources/crack/steam_联机/1623730",
+    "patch_type": 2,
+    "is_d_encrypted": true,
+    "pinyin_initials": "hhpl"
+  },
+  {
+    "tag": "dlb_steam",
+    "game_name": "Dying Light: The Beast Restored Land",
+    "chinese_name": "消逝的光芒：困兽",
+    "game_id": "3008130",
+    "patch_source_path": "Resources/crack/steam_联机/3008130",
+    "patch_type": 2,
+    "is_d_encrypted": true,
+    "pinyin_initials": "xsdgmtks"
+  },
+  {
+    "tag": "hkss_steam",
+    "game_name": "Hollow Knight: Silksong",
+    "chinese_name": "空洞骑士：丝之歌",
+    "game_id": "1030300",
+    "patch_source_path": "Resources/crack/steam_联机/1030300",
+    "patch_type": 2,
+    "is_d_encrypted": true,
+    "pinyin_initials": "kdqsszg"
+  },
+  {
+    "tag": "ds3_steam",
+    "game_name": "DARK SOULS III",
+    "chinese_name": "黑暗之魂 3",
+    "game_id": "374320",
+    "patch_source_path": "Resources/crack/steam_联机/374320",
+    "patch_type": 2,
+    "is_d_encrypted": true,
+    "pinyin_initials": "ahhl3"
+  },
+  {
+    "tag": "peak_steam",
+    "game_name": "PEAK",
+    "chinese_name": "PEAK",
+    "game_id": "3527290",
+    "patch_source_path": "Resources/crack/steam_联机/3527290",
+    "patch_type": 2,
+    "is_d_encrypted": true,
+    "pinyin_initials": "peak"
+  },
+  {
+    "tag": "etb_steam",
+    "game_name": "Escape the Backrooms",
+    "chinese_name": "逃脱密室",
+    "game_id": "1943950",
+    "patch_source_path": "Resources/crack/steam_联机/1943950",
+    "patch_type": 2,
+    "is_d_encrypted": true,
+    "pinyin_initials": "tmms"
+  },
+  {
+    "tag": "sotf_steam",
+    "game_name": "Sons of the Forest",
+    "chinese_name": "森林之子",
+    "game_id": "1326470",
+    "patch_source_path": "Resources/crack/steam_联机/1326470",
+    "patch_type": 2,
+    "is_d_encrypted": true,
+    "pinyin_initials": "slzz"
+  }
+]

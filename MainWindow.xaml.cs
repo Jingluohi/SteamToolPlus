@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
 using Microsoft.Win32;
 using Newtonsoft.Json;
 using MessageBox = System.Windows.MessageBox;
@@ -16,6 +17,7 @@ using CheckBox = System.Windows.Controls.CheckBox;
 using Orientation = System.Windows.Controls.Orientation;
 using OpenFileDialog = Microsoft.Win32.OpenFileDialog;
 using System.Threading;
+using SteamToolPlus.Models;
 
 namespace SteamToolPlus;
 
@@ -74,8 +76,403 @@ public partial class MainWindow : Window
                 (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(hexColor));
             _colorCache[hexColor] = color;
         }
+        
         return color;
     }
+    
+    /// <summary>
+    /// 所有游戏卡片的字典（动态管理，无需硬编码）
+    /// Key: 游戏标签（如 "er", "re4"），Value: (网格卡片，列表卡片)
+    /// </summary>
+    private Dictionary<string, (FrameworkElement? gridCard, FrameworkElement? listCard)> _allGameCards = new();
+    /// <summary>
+    /// 游戏卡片数据源列表
+    /// </summary>
+    private List<GameCardViewModel> _gameCardViewModels = new();
+
+    /// <summary>
+    /// 筛选后的游戏卡片数据源列表
+    /// </summary>
+    private List<GameCardViewModel> _filteredGameCardViewModels = new();
+    /// <summary>
+    /// 初始化所有游戏卡片（动态扫描，无需硬编码）
+    /// </summary>
+    private void InitializeGameCards()
+    {
+        _allGameCards.Clear();
+        
+        // 动态查找所有以"Card"开头的网格视图卡片
+        var gridCards = FindVisualChildren<FrameworkElement>(this)
+            .Where(c => c.Name.StartsWith("Card") && !c.Name.StartsWith("ListCard"))
+            .ToList();
+        
+        // 动态查找所有以"ListCard"开头的列表视图卡片
+        var listCards = FindVisualChildren<FrameworkElement>(this)
+            .Where(c => c.Name.StartsWith("ListCard"))
+            .ToList();
+        
+        // 根据 Tag 属性配对卡片
+        foreach (var gridCard in gridCards)
+        {
+            var tag = gridCard.Tag?.ToString();
+            if (!string.IsNullOrEmpty(tag))
+            {
+                var listCard = listCards.FirstOrDefault(c => c.Tag?.ToString() == tag);
+                _allGameCards[tag] = (gridCard, listCard);
+                
+                // 动态加载卡片封面图片
+                LoadCardCoverImage(gridCard, tag, isGridView: true);
+                if (listCard != null)
+                    LoadCardCoverImage(listCard, tag, isGridView: false);
+            }
+        }
+    }
+    
+    /// <summary>
+    /// 动态加载游戏卡片的封面图片（根据 Tag 自动查找对应图片）
+    /// </summary>
+    private void LoadCardCoverImage(FrameworkElement card, string tag, bool isGridView)
+    {
+        try
+        {
+            var game = GetGameInfoByTag(tag);
+            if (game == null) return;
+            
+            // 使用 pack URI 加载嵌入资源
+            string packUri = isGridView ? game.GetCoverImagePackUri() : game.GetListCoverImagePackUri();
+            var bitmap = new System.Windows.Media.Imaging.BitmapImage();
+            bitmap.BeginInit();
+            bitmap.UriSource = new Uri(packUri);
+            
+            if (isGridView)
+            {
+                bitmap.DecodePixelWidth = 275;
+                bitmap.DecodePixelHeight = 160;
+            }
+            else
+            {
+                bitmap.DecodePixelWidth = 100;
+            }
+            
+            bitmap.CacheOption = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;
+            bitmap.EndInit();
+            bitmap.Freeze();
+            Dispatcher.Invoke(() =>
+            {
+                var imageControl = FindVisualChildren<System.Windows.Controls.Image>(card).FirstOrDefault();
+                if (imageControl != null)
+                    imageControl.Source = bitmap;
+            });
+        }
+        catch { }
+    }
+    
+    /// <summary>
+    /// 递归查找视觉树中的所有子元素
+    /// </summary>
+    private static IEnumerable<T> FindVisualChildren<T>(DependencyObject depObj) where T : DependencyObject
+    {
+        if (depObj == null) yield break;
+        
+        for (int i = 0; i < VisualTreeHelper.GetChildrenCount(depObj); i++)
+        {
+            var child = VisualTreeHelper.GetChild(depObj, i);
+            
+            if (child is T result)
+                yield return result;
+            
+            foreach (var childOfChild in FindVisualChildren<T>(child))
+                yield return childOfChild;
+        }
+    }
+    
+    /// <summary>
+    /// 设置所有游戏卡片的可见性（动态方法，无需硬编码）
+    /// </summary>
+    /// <param name="isVisible">是否可见</param>
+    private void SetAllGameCardsVisibility(bool isVisible)
+    {
+        Visibility visibility = isVisible ? Visibility.Visible : Visibility.Collapsed;
+        
+        foreach (var cardPair in _allGameCards.Values)
+        {
+            if (cardPair.gridCard != null)
+                cardPair.gridCard.Visibility = visibility;
+            
+            if (cardPair.listCard != null)
+                cardPair.listCard.Visibility = visibility;
+        }
+    }
+    
+    /// <summary>
+    /// 根据游戏标签设置卡片可见性（动态方法，无需硬编码）
+    /// </summary>
+    /// <param name="gameTag">游戏标签</param>
+    /// <param name="isVisible">是否可见</param>
+    private void SetGameCardVisibility(string gameTag, bool isVisible)
+    {
+        if (!_allGameCards.TryGetValue(gameTag, out var cardPair))
+            return;
+        
+        Visibility visibility = isVisible ? Visibility.Visible : Visibility.Collapsed;
+        
+        if (cardPair.gridCard != null)
+            cardPair.gridCard.Visibility = visibility;
+        
+        if (cardPair.listCard != null)
+            cardPair.listCard.Visibility = visibility;
+    }
+    
+    /// <summary>
+    /// 根据补丁类型动态显示游戏（完全动态，无需硬编码）
+    /// </summary>
+    /// <param name="patchType">补丁类型</param>
+    private void ShowGamesByPatchType(PatchType patchType)
+    {
+        // 遍历所有游戏卡片
+        foreach (var kvp in _allGameCards)
+        {
+            string gameTag = kvp.Key;
+            var game = GetGameInfoByTag(gameTag);
+            
+            if (game == null)
+                continue;
+            
+            // 检查游戏是否匹配当前补丁类型
+            bool shouldShow = IsGameMatchPatchType(game, patchType);
+            
+            // 如果处于搜索状态，还需要检查是否匹配搜索词
+            if (isSearching && !string.IsNullOrEmpty(currentSearchTerm))
+            {
+                bool matchesSearch = IsGameMatchSearchTerm(game, currentSearchTerm);
+                shouldShow = shouldShow && matchesSearch;
+            }
+            
+            // 设置卡片可见性
+            SetGameCardVisibility(gameTag, shouldShow);
+        }
+    }
+    
+    /// <summary>
+    /// 判断游戏是否匹配补丁类型
+    /// </summary>
+    private bool IsGameMatchPatchType(PatchGameInfo game, PatchType patchType)
+    {
+        if (patchType == PatchType.DEncrypted)
+        {
+            // D 加密游戏：检查游戏是否是 D 加密类型
+            return game.PatchType == PatchType.DEncrypted;
+        }
+        else
+        {
+            // 其他类型：检查 PatchType
+            return game.PatchType == patchType;
+        }
+    }
+
+    #region 搜索功能
+    
+    /// <summary>
+    /// 搜索框获得焦点
+    /// </summary>
+    private void TxtGameSearch_GotFocus(object sender, RoutedEventArgs e)
+    {
+        if (TxtGameSearch.Text == "搜索游戏（名称或 ID）...")
+        {
+            TxtGameSearch.Text = "";
+            TxtGameSearch.Foreground = GetCachedColor("#FFFFFFFF");
+        }
+    }
+    
+    /// <summary>
+    /// 搜索框失去焦点
+    /// </summary>
+    private void TxtGameSearch_LostFocus(object sender, RoutedEventArgs e)
+    {
+        if (string.IsNullOrWhiteSpace(TxtGameSearch.Text))
+        {
+            TxtGameSearch.Text = "搜索游戏（名称或 ID）...";
+            TxtGameSearch.Foreground = GetCachedColor("#FFB4BED6");
+        }
+    }
+    
+    /// <summary>
+    /// 搜索框文本变化
+    /// </summary>
+    private void TxtGameSearch_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        if (!string.IsNullOrWhiteSpace(TxtGameSearch.Text) && TxtGameSearch.Text != "搜索游戏（名称或 ID）...")
+        {
+            SearchGames(TxtGameSearch.Text);
+        }
+        else
+        {
+            if (BtnPatchTypeAll != null && BtnPatchTypeAll.Background == GetCachedColor("#FF0099F2"))
+                BtnPatchTypeAll_Click(null, null);
+            else if (BtnPatchTypeNoSteam != null && BtnPatchTypeNoSteam.Background == GetCachedColor("#FF0099F2"))
+                BtnPatchTypeNoSteam_Click(null, null);
+            else if (BtnPatchTypeLAN != null && BtnPatchTypeLAN.Background == GetCachedColor("#FF0099F2"))
+                BtnPatchTypeLAN_Click(null, null);
+            else if (BtnPatchTypeSteamOnline != null && BtnPatchTypeSteamOnline.Background == GetCachedColor("#FF0099F2"))
+                BtnPatchTypeSteamOnline_Click(null, null);
+            else if (BtnPatchTypeDEncrypted != null && BtnPatchTypeDEncrypted.Background == GetCachedColor("#FF0099F2"))
+                BtnPatchTypeDEncrypted_Click(null, null);
+        }
+    }
+    
+    /// <summary>
+    /// 搜索按钮点击事件
+    /// </summary>
+    private void BtnSearch_Click(object sender, RoutedEventArgs e)
+    {
+        if (!string.IsNullOrWhiteSpace(TxtGameSearch.Text) && TxtGameSearch.Text != "搜索游戏（名称或 ID）...")
+        {
+            SearchGames(TxtGameSearch.Text);
+        }
+    }
+
+    /// <summary>
+    /// 执行游戏搜索（优化版：支持模糊搜索、拼音首字母、部分匹配）
+    /// </summary>
+    /// <param name="searchText">搜索文本</param>
+    /// <summary>
+    /// 搜索游戏（基于配置文件）
+    /// </summary>
+    private void SearchGames(string searchText)
+    {
+        if (string.IsNullOrEmpty(searchText))
+        {
+            isSearching = false;
+            currentSearchTerm = string.Empty;
+            // 恢复显示所有游戏
+            _filteredGameCardViewModels = new List<GameCardViewModel>(_gameCardViewModels);
+            UpdateGameCardsDisplay();
+            AppendDownloadLog("🔍 已清除搜索条件");
+            return;
+        }
+
+        isSearching = true;
+        currentSearchTerm = searchText.Trim().ToLower();
+
+        // 使用配置管理器的搜索功能
+        var searchResults = GameConfigManager.Instance.SearchGames(currentSearchTerm);
+
+        // 转换为视图模型（使用 FromConfig 确保封面图片正确）
+        _filteredGameCardViewModels.Clear();
+        foreach (var game in searchResults)
+        {
+            _filteredGameCardViewModels.Add(GameCardViewModel.FromConfig(game));
+        }
+
+        UpdateGameCardsDisplay();
+
+        AddToSearchHistory(searchText);
+        AppendDownloadLog($"🔍 搜索：{searchText}（找到 {_filteredGameCardViewModels.Count} 个游戏）");
+    }
+
+ 
+    
+    /// <summary>
+    /// 获取游戏中文名（从配置管理器获取）
+    /// </summary>
+    /// <param name="gameName">游戏英文名</param>
+    /// <returns>游戏中文名</returns>
+    private string? GetGameChineseName(string gameName)
+    {
+        // 从配置管理器获取
+        var config = GameConfigManager.Instance.Games.FirstOrDefault(g => g.GameName == gameName);
+        return config?.ChineseName;
+    }
+    
+    /// <summary>
+    /// 判断游戏是否匹配搜索词（支持多种匹配方式）
+    /// </summary>
+    /// <param name="game">游戏信息</param>
+    /// <param name="searchTerm">搜索关键词</param>
+    /// <returns>是否匹配</returns>
+    private bool IsGameMatchSearchTerm(PatchGameInfo game, string searchTerm)
+    {
+        // 1. 精确匹配 GameID（完全匹配或部分匹配）
+        if (game.GameId.Contains(searchTerm))
+            return true;
+        
+        // 2. 匹配英文名称（包含匹配）
+        if (game.GameName.ToLower().Contains(searchTerm))
+            return true;
+        
+        // 3. 匹配中文名称（包含匹配）
+        string? chineseName = GetGameChineseName(game.GameName);
+        if (!string.IsNullOrEmpty(chineseName))
+        {
+            if (chineseName.Contains(searchTerm))
+                return true;
+            
+            // 4. 匹配中文拼音首字母（从配置管理器获取）
+            var config = GameConfigManager.Instance.Games.FirstOrDefault(g => g.GameName == game.GameName);
+            if (config != null && !string.IsNullOrEmpty(config.PinyinInitials))
+            {
+                if (config.PinyinInitials.ToLower().Contains(searchTerm))
+                    return true;
+            }
+        }
+        
+        // 5. 模糊匹配：单词级别的匹配（支持空格分隔的多个关键词）
+        string[] searchWords = searchTerm.Split(new[] { ' ', ' ' }, StringSplitOptions.RemoveEmptyEntries);
+        if (searchWords.Length > 1)
+        {
+            bool allWordsMatch = true;
+            foreach (string word in searchWords)
+            {
+                bool wordMatch = game.GameName.ToLower().Contains(word) ||
+                               (!string.IsNullOrEmpty(chineseName) && chineseName.Contains(word));
+                if (!wordMatch)
+                {
+                    allWordsMatch = false;
+                    break;
+                }
+            }
+            if (allWordsMatch)
+                return true;
+        }
+        
+        return false;
+    }
+    
+    /// <summary>
+    /// 获取游戏名称的拼音首字母（从配置管理器获取）
+    /// </summary>
+    /// <param name="gameName">游戏英文名称</param>
+    /// <returns>拼音首字母字符串</returns>
+    private string? GetPinyinInitials(string gameName)
+    {
+        // 从配置管理器获取
+        var config = GameConfigManager.Instance.Games.FirstOrDefault(g => g.GameName == gameName);
+        return config?.PinyinInitials?.ToLower();
+    }
+    
+    /// <summary>
+    /// 添加搜索到历史记录
+    /// </summary>
+    /// <param name="searchText">搜索文本</param>
+    private void AddToSearchHistory(string searchText)
+    {
+        // 避免重复添加
+        if (SearchHistory.Contains(searchText))
+        {
+            SearchHistory.Remove(searchText);
+        }
+        
+        // 添加到历史记录开头
+        SearchHistory.Insert(0, searchText);
+        
+        // 限制历史记录数量
+        if (SearchHistory.Count > MaxSearchHistory)
+        {
+            SearchHistory.RemoveAt(SearchHistory.Count - 1);
+        }
+    }
+    
+    #endregion
     
     /// <summary>
     /// 下载是否正在进行中
@@ -97,16 +494,28 @@ public partial class MainWindow : Window
     /// </summary>
     private List<string> ManifestList = new();
     
+    
+    
+    
     /// <summary>
-    /// 游戏中文名映射字典
+    /// 搜索历史记录
     /// </summary>
-    private readonly Dictionary<string, string> GameChineseNames = new()
-    {
-        { "ELDEN RING", "艾尔登法环" },
-        { "Monster Hunter: World", "怪物猎人：世界" },
-        { "Resident Evil 4", "生化危机 4" },
-        { "Forza Horizon 5", "极限竞速：地平线 5" }
-    };
+    private readonly List<string> SearchHistory = new();
+    
+    /// <summary>
+    /// 最大搜索历史记录数
+    /// </summary>
+    private const int MaxSearchHistory = 10;
+    
+    /// <summary>
+    /// 是否处于搜索状态
+    /// </summary>
+    private bool isSearching = false;
+    
+    /// <summary>
+    /// 当前搜索词
+    /// </summary>
+    private string currentSearchTerm = string.Empty;
     
     /// <summary>
     /// 成就列表
@@ -134,14 +543,9 @@ public partial class MainWindow : Window
     private Dictionary<string, Button> PatchCategoryBtns = new();
     
     /// <summary>
-    /// 下载日志缓冲区，用于批量更新UI
+    /// 下载日志缓冲区，用于批量更新 UI
     /// </summary>
     private StringBuilder DownloadLogBuffer = new();
-    
-    /// <summary>
-    /// 日志更新定时器
-    /// </summary>
-    private System.Windows.Threading.DispatcherTimer? LogUpdateTimer;
     
     /// <summary>
     /// 日志更新的线程锁
@@ -158,62 +562,83 @@ public partial class MainWindow : Window
     /// </summary>
     private string? CurrentPatchSourcePath;
     
-    /// <summary>
-    /// 当前选中的补丁类型（用于筛选）
-    /// </summary>
-    private PatchType CurrentSelectedPatchType = PatchType.NoSteam;
-    
     #endregion
 
     /// <summary>
-    /// 添加下载日志（使用节流优化）
+    /// 添加日志（统一方法，支持下载日志和补丁日志）
     /// </summary>
     /// <param name="message">日志消息</param>
-    private void AppendDownloadLog(string message)
+    /// <param name="isPatchLog">是否为补丁日志</param>
+    private void AppendLog(string message, bool isPatchLog = false)
     {
-        if (TxtDownloadLog == null) return;
-        
-        // 简单的节流：只在实际需要时更新 UI
-        Dispatcher.BeginInvoke(() =>
+        if (isPatchLog)
         {
-            try
+            // 补丁日志同时输出到 TxtInjectLog 和 TxtPatchLog
+            if (TxtInjectLog != null)
             {
-                TxtDownloadLog.AppendText($"[{DateTime.Now:HH:mm:ss}] {message}\n");
-                TxtDownloadLog.ScrollToEnd();
+                Dispatcher.BeginInvoke(() =>
+                {
+                    TxtInjectLog.AppendText($"[{DateTime.Now:HH:mm:ss}] {message}\n");
+                    TxtInjectLog.ScrollToEnd();
+                }, System.Windows.Threading.DispatcherPriority.Background);
             }
-            catch { }
-        }, System.Windows.Threading.DispatcherPriority.Background);
+            
+            if (TxtPatchLog != null)
+            {
+                Dispatcher.BeginInvoke(() =>
+                {
+                    TxtPatchLog.AppendText($"[{DateTime.Now:HH:mm:ss}] {message}\n");
+                    TxtPatchLog.ScrollToEnd();
+                }, System.Windows.Threading.DispatcherPriority.Background);
+            }
+        }
+        else
+        {
+            // 下载日志输出到 TxtDownloadLog
+            if (TxtDownloadLog != null)
+            {
+                Dispatcher.BeginInvoke(() =>
+                {
+                    TxtDownloadLog.AppendText($"[{DateTime.Now:HH:mm:ss}] {message}\n");
+                    TxtDownloadLog.ScrollToEnd();
+                }, System.Windows.Threading.DispatcherPriority.Background);
+            }
+        }
     }
 
     /// <summary>
-    /// 添加补丁日志（使用节流优化）
+    /// 添加下载日志
     /// </summary>
-    /// <param name="message">日志消息</param>
-    private void AppendPatchLog(string message)
-    {
-        if (TxtInjectLog == null) return;
-        
-        // 简单的节流：只在实际需要时更新 UI
-        Dispatcher.BeginInvoke(() =>
-        {
-            try
-            {
-                TxtInjectLog.AppendText($"[{DateTime.Now:HH:mm:ss}] {message}\n");
-                TxtInjectLog.ScrollToEnd();
-            }
-            catch { }
-        }, System.Windows.Threading.DispatcherPriority.Background);
-    }
+    private void AppendDownloadLog(string message) => AppendLog(message, false);
 
     /// <summary>
-    /// 颜色解析工具方法（使用缓存优化）
+    /// 添加补丁日志（用于免 Steam 启动补丁界面）
     /// </summary>
-    /// <param name="colorStr">颜色字符串（如 #FF3C7FC4）</param>
-    /// <returns>解析后的 SolidColorBrush 对象</returns>
-    private static System.Windows.Media.SolidColorBrush ParseColor(string colorStr)
-    {
-        return GetCachedColor(colorStr);
-    }
+    private void AppendPatchLog(string message) => AppendLog(message, true);
+
+    /// <summary>
+    /// 显示提示消息框
+    /// </summary>
+    private void ShowInfo(string message, string title = "提示") => 
+        MessageBox.Show(message, title, MessageBoxButton.OK, MessageBoxImage.Information);
+
+    /// <summary>
+    /// 显示警告消息框
+    /// </summary>
+    private void ShowWarning(string message, string title = "提示") => 
+        MessageBox.Show(message, title, MessageBoxButton.OK, MessageBoxImage.Warning);
+
+    /// <summary>
+    /// 显示错误消息框
+    /// </summary>
+    private void ShowError(string message, string title = "错误") => 
+        MessageBox.Show(message, title, MessageBoxButton.OK, MessageBoxImage.Error);
+
+    /// <summary>
+    /// 显示确认对话框
+    /// </summary>
+    private MessageBoxResult ShowConfirm(string message, string title = "确认") => 
+        MessageBox.Show(message, title, MessageBoxButton.YesNo, MessageBoxImage.Question);
 
     /// <summary>
     /// 主窗口构造函数
@@ -221,6 +646,17 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        
+        // 设置窗口图标（使用 pack URI 加载嵌入资源）
+        try
+        {
+            this.Icon = new System.Windows.Media.Imaging.BitmapImage(new Uri("pack://application:,,,/SteamToolPlus;component/Resources/icon.jpg"));
+        }
+        catch
+        {
+            // 如果图标加载失败，使用默认图标或不显示图标
+        }
+        
         AppPath = AppDomain.CurrentDomain.BaseDirectory;
         if (AppPath.EndsWith("\\"))
             AppPath = AppPath.TrimEnd('\\');
@@ -269,11 +705,11 @@ public partial class MainWindow : Window
         ChkCustomSavesName.Checked += (s, e) => TxtSavesFolderName.IsEnabled = true;
         ChkCustomSavesName.Unchecked += (s, e) => TxtSavesFolderName.IsEnabled = false;
 
-        RbNormalMode.Checked += (s, e) => TxtModeTip.Text = "常规模式：适用于90%以上的Steam游戏，替换steam_api.dll即可生效";
+        RbNormalMode.Checked += (s, e) => TxtModeTip.Text = "常规模式：适用于 90% 以上的 Steam 游戏，替换 steam_api.dll 即可生效";
         RbExperimentalMode.Checked += (s, e) =>
         {
-            TxtModeTip.Text = "实验版模式：适用于无steam_api.dll、常规模式失效、CPY破解补丁的游戏";
-            MessageBox.Show("您已选择实验版模式（steamclient.dll）", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+            TxtModeTip.Text = "实验版模式：适用于无 steam_api.dll、常规模式失效、CPY 破解补丁的游戏";
+            ShowInfo("您已选择实验版模式（steamclient.dll）");
         };
 
         // 窗口加载完成后初始化
@@ -285,21 +721,95 @@ public partial class MainWindow : Window
     /// </summary>
     private void AppStartInit()
     {
-        AppendDownloadLog("=" + new string('=', 49));
-        AppendDownloadLog("🚀 程序启动，正在初始化...");
-        AppendDownloadLog($"📂 程序运行目录：{AppPath}");
+        try
+        {
+            AppendDownloadLog("=" + new string('=', 49));
+            // AppendDownloadLog("🚀 程序启动，正在初始化...");
+            // AppendDownloadLog($"📂 程序运行目录：{AppPath}");
+            
+            // 加载游戏配置
+            try
+            {
+                string configPath = Path.Combine(AppPath, "Resources", "games_config.json");
+                if (File.Exists(configPath))
+                {
+                    GameConfigManager.Instance.LoadFromJson(configPath);
+                    // AppendDownloadLog($"✅ 加载游戏配置：{GameConfigManager.Instance.Games.Count} 个游戏");
+                }
+                else
+                {
+                    // AppendDownloadLog("⚠️ 未找到 games_config.json，将使用硬编码的游戏信息");
+                }
+            }
+            catch (Exception ex)
+            {
+                // AppendDownloadLog($"❌ 加载游戏配置失败：{ex.Message}");
+                MessageBox.Show($"加载游戏配置失败：{ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
 
-        // 自动检测 ddv20.exe
-        AutoDetectDdv20();
-        // 初始化保存目录
-        InitSaveDirectory();
+            // 自动检测 ddv20.exe
+            AutoDetectDdv20();
+            // 初始化保存目录
+            InitSaveDirectory();
+            
+            // 动态加载游戏卡片
+            LoadGameCards();
+            // AppendDownloadLog($"✅ 游戏卡片初始化完成，共 {_gameCardViewModels.Count} 个游戏");
+            
+            // AppendDownloadLog("✅ 初始化完成");
+            // AppendDownloadLog("=" + new string('=', 49));
 
-        AppendDownloadLog("✅ 初始化完成");
-        AppendDownloadLog("=" + new string('=', 49));
+            // 默认显示特定游戏补丁界面
+            PatchSpecialPanel.Visibility = Visibility.Visible;
+            PatchPanel.Visibility = Visibility.Collapsed;
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"程序初始化失败：{ex.Message}\n\n堆栈跟踪：{ex.StackTrace}", "严重错误", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
 
-        // 默认显示特定游戏补丁界面
-        PatchSpecialPanel.Visibility = Visibility.Visible;
-        PatchPanel.Visibility = Visibility.Collapsed;
+    /// <summary>
+    /// 动态加载游戏卡片（从配置文件）
+    /// </summary>
+    private void LoadGameCards()
+    {
+        _gameCardViewModels.Clear();
+
+        // 从配置管理器获取所有游戏
+        var games = GameConfigManager.Instance.Games;
+
+        foreach (var game in games)
+        {
+            var viewModel = GameCardViewModel.FromConfig(game);
+            _gameCardViewModels.Add(viewModel);
+        }
+
+        // 按游戏名称排序
+        _gameCardViewModels = _gameCardViewModels.OrderBy(g => g.GameName).ToList();
+
+        // 初始化筛选列表为所有游戏
+        _filteredGameCardViewModels = new List<GameCardViewModel>(_gameCardViewModels);
+
+        // 绑定到 ItemsControl
+        GameCardsPanel.ItemsSource = _gameCardViewModels;
+        ListGameCardsPanel.ItemsSource = _gameCardViewModels;
+
+        // AppendDownloadLog($"✅ 动态加载游戏卡片完成：{_gameCardViewModels.Count} 个");
+    }
+
+    /// <summary>
+    /// 更新游戏卡片显示
+    /// </summary>
+    private void UpdateGameCardsDisplay()
+    {
+        // 更新网格视图
+        GameCardsPanel.ItemsSource = null;
+        GameCardsPanel.ItemsSource = _filteredGameCardViewModels;
+
+        // 更新列表视图
+        ListGameCardsPanel.ItemsSource = null;
+        ListGameCardsPanel.ItemsSource = _filteredGameCardViewModels;
     }
 
     /// <summary>
@@ -321,16 +831,17 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// 初始化保存目录
-    /// 优先使用D:\SteamGame，其次是程序目录下的SteamGame，最后是文档目录下的SteamGame
+    /// 初始化保存目录（优先 D:\SteamGame，其次程序目录，最后文档目录）
     /// </summary>
     private void InitSaveDirectory()
     {
-        string primaryPath = @"D:\SteamGame";
-        string secondaryPath = Path.Combine(AppPath, "SteamGame");
-        string fallbackPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "SteamGame");
+        string[] paths = {
+            @"D:\SteamGame",
+            Path.Combine(AppPath, "SteamGame"),
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "SteamGame")
+        };
 
-        foreach (string testPath in new[] { primaryPath, secondaryPath, fallbackPath })
+        foreach (string testPath in paths)
         {
             try
             {
@@ -343,7 +854,10 @@ public partial class MainWindow : Window
                 AppendDownloadLog($"📁 游戏保存目录：{testPath}");
                 return;
             }
-            catch { continue; }
+            catch
+            {
+                // 尝试下一个路径
+            }
         }
 
         MessageBox.Show("无法找到可用的保存目录，请以管理员身份运行", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
@@ -401,40 +915,31 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// 网格视图按钮点击事件
+    /// 切换网格/列表视图
     /// </summary>
-    /// <param name="sender">发送者</param>
-    /// <param name="e">事件参数</param>
-    private void BtnGridView_Click(object sender, RoutedEventArgs e)
+    private void SetViewMode(bool isGridView)
     {
-        // 显示网格视图，隐藏列表视图
-        GridViewScrollViewer.Visibility = Visibility.Visible;
-        ListViewScrollViewer.Visibility = Visibility.Collapsed;
-
-        // 更新按钮样式
-        BtnGridView.Background = new System.Windows.Media.SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#FF0099F2"));
-        BtnGridView.Foreground = new System.Windows.Media.SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#FFFFFFFF"));
-        BtnListView.Background = new System.Windows.Media.SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#FF1A2445"));
-        BtnListView.Foreground = new System.Windows.Media.SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#FFB4BED6"));
+        GridViewScrollViewer.Visibility = isGridView ? Visibility.Visible : Visibility.Collapsed;
+        ListViewScrollViewer.Visibility = isGridView ? Visibility.Collapsed : Visibility.Visible;
+        
+        if (isGridView)
+        {
+            BtnGridView.Background = GetCachedColor("#FF0099F2");
+            BtnGridView.Foreground = GetCachedColor("#FFFFFFFF");
+            BtnListView.Background = GetCachedColor("#FF1A2445");
+            BtnListView.Foreground = GetCachedColor("#FFB4BED6");
+        }
+        else
+        {
+            BtnListView.Background = GetCachedColor("#FF0099F2");
+            BtnListView.Foreground = GetCachedColor("#FFFFFFFF");
+            BtnGridView.Background = GetCachedColor("#FF1A2445");
+            BtnGridView.Foreground = GetCachedColor("#FFB4BED6");
+        }
     }
 
-    /// <summary>
-    /// 列表视图按钮点击事件
-    /// </summary>
-    /// <param name="sender">发送者</param>
-    /// <param name="e">事件参数</param>
-    private void BtnListView_Click(object sender, RoutedEventArgs e)
-    {
-        // 显示列表视图，隐藏网格视图
-        GridViewScrollViewer.Visibility = Visibility.Collapsed;
-        ListViewScrollViewer.Visibility = Visibility.Visible;
-
-        // 更新按钮样式
-        BtnListView.Background = new System.Windows.Media.SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#FF0099F2"));
-        BtnListView.Foreground = new System.Windows.Media.SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#FFFFFFFF"));
-        BtnGridView.Background = new System.Windows.Media.SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#FF1A2445"));
-        BtnGridView.Foreground = new System.Windows.Media.SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#FFB4BED6"));
-    }
+    private void BtnGridView_Click(object sender, RoutedEventArgs e) => SetViewMode(true);
+    private void BtnListView_Click(object sender, RoutedEventArgs e) => SetViewMode(false);
 
     /// <summary>
     /// 返回游戏列表按钮点击事件
@@ -453,493 +958,107 @@ public partial class MainWindow : Window
         InjectProgressPanel.Visibility = Visibility.Collapsed;
     }
 
+    
     /// <summary>
-    /// 网格视图游戏卡片点击事件
+    /// 游戏卡片点击事件（网格视图）
     /// </summary>
-    /// <param name="sender">发送者</param>
-    /// <param name="e">事件参数</param>
     private void GameCard_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         if (sender is Border border && border.Tag is string gameTag)
         {
-            PatchGameInfo? game = GetGameInfoByTag(gameTag);
+            var game = GameConfigManager.Instance.GetGameByTag(gameTag);
             if (game != null)
             {
                 ShowGameDetail(game);
+            }
+            else
+            {
+                MessageBox.Show($"未找到游戏配置：{gameTag}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
     }
 
     /// <summary>
-    /// 列表视图游戏卡片点击事件
+    /// 游戏卡片点击事件（列表视图）
     /// </summary>
-    /// <param name="sender">发送者</param>
-    /// <param name="e">事件参数</param>
     private void ListGameCard_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         if (sender is Border border && border.Tag is string gameTag)
         {
-            PatchGameInfo? game = GetGameInfoByTag(gameTag);
+            var game = GameConfigManager.Instance.GetGameByTag(gameTag);
             if (game != null)
             {
                 ShowGameDetail(game);
+            }
+            else
+            {
+                MessageBox.Show($"未找到游戏配置：{gameTag}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
     }
 
     /// <summary>
-    /// 补丁类型筛选 - 全部游戏
+    /// ScrollViewer 滚动事件处理 - 实现平滑滚动
     /// </summary>
-    private void BtnPatchTypeAll_Click(object sender, RoutedEventArgs e)
+    private void ScrollViewer_ScrollChanged(object sender, ScrollChangedEventArgs e)
     {
-        UpdatePatchTypeButtons(BtnPatchTypeAll);
-        
-        // 显示所有游戏（网格视图和列表视图）
-        if (CardResidentEvil4 != null) CardResidentEvil4.Visibility = Visibility.Visible;
-        if (CardMonsterHunter != null) CardMonsterHunter.Visibility = Visibility.Visible;
-        if (CardEldenRing != null) CardEldenRing.Visibility = Visibility.Visible;
-        if (CardEldenRingSteam != null) CardEldenRingSteam.Visibility = Visibility.Visible;
-        if (CardForzaHorizon5 != null) CardForzaHorizon5.Visibility = Visibility.Visible;
-        if (CardCrimsonDesert != null) CardCrimsonDesert.Visibility = Visibility.Visible;
-        if (CardNioh3 != null) CardNioh3.Visibility = Visibility.Visible;
-        if (CardResidentEvilRequiem != null) CardResidentEvilRequiem.Visibility = Visibility.Visible;
-        if (CardResidentEvilRequiemDEncrypted != null) CardResidentEvilRequiemDEncrypted.Visibility = Visibility.Visible;
-        
-        if (ListCardResidentEvil4 != null) ListCardResidentEvil4.Visibility = Visibility.Visible;
-        if (ListCardMonsterHunter != null) ListCardMonsterHunter.Visibility = Visibility.Visible;
-        if (ListCardEldenRing != null) ListCardEldenRing.Visibility = Visibility.Visible;
-        if (ListCardEldenRingSteam != null) ListCardEldenRingSteam.Visibility = Visibility.Visible;
-        if (ListCardForzaHorizon5 != null) ListCardForzaHorizon5.Visibility = Visibility.Visible;
-        if (ListCardCrimsonDesert != null) ListCardCrimsonDesert.Visibility = Visibility.Visible;
-        if (ListCardNioh3 != null) ListCardNioh3.Visibility = Visibility.Visible;
-        if (ListCardResidentEvilRequiem != null) ListCardResidentEvilRequiem.Visibility = Visibility.Visible;
-        if (ListCardResidentEvilRequiemDEncrypted != null) ListCardResidentEvilRequiemDEncrypted.Visibility = Visibility.Visible;
+        // 此方法用于处理 ScrollViewer 的滚动事件
+        // 平滑滚动效果已通过 XAML 中的属性配置实现
     }
 
     /// <summary>
-    /// 补丁类型筛选 - 免 Steam 启动补丁
+    /// 补丁类型筛选按钮点击事件
     /// </summary>
-    private void BtnPatchTypeNoSteam_Click(object sender, RoutedEventArgs e)
+    private void FilterGamesByPatchType(object sender, RoutedEventArgs e, PatchType? patchType = null, string logPrefix = "")
     {
-        UpdatePatchTypeButtons(BtnPatchTypeNoSteam);
-        HideAllGames();
-        ShowGamesByPatchType(PatchType.NoSteam);
+        if (sender is not Button selectedButton) return;
+        UpdatePatchTypeButtons(selectedButton);
+
+        var searchResults = isSearching && !string.IsNullOrEmpty(currentSearchTerm)
+            ? GameConfigManager.Instance.SearchGames(currentSearchTerm)
+            : GameConfigManager.Instance.Games;
+
+        _filteredGameCardViewModels = patchType.HasValue
+            ? searchResults.Where(g => (PatchType)g.PatchType == patchType.Value).Select(GameCardViewModel.FromConfig).ToList()
+            : searchResults.Select(GameCardViewModel.FromConfig).ToList();
+
+        // AppendDownloadLog($"{logPrefix}（{_filteredGameCardViewModels.Count} 个游戏）");
+        UpdateGameCardsDisplay();
     }
 
-    /// <summary>
-    /// 补丁类型筛选 - 局域网联机补丁
-    /// </summary>
-    private void BtnPatchTypeLAN_Click(object sender, RoutedEventArgs e)
-    {
-        UpdatePatchTypeButtons(BtnPatchTypeLAN);
-        HideAllGames();
-        ShowGamesByPatchType(PatchType.LAN);
-    }
+    private void BtnPatchTypeAll_Click(object sender, RoutedEventArgs e) => 
+        FilterGamesByPatchType(sender, e, null, "🎮 显示所有游戏");
 
-    /// <summary>
-    /// 补丁类型筛选 - Steam 联机补丁
-    /// </summary>
-    private void BtnPatchTypeSteamOnline_Click(object sender, RoutedEventArgs e)
-    {
-        UpdatePatchTypeButtons(BtnPatchTypeSteamOnline);
-        HideAllGames();
-        ShowGamesByPatchType(PatchType.SteamOnline);
-    }
+    private void BtnPatchTypeNoSteam_Click(object sender, RoutedEventArgs e) => 
+        FilterGamesByPatchType(sender, e, PatchType.NoSteam, "🚫 显示免 Steam 启动游戏");
 
-    /// <summary>
-    /// D 加密游戏标签点击事件
-    /// </summary>
-    private void BtnPatchTypeDEncrypted_Click(object sender, RoutedEventArgs e)
-    {
-        UpdatePatchTypeButtons(BtnPatchTypeDEncrypted);
-        HideAllGames();
-        ShowGamesByPatchType(PatchType.DEncrypted);
-    }
+    private void BtnPatchTypeLAN_Click(object sender, RoutedEventArgs e) => 
+        FilterGamesByPatchType(sender, e, PatchType.LAN, "🌐 显示局域网联机游戏");
+
+    private void BtnPatchTypeSteamOnline_Click(object sender, RoutedEventArgs e) => 
+        FilterGamesByPatchType(sender, e, PatchType.SteamOnline, "🌍 显示 Steam 联机游戏");
+
+    private void BtnPatchTypeDEncrypted_Click(object sender, RoutedEventArgs e) => 
+        FilterGamesByPatchType(sender, e, PatchType.DEncrypted, "🔒 显示 D 加密虚拟机游戏");
 
     /// <summary>
     /// 更新补丁类型按钮样式
     /// </summary>
     private void UpdatePatchTypeButtons(Button selectedButton)
     {
-        BtnPatchTypeAll.Background = ParseColor("#FF1A2445");
-        BtnPatchTypeAll.Foreground = ParseColor("#FFB4BED6");
-        BtnPatchTypeNoSteam.Background = ParseColor("#FF1A2445");
-        BtnPatchTypeNoSteam.Foreground = ParseColor("#FFB4BED6");
-        BtnPatchTypeLAN.Background = ParseColor("#FF1A2445");
-        BtnPatchTypeLAN.Foreground = ParseColor("#FFB4BED6");
-        BtnPatchTypeSteamOnline.Background = ParseColor("#FF1A2445");
-        BtnPatchTypeSteamOnline.Foreground = ParseColor("#FFB4BED6");
-        BtnPatchTypeDEncrypted.Background = ParseColor("#FF1A2445");
-        BtnPatchTypeDEncrypted.Foreground = ParseColor("#FFB4BED6");
+        var buttons = new[] { BtnPatchTypeAll, BtnPatchTypeNoSteam, BtnPatchTypeLAN, BtnPatchTypeSteamOnline, BtnPatchTypeDEncrypted };
         
-        selectedButton.Background = ParseColor("#FF0099F2");
-        selectedButton.Foreground = ParseColor("#FFFFFFFF");
+        foreach (var btn in buttons)
+        {
+            btn.Background = GetCachedColor("#FF1A2445");
+            btn.Foreground = GetCachedColor("#FFB4BED6");
+        }
+        
+        selectedButton.Background = GetCachedColor("#FF0099F2");
+        selectedButton.Foreground = GetCachedColor("#FFFFFFFF");
     }
 
-    /// <summary>
-    /// 隐藏所有游戏卡片
-    /// </summary>
-    private void HideAllGames()
-    {
-        // 隐藏网格视图卡片
-        if (CardResidentEvil4 != null) CardResidentEvil4.Visibility = Visibility.Collapsed;
-        if (CardMonsterHunter != null) CardMonsterHunter.Visibility = Visibility.Collapsed;
-        if (CardEldenRing != null) CardEldenRing.Visibility = Visibility.Collapsed;
-        if (CardEldenRingSteam != null) CardEldenRingSteam.Visibility = Visibility.Collapsed;
-        if (CardForzaHorizon5 != null) CardForzaHorizon5.Visibility = Visibility.Collapsed;
-        if (CardCrimsonDesert != null) CardCrimsonDesert.Visibility = Visibility.Collapsed;
-        if (CardNioh3 != null) CardNioh3.Visibility = Visibility.Collapsed;
-        if (CardResidentEvilRequiem != null) CardResidentEvilRequiem.Visibility = Visibility.Collapsed;
-        if (CardResidentEvilRequiemDEncrypted != null) CardResidentEvilRequiemDEncrypted.Visibility = Visibility.Collapsed;
-        
-        // 隐藏列表视图卡片
-        if (ListCardResidentEvil4 != null) ListCardResidentEvil4.Visibility = Visibility.Collapsed;
-        if (ListCardMonsterHunter != null) ListCardMonsterHunter.Visibility = Visibility.Collapsed;
-        if (ListCardEldenRing != null) ListCardEldenRing.Visibility = Visibility.Collapsed;
-        if (ListCardEldenRingSteam != null) ListCardEldenRingSteam.Visibility = Visibility.Collapsed;
-        if (ListCardForzaHorizon5 != null) ListCardForzaHorizon5.Visibility = Visibility.Collapsed;
-        if (ListCardCrimsonDesert != null) ListCardCrimsonDesert.Visibility = Visibility.Collapsed;
-        if (ListCardNioh3 != null) ListCardNioh3.Visibility = Visibility.Collapsed;
-        if (ListCardResidentEvilRequiem != null) ListCardResidentEvilRequiem.Visibility = Visibility.Collapsed;
-        if (ListCardResidentEvilRequiemDEncrypted != null) ListCardResidentEvilRequiemDEncrypted.Visibility = Visibility.Collapsed;
-    }
 
-    /// <summary>
-    /// 根据补丁类型显示游戏
-    /// </summary>
-    private void ShowGamesByPatchType(PatchType patchType)
-    {
-        // 网格视图 - Resident Evil 4
-        if (CardResidentEvil4 != null)
-        {
-            var game = GetGameInfoByTag("re4");
-            CardResidentEvil4.Visibility = (game != null && IsGameMatchPatchType(game, patchType)) 
-                ? Visibility.Visible 
-                : Visibility.Collapsed;
-        }
-        
-        // 网格视图 - Monster Hunter: World
-        if (CardMonsterHunter != null)
-        {
-            var game = GetGameInfoByTag("mhw");
-            CardMonsterHunter.Visibility = (game != null && IsGameMatchPatchType(game, patchType)) 
-                ? Visibility.Visible 
-                : Visibility.Collapsed;
-        }
-        
-        // 网格视图 - ELDEN RING
-        if (CardEldenRing != null)
-        {
-            var game = GetGameInfoByTag("er");
-            CardEldenRing.Visibility = (game != null && IsGameMatchPatchType(game, patchType)) 
-                ? Visibility.Visible 
-                : Visibility.Collapsed;
-        }
-        
-        // 网格视图 - ELDEN RING Steam
-        if (CardEldenRingSteam != null)
-        {
-            var game = GetGameInfoByTag("er_steam");
-            CardEldenRingSteam.Visibility = (game != null && IsGameMatchPatchType(game, patchType)) 
-                ? Visibility.Visible 
-                : Visibility.Collapsed;
-        }
-        
-        // 网格视图 - Forza Horizon 5
-        if (CardForzaHorizon5 != null)
-        {
-            var game = GetGameInfoByTag("fh5");
-            CardForzaHorizon5.Visibility = (game != null && IsGameMatchPatchType(game, patchType)) 
-                ? Visibility.Visible 
-                : Visibility.Collapsed;
-        }
-        
-        // 网格视图 - Crimson Desert
-        if (CardCrimsonDesert != null)
-        {
-            var game = GetGameInfoByTag("cd");
-            CardCrimsonDesert.Visibility = (game != null && IsGameMatchPatchType(game, patchType)) 
-                ? Visibility.Visible 
-                : Visibility.Collapsed;
-        }
-        
-        // 网格视图 - Nioh 3
-        if (CardNioh3 != null)
-        {
-            var game = GetGameInfoByTag("nioh3");
-            CardNioh3.Visibility = (game != null && IsGameMatchPatchType(game, patchType)) 
-                ? Visibility.Visible 
-                : Visibility.Collapsed;
-        }
-        
-        // 网格视图 - Resident Evil Requiem
-        if (CardResidentEvilRequiem != null)
-        {
-            var game = GetGameInfoByTag("rer");
-            CardResidentEvilRequiem.Visibility = (game != null && IsGameMatchPatchType(game, patchType)) 
-                ? Visibility.Visible 
-                : Visibility.Collapsed;
-        }
-        
-        // 网格视图 - Resident Evil Requiem D 加密版
-        if (CardResidentEvilRequiemDEncrypted != null)
-        {
-            var game = GetGameInfoByTag("rer_denuvo");
-            CardResidentEvilRequiemDEncrypted.Visibility = (game != null && IsGameMatchPatchType(game, patchType)) 
-                ? Visibility.Visible 
-                : Visibility.Collapsed;
-        }
-        
-        // 列表视图 - Resident Evil 4
-        if (ListCardResidentEvil4 != null)
-        {
-            var game = GetGameInfoByTag("re4");
-            ListCardResidentEvil4.Visibility = (game != null && IsGameMatchPatchType(game, patchType)) 
-                ? Visibility.Visible 
-                : Visibility.Collapsed;
-        }
-        
-        // 列表视图 - Monster Hunter: World
-        if (ListCardMonsterHunter != null)
-        {
-            var game = GetGameInfoByTag("mhw");
-            ListCardMonsterHunter.Visibility = (game != null && IsGameMatchPatchType(game, patchType)) 
-                ? Visibility.Visible 
-                : Visibility.Collapsed;
-        }
-        
-        // 列表视图 - ELDEN RING
-        if (ListCardEldenRing != null)
-        {
-            var game = GetGameInfoByTag("er");
-            ListCardEldenRing.Visibility = (game != null && IsGameMatchPatchType(game, patchType)) 
-                ? Visibility.Visible 
-                : Visibility.Collapsed;
-        }
-        
-        // 列表视图 - ELDEN RING Steam
-        if (ListCardEldenRingSteam != null)
-        {
-            var game = GetGameInfoByTag("er_steam");
-            ListCardEldenRingSteam.Visibility = (game != null && IsGameMatchPatchType(game, patchType)) 
-                ? Visibility.Visible 
-                : Visibility.Collapsed;
-        }
-        
-        // 列表视图 - Forza Horizon 5
-        if (ListCardForzaHorizon5 != null)
-        {
-            var game = GetGameInfoByTag("fh5");
-            ListCardForzaHorizon5.Visibility = (game != null && IsGameMatchPatchType(game, patchType)) 
-                ? Visibility.Visible 
-                : Visibility.Collapsed;
-        }
-        
-        // 列表视图 - Crimson Desert
-        if (ListCardCrimsonDesert != null)
-        {
-            var game = GetGameInfoByTag("cd");
-            ListCardCrimsonDesert.Visibility = (game != null && IsGameMatchPatchType(game, patchType)) 
-                ? Visibility.Visible 
-                : Visibility.Collapsed;
-        }
-        
-        // 列表视图 - Nioh 3
-        if (ListCardNioh3 != null)
-        {
-            var game = GetGameInfoByTag("nioh3");
-            ListCardNioh3.Visibility = (game != null && IsGameMatchPatchType(game, patchType)) 
-                ? Visibility.Visible 
-                : Visibility.Collapsed;
-        }
-        
-        // 列表视图 - Resident Evil Requiem
-        if (ListCardResidentEvilRequiem != null)
-        {
-            var game = GetGameInfoByTag("rer");
-            ListCardResidentEvilRequiem.Visibility = (game != null && IsGameMatchPatchType(game, patchType)) 
-                ? Visibility.Visible 
-                : Visibility.Collapsed;
-        }
-        
-        // 列表视图 - Resident Evil Requiem D 加密版
-        if (ListCardResidentEvilRequiemDEncrypted != null)
-        {
-            var game = GetGameInfoByTag("rer_denuvo");
-            ListCardResidentEvilRequiemDEncrypted.Visibility = (game != null && IsGameMatchPatchType(game, patchType)) 
-                ? Visibility.Visible 
-                : Visibility.Collapsed;
-        }
-    }
-    
-    /// <summary>
-    /// 判断游戏是否匹配补丁类型
-    /// </summary>
-    private bool IsGameMatchPatchType(PatchGameInfo game, PatchType patchType)
-    {
-        if (patchType == PatchType.DEncrypted)
-        {
-            // D 加密游戏：检查游戏是否是 D 加密类型
-            return game.PatchType == PatchType.DEncrypted;
-        }
-        else
-        {
-            // 其他类型：检查 PatchType
-            return game.PatchType == patchType;
-        }
-    }
-
-    #region 搜索功能
-
-    /// <summary>
-    /// 搜索框获得焦点
-    /// </summary>
-    private void TxtGameSearch_GotFocus(object sender, RoutedEventArgs e)
-    {
-        if (TxtGameSearch.Text == "搜索游戏（名称或 ID）...")
-        {
-            TxtGameSearch.Text = "";
-            TxtGameSearch.Foreground = ParseColor("#FFFFFFFF");
-        }
-    }
-
-    /// <summary>
-    /// 搜索框失去焦点
-    /// </summary>
-    private void TxtGameSearch_LostFocus(object sender, RoutedEventArgs e)
-    {
-        if (string.IsNullOrWhiteSpace(TxtGameSearch.Text))
-        {
-            TxtGameSearch.Text = "搜索游戏（名称或 ID）...";
-            TxtGameSearch.Foreground = ParseColor("#FFB4BED6");
-        }
-    }
-
-    /// <summary>
-    /// 搜索框文本变化
-    /// </summary>
-    private void TxtGameSearch_TextChanged(object sender, TextChangedEventArgs e)
-    {
-        // 实时搜索（可选功能）
-        if (!string.IsNullOrWhiteSpace(TxtGameSearch.Text) && TxtGameSearch.Text != "搜索游戏（名称或 ID）...")
-        {
-            SearchGames(TxtGameSearch.Text);
-        }
-        else
-        {
-            // 恢复当前选中的分类
-            if (BtnPatchTypeAll != null && BtnPatchTypeAll.Background == ParseColor("#FF0099F2"))
-                BtnPatchTypeAll_Click(null, null);
-            else if (BtnPatchTypeNoSteam != null && BtnPatchTypeNoSteam.Background == ParseColor("#FF0099F2"))
-                BtnPatchTypeNoSteam_Click(null, null);
-            else if (BtnPatchTypeLAN != null && BtnPatchTypeLAN.Background == ParseColor("#FF0099F2"))
-                BtnPatchTypeLAN_Click(null, null);
-            else if (BtnPatchTypeSteamOnline != null && BtnPatchTypeSteamOnline.Background == ParseColor("#FF0099F2"))
-                BtnPatchTypeSteamOnline_Click(null, null);
-        }
-    }
-
-    /// <summary>
-    /// 搜索按钮点击事件
-    /// </summary>
-    private void BtnSearch_Click(object sender, RoutedEventArgs e)
-    {
-        if (!string.IsNullOrWhiteSpace(TxtGameSearch.Text) && TxtGameSearch.Text != "搜索游戏（名称或 ID）...")
-        {
-            SearchGames(TxtGameSearch.Text);
-        }
-    }
-
-    /// <summary>
-    /// 执行游戏搜索
-    /// </summary>
-    /// <param name="searchText">搜索文本</param>
-    private void SearchGames(string searchText)
-    {
-        string searchTerm = searchText.Trim().ToLower();
-        
-        // 重置所有按钮样式
-        UpdatePatchTypeButtons(BtnPatchTypeAll);
-        
-        // 隐藏所有游戏
-        HideAllGames();
-        
-        // 搜索并显示匹配的游戏
-        SearchAndShowGame("re4", searchTerm);
-        SearchAndShowGame("mhw", searchTerm);
-        SearchAndShowGame("er", searchTerm);
-        SearchAndShowGame("er_steam", searchTerm);
-        
-        AppendPatchLog($"🔍 搜索：{searchText}");
-    }
-
-    /// <summary>
-    /// 搜索并显示匹配的游戏
-    /// </summary>
-    /// <param name="gameTag">游戏标签</param>
-    /// <param name="searchTerm">搜索关键词</param>
-    private void SearchAndShowGame(string gameTag, string searchTerm)
-    {
-        var game = GetGameInfoByTag(gameTag);
-        if (game == null) return;
-        
-        // 检查是否匹配（游戏英文名、中文名或 GameID）
-        bool isMatch = game.GameName.ToLower().Contains(searchTerm) || 
-                      game.GameId.Contains(searchTerm);
-        
-        // 如果没有匹配英文名或 ID，检查中文名
-        if (!isMatch)
-        {
-            string? chineseName = GetGameChineseName(game.GameName);
-            if (!string.IsNullOrEmpty(chineseName) && chineseName.Contains(searchTerm))
-            {
-                isMatch = true;
-            }
-        }
-        
-        if (!isMatch) return;
-        
-        // 显示匹配的游戏（网格视图和列表视图）
-        switch (gameTag)
-        {
-            case "re4":
-                if (CardResidentEvil4 != null) CardResidentEvil4.Visibility = Visibility.Visible;
-                if (ListCardResidentEvil4 != null) ListCardResidentEvil4.Visibility = Visibility.Visible;
-                break;
-            case "mhw":
-                if (CardMonsterHunter != null) CardMonsterHunter.Visibility = Visibility.Visible;
-                if (ListCardMonsterHunter != null) ListCardMonsterHunter.Visibility = Visibility.Visible;
-                break;
-            case "er":
-                if (CardEldenRing != null) CardEldenRing.Visibility = Visibility.Visible;
-                if (ListCardEldenRing != null) ListCardEldenRing.Visibility = Visibility.Visible;
-                break;
-            case "er_steam":
-                if (CardEldenRingSteam != null) CardEldenRingSteam.Visibility = Visibility.Visible;
-                if (ListCardEldenRingSteam != null) ListCardEldenRingSteam.Visibility = Visibility.Visible;
-                break;
-            case "fh5":
-                if (CardForzaHorizon5 != null) CardForzaHorizon5.Visibility = Visibility.Visible;
-                if (ListCardForzaHorizon5 != null) ListCardForzaHorizon5.Visibility = Visibility.Visible;
-                break;
-        }
-    }
-
-    /// <summary>
-    /// 获取游戏中文名
-    /// </summary>
-    /// <param name="gameName">游戏英文名</param>
-    /// <returns>游戏中文名</returns>
-    private string? GetGameChineseName(string gameName)
-    {
-        if (GameChineseNames.TryGetValue(gameName, out string? cnName))
-        {
-            return cnName;
-        }
-        return null;
-    }
-
-    #endregion
 
     /// <summary>
     /// 根据标签获取游戏信息
@@ -948,100 +1067,23 @@ public partial class MainWindow : Window
     /// <returns>游戏信息对象</returns>
     private PatchGameInfo? GetGameInfoByTag(string tag)
     {
-        return tag switch
+        // 优先从配置管理器获取
+        var config = GameConfigManager.Instance.GetGameByTag(tag);
+        if (config != null)
         {
-            "re4" => new PatchGameInfo
+            return new PatchGameInfo
             {
-                GameName = "Resident Evil 4",
-                GameId = "2050650",
-                CoverImage = "Resources/pic/inside/2050650.jpg",  // 详情页使用 inside 目录
-                ListCoverImage = "Resources/pic/outside/2050650.jpg",  // 列表视图使用 outside 目录
-                PatchSourcePath = "Resources/crack/免_steam/2050650",
-                PatchType = PatchType.NoSteam,  // 免 Steam 启动补丁
-                IsDEncrypted = true  // D 加密游戏
-            },
-            "mhw" => new PatchGameInfo
-            {
-                GameName = "Monster Hunter: World",
-                GameId = "582010",
-                CoverImage = "Resources/pic/inside/582010.jpg",
-                ListCoverImage = "Resources/pic/outside/582010.jpg",
-                PatchSourcePath = "Resources/crack/局域网联机/582010",
-                PatchType = PatchType.LAN,  // 局域网联机补丁
-                IsDEncrypted = true
-            },
-            "er" => new PatchGameInfo
-            {
-                GameName = "ELDEN RING",
-                GameId = "1245620",
-                CoverImage = "Resources/pic/inside/1245620.jpg",
-                ListCoverImage = "Resources/pic/outside/1245620.jpg",
-                PatchSourcePath = "Resources/crack/局域网联机/1245620",
-                PatchType = PatchType.LAN,  // 局域网联机补丁
-                IsDEncrypted = true
-            },
-            "er_steam" => new PatchGameInfo
-            {
-                GameName = "ELDEN RING",
-                GameId = "1245620",
-                CoverImage = "Resources/pic/inside/1245620.jpg",
-                ListCoverImage = "Resources/pic/outside/1245620.jpg",
-                PatchSourcePath = "Resources/crack/steam_联机/1245620",
-                PatchType = PatchType.SteamOnline,  // Steam 联机补丁
-                IsDEncrypted = true
-            },
-            "fh5" => new PatchGameInfo
-            {
-                GameName = "Forza Horizon 5",
-                GameId = "1551360",
-                CoverImage = "Resources/pic/inside/1551360.jpg",
-                ListCoverImage = "Resources/pic/outside/1551360.jpg",
-                PatchSourcePath = "Resources/crack/steam_联机/1551360",
-                PatchType = PatchType.SteamOnline,  // Steam 联机补丁
-                IsDEncrypted = true
-            },
-            "cd" => new PatchGameInfo
-            {
-                GameName = "Crimson Desert",
-                GameId = "3321460",
-                CoverImage = "Resources/pic/inside/3321460.jpg",
-                ListCoverImage = "Resources/pic/outside/3321460.jpg",
-                PatchSourcePath = "Resources/crack/免_steam/3321460",
-                PatchType = PatchType.NoSteam,  // 免 Steam 启动补丁
-                IsDEncrypted = true
-            },
-            "nioh3" => new PatchGameInfo
-            {
-                GameName = "Nioh 3",
-                GameId = "3681010",
-                CoverImage = "Resources/pic/inside/3681010.jpg",
-                ListCoverImage = "Resources/pic/outside/3681010.jpg",
-                PatchSourcePath = "Resources/crack/steam_联机/3681010",
-                PatchType = PatchType.SteamOnline,  // Steam 联机补丁
-                IsDEncrypted = true
-            },
-            "rer" => new PatchGameInfo
-            {
-                GameName = "Resident Evil Requiem",
-                GameId = "3764200",
-                CoverImage = "Resources/pic/inside/3764200.jpg",
-                ListCoverImage = "Resources/pic/outside/3764200.jpg",
-                PatchSourcePath = "Resources/crack/免_steam/3764200",
-                PatchType = PatchType.NoSteam,  // 免 Steam 启动补丁
-                IsDEncrypted = true
-            },
-            "rer_denuvo" => new PatchGameInfo
-            {
-                GameName = "Resident Evil Requiem",
-                GameId = "3764200",
-                CoverImage = "Resources/pic/inside/3764200.jpg",
-                ListCoverImage = "Resources/pic/outside/3764200.jpg",
-                PatchSourcePath = "Resources/crack/D_加密虚拟机/3764200",
-                PatchType = PatchType.DEncrypted,  // D 加密虚拟机补丁
-                IsDEncrypted = true
-            },
-            _ => null
-        };
+                GameName = config.GameName,
+                GameId = config.GameId,
+                PatchSourcePath = config.PatchSourcePath,
+                PatchType = (PatchType)config.PatchType,
+                IsDEncrypted = config.IsDEncrypted
+            };
+        }
+        // 如果配置中没有找到，返回 null
+        AppendDownloadLog($"⚠️ 警告：游戏标签 '{tag}' 在配置文件中不存在");
+        return null;
+
     }
 
     /// <summary>
@@ -1067,55 +1109,103 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// 显示游戏详情页面
+    /// 显示游戏详情（使用配置文件）
     /// </summary>
-    /// <param name="game">游戏信息对象</param>
-    private void ShowGameDetail(PatchGameInfo game)
+    private void ShowGameDetail(PatchGameConfig game)
     {
-        CurrentSelectedGame = game;
+        CurrentSelectedGame = new PatchGameInfo
+        {
+            GameName = game.GameName,
+            GameId = game.GameId,
+            PatchSourcePath = game.PatchSourcePath,
+            PatchType = (PatchType)game.PatchType,
+            IsDEncrypted = game.IsDEncrypted
+        };
         CurrentPatchSourcePath = game.PatchSourcePath;
-        
-        // 设置游戏信息
+
+        // 更新基本信息
         TxtDetailGameName.Text = game.GameName;
         TxtDetailGameId.Text = $"Game ID: {game.GameId}";
-        
-        // 设置中文名（如果有）
-        if (GameChineseNames.TryGetValue(game.GameName, out string? cnName))
-        {
-            TxtDetailGameNameCn.Text = cnName;
-        }
-        else
-        {
-            TxtDetailGameNameCn.Text = "";
-        }
-        
-        // 设置封面图片（使用 pack:// 协议加载相对路径）
+        TxtDetailGameNameCn.Text = game.ChineseName ?? "";
+
+        // 加载封面图片
         try
         {
-            var uri = new Uri("pack://application:,,,/" + game.CoverImage);
-            ImgDetailCover.Source = new System.Windows.Media.Imaging.BitmapImage(uri);
+            string coverUri = $"pack://application:,,,/SteamToolPlus;component/Resources/pic/inside/{game.GameId}.jpg";
+            ImgDetailCover.Source = new System.Windows.Media.Imaging.BitmapImage(new Uri(coverUri));
         }
         catch
         {
-            // 如果图片加载失败，使用默认图片
+            // 如果加载失败，使用默认图片
         }
-        
+
         // 清空路径和日志
         TxtGamePath.Text = "";
         TxtInjectLog.Text = "";
         InjectProgressPanel.Visibility = Visibility.Collapsed;
         BtnInjectPatch.IsEnabled = false;
         BtnRestoreGame.IsEnabled = false;
-        
+
+        // 加载 UI 配置
+        LoadGameDetailUI(game);
+
         // 加载补丁文件列表
         LoadPatchFilesList(game.PatchSourcePath);
-        
-        // 加载使用说明
         LoadUsageInstructions(game.PatchSourcePath);
-        
-        // 切换界面显示
+
+        // 切换界面
         PatchSpecialPanel.Visibility = Visibility.Collapsed;
         GameDetailPanel.Visibility = Visibility.Visible;
+    }
+
+    /// <summary>
+    /// 根据游戏配置动态加载详情界面 UI
+    /// </summary>
+    private void LoadGameDetailUI(PatchGameConfig game)
+    {
+        var uiConfig = game.GetUIConfig();
+
+        // 根据 UI 配置显示/隐藏相应控件
+        SetControlVisibility(ChkEnableOverlay, uiConfig.ShowOverlay);
+        SetControlVisibility(ChkImportAchievements, uiConfig.ShowAchievementImport);
+        SetControlVisibility(ChkImportStats, uiConfig.ShowStatsImport);
+        SetControlVisibility(ChkEnableHttp, uiConfig.ShowHttpFolder);
+        SetControlVisibility(ChkEnableAvatar, uiConfig.ShowAvatar);
+        SetControlVisibility(ChkEnableLanguage, uiConfig.ShowLanguage);
+        SetControlVisibility(ChkEnableMods, uiConfig.ShowMods);
+        SetControlVisibility(ChkEnableController, uiConfig.ShowController);
+        SetControlVisibility(ChkEnableTicket, uiConfig.ShowTicket);
+        SetControlVisibility(ChkCustomSavesName, uiConfig.ShowCustomSaveName);
+        SetControlVisibility(RbExperimentalMode, uiConfig.ShowExperimentalMode);
+
+        // 如果有特殊说明，显示出来
+        if (!string.IsNullOrEmpty(uiConfig.SpecialInstructions))
+        {
+            TxtSpecialInstructions.Text = uiConfig.SpecialInstructions;
+            SpecialInstructionsPanel.Visibility = Visibility.Visible;
+        }
+        else
+        {
+            SpecialInstructionsPanel.Visibility = Visibility.Collapsed;
+        }
+
+        // 如果有自定义使用说明文件路径，使用它
+        if (!string.IsNullOrEmpty(uiConfig.InstructionsFile))
+        {
+            // TxtInstructionsPath.Text = uiConfig.InstructionsFile;
+            // 注意：TxtInstructionsPath 控件未在 XAML 中定义，暂时注释
+        }
+    }
+
+    /// <summary>
+    /// 设置控件可见性（辅助方法）
+    /// </summary>
+    private void SetControlVisibility(UIElement control, bool isVisible)
+    {
+        if (control != null)
+        {
+            control.Visibility = isVisible ? Visibility.Visible : Visibility.Collapsed;
+        }
     }
 
     /// <summary>
@@ -1344,6 +1434,10 @@ public partial class MainWindow : Window
         AppendPatchLog($"备份文件夹：_patch_backup");
         AppendPatchLog($"共 {totalFiles} 个文件");
         
+        // 步骤 1：生成 steam_interfaces.txt（在复制补丁文件之前）
+        await GenerateSteamInterfacesFile(targetPath, backupFolder);
+        
+        // 步骤 2：复制补丁文件
         await Task.Run(() =>
         {
             foreach (string sourceFile in files)
@@ -1422,6 +1516,244 @@ public partial class MainWindow : Window
             MessageBoxImage.Information);
         
         BtnInjectPatch.IsEnabled = true;
+    }
+
+    /// <summary>
+    /// 生成 steam_interfaces.txt 文件（用于免 Steam 通用补丁注入）
+    /// </summary>
+    /// <param name="gamePath">游戏路径</param>
+    /// <param name="backupFolder">备份文件夹路径</param>
+    private async Task GenerateSteamInterfacesFile(string gamePath, string backupFolder)
+    {
+        try
+        {
+            AppendPatchLog("🔍 正在检测原始 steam_api DLL...");
+            
+            // 查找原始游戏的 steam_api DLL
+            string? originalSteamApi = null;
+            string[] possibleApiFiles = {
+                Path.Combine(gamePath, "steam_api64.dll"),
+                Path.Combine(gamePath, "steam_api.dll")
+            };
+            
+            foreach (string apiFile in possibleApiFiles)
+            {
+                if (File.Exists(apiFile))
+                {
+                    // 优先使用备份的原始 DLL
+                    string backupPath = Path.Combine(backupFolder, Path.GetFileName(apiFile) + ".bak");
+                    if (File.Exists(backupPath))
+                    {
+                        originalSteamApi = backupPath;
+                        AppendPatchLog($"📦 找到备份的原始 DLL：{Path.GetFileName(apiFile)}.bak");
+                    }
+                    else
+                    {
+                        originalSteamApi = apiFile;
+                        AppendPatchLog($"📦 找到 DLL：{Path.GetFileName(apiFile)}");
+                    }
+                    break;
+                }
+            }
+            
+            if (originalSteamApi == null)
+            {
+                AppendPatchLog("⚠️ 未找到 steam_api DLL，跳过 steam_interfaces.txt 生成");
+                return;
+            }
+            
+            // 确定使用的 generate_interfaces 工具
+            string toolPath = Path.Combine(AppPath, "Resources", "gbe_fork", "tools", "generate_interfaces");
+            string exeName = Environment.Is64BitProcess ? "generate_interfaces_x64.exe" : "generate_interfaces_x32.exe";
+            string generateInterfacesExe = Path.Combine(toolPath, exeName);
+            
+            if (!File.Exists(generateInterfacesExe))
+            {
+                AppendPatchLog($"❌ 未找到 generate_interfaces 工具：{exeName}");
+                return;
+            }
+            
+            AppendPatchLog($"🔧 准备调用 generate_interfaces 工具...");
+            
+            // 在临时目录生成 steam_interfaces.txt
+            string tempInterfacesFile = Path.Combine(Path.GetTempPath(), "steam_interfaces.txt");
+            
+            // 调用工具
+            var processInfo = new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = generateInterfacesExe,
+                Arguments = $"\"{originalSteamApi}\"",
+                WorkingDirectory = toolPath,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true
+            };
+            
+            using (var process = System.Diagnostics.Process.Start(processInfo))
+            {
+                if (process != null)
+                {
+                    string output = await process.StandardOutput.ReadToEndAsync();
+                    string error = await process.StandardError.ReadToEndAsync();
+                    await Task.Run(() => process.WaitForExit());
+                    
+                    if (!string.IsNullOrEmpty(output))
+                    {
+                        AppendPatchLog($"📝 generate_interfaces 输出：{output.Trim()}");
+                    }
+                    
+                    if (!string.IsNullOrEmpty(error))
+                    {
+                        AppendPatchLog($"⚠️ generate_interfaces 错误：{error.Trim()}");
+                    }
+                    
+                    if (process.ExitCode != 0)
+                    {
+                        AppendPatchLog($"❌ generate_interfaces 执行失败，退出码：{process.ExitCode}");
+                        return;
+                    }
+                }
+            }
+            
+            // 检查生成的文件
+            if (!File.Exists(tempInterfacesFile))
+            {
+                AppendPatchLog("❌ steam_interfaces.txt 生成失败");
+                return;
+            }
+            
+            // 确保 steam_settings 文件夹存在
+            string steamSettingsDir = Path.Combine(gamePath, "steam_settings");
+            Directory.CreateDirectory(steamSettingsDir);
+            
+            // 复制生成的文件到 steam_settings 文件夹
+            string targetInterfacesFile = Path.Combine(steamSettingsDir, "steam_interfaces.txt");
+            File.Copy(tempInterfacesFile, targetInterfacesFile, true);
+            
+            // 清理临时文件
+            try { File.Delete(tempInterfacesFile); } catch { }
+            
+            AppendPatchLog($"✅ steam_interfaces.txt 已生成并复制到 steam_settings 文件夹");
+        }
+        catch (Exception ex)
+        {
+            AppendPatchLog($"❌ 生成 steam_interfaces.txt 失败：{ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// 从备份的原始 DLL 生成 steam_interfaces.txt（专为一键配置场景）
+    /// </summary>
+    /// <param name="gamePath">游戏路径</param>
+    /// <param name="backupDllPath">备份的原始 DLL 路径</param>
+    /// <param name="dllName">DLL 文件名</param>
+    private async Task GenerateSteamInterfacesFileFromBackup(string gamePath, string backupDllPath, string dllName)
+    {
+        try
+        {
+            AppendPatchLog($"🔍 使用备份的原始 DLL 生成 steam_interfaces.txt...");
+            
+            // 检查备份文件是否存在
+            if (!File.Exists(backupDllPath))
+            {
+                AppendPatchLog($"❌ 备份文件不存在：{backupDllPath}");
+                return;
+            }
+            
+            AppendPatchLog($"📦 使用备份文件：{Path.GetFileName(backupDllPath)}");
+            
+            // 确定使用的 generate_interfaces 工具
+            string toolPath = Path.Combine(AppPath, "Resources", "gbe_fork", "tools", "generate_interfaces");
+            string exeName = Environment.Is64BitProcess ? "generate_interfaces_x64.exe" : "generate_interfaces_x32.exe";
+            string generateInterfacesExe = Path.Combine(toolPath, exeName);
+            
+            if (!File.Exists(generateInterfacesExe))
+            {
+                AppendPatchLog($"❌ 未找到 generate_interfaces 工具：{exeName}");
+                return;
+            }
+            
+            AppendPatchLog($"🔧 准备调用 generate_interfaces 工具...");
+            
+            // 将备份的 DLL 复制到临时目录进行处理（避免在原位置生成文件）
+            string tempDir = Path.Combine(Path.GetTempPath(), "steam_interfaces_gen_" + Guid.NewGuid().ToString());
+            Directory.CreateDirectory(tempDir);
+            
+            string tempDllPath = Path.Combine(tempDir, dllName);
+            File.Copy(backupDllPath, tempDllPath, true);
+            
+            AppendPatchLog($"📂 临时工作目录：{tempDir}");
+            
+            // 调用工具，传入临时目录的 DLL 路径
+            // 注意：generate_interfaces 会在它的工作目录生成 steam_interfaces.txt
+            // 所以我们需要将工作目录设置为临时目录，或者从工具目录复制生成的文件
+            var processInfo = new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = generateInterfacesExe,
+                Arguments = $"\"{tempDllPath}\"",
+                WorkingDirectory = tempDir,  // 改为临时目录，这样生成的文件会在临时目录
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true
+            };
+            
+            using (var process = System.Diagnostics.Process.Start(processInfo))
+            {
+                if (process != null)
+                {
+                    string output = await process.StandardOutput.ReadToEndAsync();
+                    string error = await process.StandardError.ReadToEndAsync();
+                    await Task.Run(() => process.WaitForExit());
+                    
+                    if (!string.IsNullOrEmpty(output))
+                    {
+                        AppendPatchLog($"📝 generate_interfaces 输出：{output.Trim()}");
+                    }
+                    
+                    if (!string.IsNullOrEmpty(error))
+                    {
+                        AppendPatchLog($"⚠️ generate_interfaces 错误：{error.Trim()}");
+                    }
+                    
+                    if (process.ExitCode != 0)
+                    {
+                        AppendPatchLog($"❌ generate_interfaces 执行失败，退出码：{process.ExitCode}");
+                        // 清理临时目录
+                        try { Directory.Delete(tempDir, true); } catch { }
+                        return;
+                    }
+                }
+            }
+            
+            // 检查生成的文件（在临时目录中）
+            string generatedInterfacesFile = Path.Combine(tempDir, "steam_interfaces.txt");
+            if (!File.Exists(generatedInterfacesFile))
+            {
+                AppendPatchLog("❌ steam_interfaces.txt 生成失败 - 未在临时目录找到生成的文件");
+                // 清理临时目录
+                try { Directory.Delete(tempDir, true); } catch { }
+                return;
+            }
+            
+            // 确保 steam_settings 文件夹存在
+            string steamSettingsDir = Path.Combine(gamePath, "steam_settings");
+            Directory.CreateDirectory(steamSettingsDir);
+            
+            // 复制生成的文件到 steam_settings 文件夹
+            string targetInterfacesFile = Path.Combine(steamSettingsDir, "steam_interfaces.txt");
+            File.Copy(generatedInterfacesFile, targetInterfacesFile, true);
+            
+            AppendPatchLog($"✅ steam_interfaces.txt 已生成并复制到 steam_settings 文件夹");
+            
+            // 清理临时目录
+            try { Directory.Delete(tempDir, true); } catch { }
+        }
+        catch (Exception ex)
+        {
+            AppendPatchLog($"❌ 生成 steam_interfaces.txt 失败：{ex.Message}");
+        }
     }
 
     /// <summary>
@@ -1915,7 +2247,7 @@ public partial class MainWindow : Window
             Height = 450,
             WindowStartupLocation = WindowStartupLocation.CenterOwner,
             Owner = this,
-            Background = ParseColor("#FF1B2838"),
+            Background = GetCachedColor("#FF1B2838"),
             ResizeMode = ResizeMode.NoResize
         };
 
@@ -1924,21 +2256,21 @@ public partial class MainWindow : Window
         var header = new TextBlock
         {
             Text = "请选择要下载的游戏（勾选需要的游戏）：",
-            Foreground = ParseColor("#FFC7D5E0"),
+            Foreground = GetCachedColor("#FFC7D5E0"),
             FontSize = 12,
             Margin = new Thickness(0, 0, 0, 10)
         };
         panel.Children.Add(header);
 
         var scrollViewer = new ScrollViewer { Height = 280, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
-        var checkBoxPanel = new StackPanel { Background = ParseColor("#FF0D1117") };
+        var checkBoxPanel = new StackPanel { Background = GetCachedColor("#FF0D1117") };
 
         foreach (var game in BatchGameList)
         {
             var checkBox = new CheckBox
             {
-                Content = $"☐ {game.Name} (AppID: {game.AppId}) - {game.ManifestCount}个Depot",
-                Foreground = ParseColor("#FFC7D5E0"),
+                Content = $"☐ {game.Name} (AppID: {game.AppId}) - {game.ManifestCount}个 Depot",
+                Foreground = GetCachedColor("#FFC7D5E0"),
                 FontSize = 11,
                 Margin = new Thickness(5, 5, 5, 5),
                 Tag = game,
@@ -1958,21 +2290,21 @@ public partial class MainWindow : Window
 
         var buttonPanel = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = System.Windows.HorizontalAlignment.Right, Margin = new Thickness(0, 15, 0, 0) };
 
-        var selectAllBtn = new Button { Content = "全选", Background = ParseColor("#FF3C7FC4"), Foreground = System.Windows.Media.Brushes.White, Padding = new Thickness(15, 5, 15, 5), Margin = new Thickness(0, 0, 10, 0), Cursor = System.Windows.Input.Cursors.Hand };
+        var selectAllBtn = new Button { Content = "全选", Background = GetCachedColor("#FF3C7FC4"), Foreground = System.Windows.Media.Brushes.White, Padding = new Thickness(15, 5, 15, 5), Margin = new Thickness(0, 0, 10, 0), Cursor = System.Windows.Input.Cursors.Hand };
         selectAllBtn.Click += (s, e) =>
         {
             foreach (var child in checkBoxPanel.Children)
                 if (child is CheckBox cb) { cb.IsChecked = true; cb.Content = cb.Content.ToString()!.Replace("☐", "☑"); }
         };
 
-        var selectNoneBtn = new Button { Content = "全取消", Background = ParseColor("#FF455A64"), Foreground = System.Windows.Media.Brushes.White, Padding = new Thickness(15, 5, 15, 5), Margin = new Thickness(0, 0, 10, 0), Cursor = System.Windows.Input.Cursors.Hand };
+        var selectNoneBtn = new Button { Content = "全取消", Background = GetCachedColor("#FF455A64"), Foreground = System.Windows.Media.Brushes.White, Padding = new Thickness(15, 5, 15, 5), Margin = new Thickness(0, 0, 10, 0), Cursor = System.Windows.Input.Cursors.Hand };
         selectNoneBtn.Click += (s, e) =>
         {
             foreach (var child in checkBoxPanel.Children)
                 if (child is CheckBox cb) { cb.IsChecked = false; cb.Content = cb.Content.ToString()!.Replace("☑", "☐"); }
         };
 
-        var confirmBtn = new Button { Content = "确认下载", Background = ParseColor("#FF2E7D32"), Foreground = System.Windows.Media.Brushes.White, Padding = new Thickness(15, 5, 15, 5), Margin = new Thickness(0, 0, 10, 0), Cursor = System.Windows.Input.Cursors.Hand };
+        var confirmBtn = new Button { Content = "确认下载", Background = GetCachedColor("#FF2E7D32"), Foreground = System.Windows.Media.Brushes.White, Padding = new Thickness(15, 5, 15, 5), Margin = new Thickness(0, 0, 10, 0), Cursor = System.Windows.Input.Cursors.Hand };
         confirmBtn.Click += (s, e) =>
         {
             var selectedGames = new List<GameInfo>();
@@ -1980,13 +2312,13 @@ public partial class MainWindow : Window
                 if (child is CheckBox cb && cb.IsChecked == true && cb.Tag is GameInfo game) selectedGames.Add(game);
 
             if (selectedGames.Count == 0)
-            { MessageBox.Show("请至少选择一个游戏", "提示", MessageBoxButton.OK, MessageBoxImage.Warning); return; }
+            { ShowWarning("请至少选择一个游戏"); return; }
 
             StartBatchDownload(selectedGames);
             dialog.Close();
         };
 
-        var cancelBtn = new Button { Content = "取消", Background = ParseColor("#FF607D8B"), Foreground = System.Windows.Media.Brushes.White, Padding = new Thickness(15, 5, 15, 5), Cursor = System.Windows.Input.Cursors.Hand };
+        var cancelBtn = new Button { Content = "取消", Background = GetCachedColor("#FF607D8B"), Foreground = System.Windows.Media.Brushes.White, Padding = new Thickness(15, 5, 15, 5), Cursor = System.Windows.Input.Cursors.Hand };
         cancelBtn.Click += (s, e) => dialog.Close();
 
         buttonPanel.Children.Add(selectAllBtn);
@@ -2006,7 +2338,7 @@ public partial class MainWindow : Window
     private void StartBatchDownload(List<GameInfo> games)
     {
         if (games.Count == 0)
-        { MessageBox.Show("请至少选择一个游戏", "提示", MessageBoxButton.OK, MessageBoxImage.Warning); return; }
+        { ShowWarning("请至少选择一个游戏"); return; }
 
         string saveDir = TxtSaveDir.Text;
         string ddv20Path = TxtDdExePath.Text;
@@ -2518,14 +2850,14 @@ public partial class MainWindow : Window
         // 重置所有按钮为默认样式（暗色背景，浅色文字，无边框）
         foreach (var kvp in PatchCategoryBtns)
         {
-            kvp.Value.Background = ParseColor("#FF455A64");
-            kvp.Value.Foreground = ParseColor("#FFB4BED6");
+            kvp.Value.Background = GetCachedColor("#FF455A64");
+            kvp.Value.Foreground = GetCachedColor("#FFB4BED6");
         }
 
         // 选中按钮设置为高亮样式（亮色背景，白色文字，金色边框）
         var selectedBtn = PatchCategoryBtns[category];
-        selectedBtn.Background = ParseColor("#FF0099F2");
-        selectedBtn.Foreground = ParseColor("#FFFFFFFF");
+        selectedBtn.Background = GetCachedColor("#FF0099F2");
+        selectedBtn.Foreground = GetCachedColor("#FFFFFFFF");
         
         // 显示对应的面板
         switch (category)
@@ -3031,7 +3363,7 @@ public partial class MainWindow : Window
     /// </summary>
     /// <param name="sender">发送者</param>
     /// <param name="e">事件参数</param>
-    private void RunFullConfig_Click(object sender, RoutedEventArgs e)
+    private async void RunFullConfig_Click(object sender, RoutedEventArgs e)
     {
         try
         {
@@ -3101,11 +3433,29 @@ public partial class MainWindow : Window
 
             // 检查目标 DLL 是否存在并备份
             string destDllPath = Path.Combine(gameDir, dllName);
+            string? originalDllBackupPath = null;
+            
             if (File.Exists(destDllPath))
             {
                 string backupPath = destDllPath + ".backup";
                 File.Copy(destDllPath, backupPath, true);
-                AppendPatchLog($"📦 已备份原始DLL：{dllName}.backup");
+                originalDllBackupPath = backupPath;
+                AppendPatchLog($"📦 已备份原始 DLL：{dllName}.backup");
+            }
+            else
+            {
+                AppendPatchLog($"ℹ️ 未找到原始 DLL，可能是新游戏或未安装");
+            }
+
+            // 重要：在复制 Goldberg DLL 之前，先生成 steam_interfaces.txt（需要原始 DLL）
+            if (!string.IsNullOrEmpty(originalDllBackupPath))
+            {
+                AppendPatchLog("🔧 正在生成 steam_interfaces.txt...");
+                await GenerateSteamInterfacesFileFromBackup(gameDir, originalDllBackupPath, dllName);
+            }
+            else
+            {
+                AppendPatchLog("⚠️ 跳过 steam_interfaces.txt 生成（无原始 DLL）");
             }
 
             File.Copy(srcDllPath, destDllPath, true);
@@ -3335,9 +3685,9 @@ public partial class MainWindow : Window
             AppendPatchLog("=" + new string('=', 40));
             AppendPatchLog("🎉 一键配置完成！");
             AppendPatchLog("=" + new string('=', 40));
-            AppendPatchLog("💡 提示：现在可以直接运行游戏exe文件了");
+            AppendPatchLog("💡 提示：现在可以直接运行游戏 exe 文件了");
 
-            MessageBox.Show("✅ 一键配置完成！\n\n请直接运行游戏exe文件进行测试。", "成功", MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageBox.Show("✅ 一键配置完成！\n\n已生成 steam_interfaces.txt 文件\n请直接运行游戏 exe 文件进行测试。", "成功", MessageBoxButton.OK, MessageBoxImage.Information);
         }
         catch (Exception ex)
         {
@@ -3935,11 +4285,13 @@ public class PatchGameInfo
     
     /// <summary>
     /// 封面图片路径（详情页使用 inside 目录）
+    /// 如果不设置，将根据 GameId 自动生成
     /// </summary>
     public string CoverImage { get; set; } = "";
     
     /// <summary>
     /// 列表视图封面图片路径（使用 outside 目录）
+    /// 如果不设置，将根据 GameId 自动生成
     /// </summary>
     public string ListCoverImage { get; set; } = "";
     
@@ -3957,4 +4309,153 @@ public class PatchGameInfo
     /// 是否为 D 加密游戏
     /// </summary>
     public bool IsDEncrypted { get; set; } = true;  // 默认都是 D 加密
+    
+    /// <summary>
+    /// 获取详情页封面的 Pack URI（根据 GameId 动态生成）
+    /// </summary>
+    public string GetCoverImagePackUri()
+    {
+        // 如果自定义了封面路径，使用自定义路径
+        if (!string.IsNullOrEmpty(CoverImage))
+        {
+            return $"pack://application:,,,/SteamToolPlus;component/{CoverImage}";
+        }
+        
+        // 否则根据 GameId 生成默认路径
+        string imageName = string.IsNullOrEmpty(GameId) ? "1245620.jpg" : $"{GameId}.jpg";
+        return $"pack://application:,,,/SteamToolPlus;component/Resources/pic/inside/{imageName}";
+    }
+    
+    /// <summary>
+    /// 获取列表视图封面的 Pack URI（根据 GameId 动态生成）
+    /// </summary>
+    public string GetListCoverImagePackUri()
+    {
+        // 如果自定义了封面路径，使用自定义路径
+        if (!string.IsNullOrEmpty(ListCoverImage))
+        {
+            return $"pack://application:,,,/SteamToolPlus;component/{ListCoverImage}";
+        }
+        
+        // 否则根据 GameId 生成默认路径
+        string imageName = string.IsNullOrEmpty(GameId) ? "1245620.jpg" : $"{GameId}.jpg";
+        return $"pack://application:,,,/SteamToolPlus;component/Resources/pic/outside/{imageName}";
+    }
+}
+
+
+
+/// <summary>
+/// 游戏卡片视图模型（用于数据绑定）
+/// </summary>
+public class GameCardViewModel
+{
+    /// <summary>
+    /// 游戏标签（唯一标识）
+    /// </summary>
+    public string Tag { get; set; } = "";
+
+    /// <summary>
+    /// 游戏英文名称
+    /// </summary>
+    public string GameName { get; set; } = "";
+
+    /// <summary>
+    /// 游戏中文名称
+    /// </summary>
+    public string? ChineseName { get; set; }
+
+    /// <summary>
+    /// 游戏中文名称显示（带前缀空格）
+    /// </summary>
+    public string ChineseNameDisplay
+    {
+        get
+        {
+            return string.IsNullOrEmpty(ChineseName) ? "" : $"  {ChineseName}";
+        }
+    }
+
+    /// <summary>
+    /// 游戏 ID 显示（带前缀）
+    /// </summary>
+    public string GameIdDisplay => $"Game ID: {GameId}";
+
+    /// <summary>
+    /// 游戏 Steam AppID
+    /// </summary>
+    public string GameId { get; set; } = "";
+
+    /// <summary>
+    /// 补丁类型
+    /// </summary>
+    public PatchType PatchType { get; set; }
+
+    /// <summary>
+    /// 补丁类型名称（带图标）
+    /// </summary>
+    public string PatchTypeName { get; set; } = "";
+
+    /// <summary>
+    /// 补丁类型背景颜色
+    /// </summary>
+    public SolidColorBrush PatchTypeColor { get; set; } = new SolidColorBrush(System.Windows.Media.Color.FromRgb(0x80, 0x80, 0x80));
+
+    /// <summary>
+    /// 网格视图封面图片路径（使用 inside 目录）
+    /// </summary>
+    public string CoverImage { get; set; } = "";
+
+    /// <summary>
+    /// 列表视图封面图片路径（使用 outside 目录）
+    /// </summary>
+    public string OutsideCoverImage { get; set; } = "";
+
+    /// <summary>
+    /// 初始化游戏卡片视图模型
+    /// </summary>
+    public GameCardViewModel()
+    {
+    }
+
+    /// <summary>
+    /// 从游戏配置创建游戏卡片视图模型
+    /// </summary>
+    public static GameCardViewModel FromConfig(PatchGameConfig config)
+    {
+        var viewModel = new GameCardViewModel
+        {
+            Tag = config.Tag,
+            GameName = config.GameName,
+            ChineseName = config.ChineseName,
+            GameId = config.GameId,
+            PatchType = (PatchType)config.PatchType
+        };
+
+        // 预计算所有属性值
+        viewModel.PatchTypeName = viewModel.PatchType switch
+        {
+            PatchType.NoSteam => "🚫 免 Steam 启动",
+            PatchType.LAN => "🌐 局域网联机",
+            PatchType.SteamOnline => "🌍 Steam 联机",
+            PatchType.DEncrypted => "🔒 D 加密虚拟机",
+            _ => "未知"
+        };
+
+        viewModel.PatchTypeColor = viewModel.PatchType switch
+        {
+            PatchType.NoSteam => new SolidColorBrush(System.Windows.Media.Color.FromRgb(0x00, 0x99, 0xF2)),
+            PatchType.LAN => new SolidColorBrush(System.Windows.Media.Color.FromRgb(0x4C, 0xAF, 0x50)),
+            PatchType.SteamOnline => new SolidColorBrush(System.Windows.Media.Color.FromRgb(0x9C, 0x27, 0xB0)),
+            PatchType.DEncrypted => new SolidColorBrush(System.Windows.Media.Color.FromRgb(0xFF, 0x98, 0x00)),
+            _ => new SolidColorBrush(System.Windows.Media.Color.FromRgb(0x80, 0x80, 0x80))
+        };
+
+        string imageName = string.IsNullOrEmpty(viewModel.GameId) ? "1245620.jpg" : $"{viewModel.GameId}.jpg";
+        // 网格视图和列表视图都使用 outside 目录的图片
+        viewModel.CoverImage = $"pack://application:,,,/SteamToolPlus;component/Resources/pic/outside/{imageName}";
+        viewModel.OutsideCoverImage = $"pack://application:,,,/SteamToolPlus;component/Resources/pic/outside/{imageName}";
+
+        return viewModel;
+    }
 }

@@ -10,7 +10,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
         Title="SteamToolPlus | 作者：鲸落_hi"
-        Height="1000" Width="1500"
+        Height="950" Width="1500"
         MinHeight="650" MinWidth="950"
         WindowStartupLocation="CenterScreen"
         FontFamily="微软雅黑"
@@ -32,6 +32,46 @@
                     <GradientStop Color="#FF3A4565" Offset="0"/>
                     <GradientStop Color="#FF2A3448" Offset="1"/>
                 </LinearGradientBrush>
+                
+                <!-- 自定义滚动条样式（浅色） -->
+                <Style TargetType="ScrollBar">
+                    <Setter Property="Background" Value="Transparent"/>
+                    <Setter Property="Width" Value="10"/>
+                    <Setter Property="Template">
+                        <Setter.Value>
+                            <ControlTemplate TargetType="ScrollBar">
+                                <Grid>
+                                    <Border x:Name="TrackBackground" Background="Transparent"/>
+                                    <Track x:Name="PART_Track" IsDirectionReversed="True">
+                                        <Track.Thumb>
+                                            <Thumb>
+                                                <Thumb.Template>
+                                                    <ControlTemplate TargetType="Thumb">
+                                                        <Border x:Name="thumbRect" 
+                                                                Background="#FF7A85A5" 
+                                                                CornerRadius="5" 
+                                                                Margin="2,0,2,0"
+                                                                Opacity="0.4"/>
+                                                        <ControlTemplate.Triggers>
+                                                            <Trigger Property="IsMouseOver" Value="True">
+                                                                <Setter TargetName="thumbRect" Property="Background" Value="#FF8A95B5"/>
+                                                                <Setter TargetName="thumbRect" Property="Opacity" Value="0.6"/>
+                                                            </Trigger>
+                                                            <Trigger Property="IsDragging" Value="True">
+                                                                <Setter TargetName="thumbRect" Property="Background" Value="#FF9AA5C5"/>
+                                                                <Setter TargetName="thumbRect" Property="Opacity" Value="0.8"/>
+                                                            </Trigger>
+                                                        </ControlTemplate.Triggers>
+                                                    </ControlTemplate>
+                                                </Thumb.Template>
+                                            </Thumb>
+                                        </Track.Thumb>
+                                    </Track>
+                                </Grid>
+                            </ControlTemplate>
+                        </Setter.Value>
+                    </Setter>
+                </Style>
             </ControlTemplate.Resources>
             <Border Background="#FF111930" CornerRadius="8" BorderBrush="#FF3C4A5C" BorderThickness="1">
                 <Border.Effect>
@@ -55,7 +95,7 @@
                                 <Border Width="22" Height="22" CornerRadius="5" Margin="0,0,8,0" ClipToBounds="True">
                                     <Image Source="Resources/icon.jpg" Stretch="UniformToFill"/>
                                 </Border>
-                                <TextBlock Text="SteamToolPlus v1.02" Foreground="#FFFFFFFF" FontSize="13" FontWeight="Medium" VerticalAlignment="Center"/>
+                                <TextBlock Text="SteamToolPlus v1.03" Foreground="#FFFFFFFF" FontSize="13" FontWeight="Medium" VerticalAlignment="Center"/>
                                 <TextBlock Text=" | 作者：鲸落_hi" Foreground="#FF7A8BA8" FontSize="13" VerticalAlignment="Center" Margin="8,0,0,0"/>
                             </StackPanel>
                             <!-- 窗口控制按钮 -->
@@ -233,12 +273,12 @@
                         </Button.Template>
                     </Button>
 
-                    <Button x:Name="BtnPatch" Content="游戏补丁注入" Height="48"
+                    <Button x:Name="BtnGameDownload" Content="游戏本体下载" Height="48"
                             Background="Transparent" Foreground="#FF909BB8"
                             FontFamily="微软雅黑" FontSize="15"
                             Cursor="Hand" BorderThickness="0"
                             HorizontalContentAlignment="Center"
-                            Click="BtnPatch_Click">
+                            Click="BtnGameDownload_Click">
                         <Button.Template>
                             <ControlTemplate TargetType="Button">
                                 <Border x:Name="border" Background="{TemplateBinding Background}">
@@ -248,7 +288,7 @@
                                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Center">
                                             <Path Width="20" Height="20" Stretch="Uniform" 
                                                   Fill="{TemplateBinding Foreground}" 
-                                                  Data="M22.7 19l-9.1-9.1c.9-2.3.4-5-1.5-6.9-2-2-5-2.4-7.4-1.3L9 6 6 9 1.6 4.7C.4 7.1.9 10.1 2.9 12.1c1.9 1.9 4.6 2.4 6.9 1.5l9.1 9.1c.4.4 1 .4 1.4 0l2.3-2.3c.5-.4.5-1.1.1-1.4z"
+                                                  Data="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"
                                                   Margin="0,0,12,0"/>
                                             <ContentPresenter VerticalAlignment="Center"/>
                                         </StackPanel>
@@ -264,12 +304,12 @@
                         </Button.Template>
                     </Button>
 
-                    <Button x:Name="BtnGameDownload" Content="游戏本体下载" Height="48"
+                    <Button x:Name="BtnPatch" Content="免steam启动补丁" Height="48"
                             Background="Transparent" Foreground="#FF909BB8"
                             FontFamily="微软雅黑" FontSize="15"
                             Cursor="Hand" BorderThickness="0"
                             HorizontalContentAlignment="Center"
-                            Click="BtnGameDownload_Click">
+                            Click="BtnPatch_Click">
                         <Button.Template>
                             <ControlTemplate TargetType="Button">
                                 <Border x:Name="border" Background="{TemplateBinding Background}">
@@ -321,7 +361,7 @@
                         </StackPanel>
 
                         <!-- 搜索框 -->
-                        <Border Grid.Column="1" Background="#FF5A6A9A" CornerRadius="12" Padding="6,2" MinWidth="350">
+                        <Border Grid.Column="1" Background="#FF7A8ABA" CornerRadius="12" Padding="6,2" MinWidth="350">
                             <Border.Effect>
                                 <DropShadowEffect BlurRadius="10" ShadowDepth="0" Opacity="0.3" Color="#FF000000"/>
                             </Border.Effect>
@@ -545,7 +585,13 @@
                         </Grid>
 
                         <!-- 游戏卡片网格（网格视图） -->
-                        <ScrollViewer Grid.Row="1" x:Name="GridViewScrollViewer" VerticalScrollBarVisibility="Auto" Background="Transparent">
+                        <ScrollViewer Grid.Row="1" x:Name="GridViewScrollViewer" VerticalScrollBarVisibility="Auto" 
+                                      Background="Transparent"
+                                      ScrollChanged="ScrollViewer_ScrollChanged"
+                                      CanContentScroll="True"
+                                      IsDeferredScrollingEnabled="True"
+                                      PanningMode="VerticalOnly"
+                                      PanningDeceleration="0.001">
                             <ItemsControl x:Name="GameCardsPanel">
                                 <ItemsControl.ItemsPanel>
                                     <ItemsPanelTemplate>
@@ -554,9 +600,10 @@
                                 </ItemsControl.ItemsPanel>
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
-                                        <Border Width="200" Height="260" Margin="0,0,15,15"
-                                                Background="#FF202D55" CornerRadius="8"
-                                                Cursor="Hand">
+                                        <Border Width="275" Height="160" Margin="0,0,6,15"
+                                                Background="#FF202D55" CornerRadius="8" Cursor="Hand"
+                                                Tag="{Binding Tag}"
+                                                MouseLeftButtonDown="GameCard_MouseLeftButtonDown">
                                             <Border.Style>
                                                 <Style TargetType="Border">
                                                     <Setter Property="BorderThickness" Value="0"/>
@@ -569,886 +616,109 @@
                                                 </Style>
                                             </Border.Style>
                                             <Grid>
-                                                <Grid.RowDefinitions>
-                                                    <RowDefinition Height="*"/>
-                                                    <RowDefinition Height="Auto"/>
-                                                </Grid.RowDefinitions>
-
-                                                <!-- 游戏封面 -->
-                                                <Border Grid.Row="0" Background="#FF1A2445" CornerRadius="8,8,0,0">
-                                                    <Image Source="{Binding CoverImage}" Stretch="UniformToFill"/>
+                                                <!-- 游戏封面（完整显示） -->
+                                                <Border Background="#FF1A2445" CornerRadius="8,8,0,0" ClipToBounds="True">
+                                                    <Image Source="{Binding CoverImage, Mode=OneWay}" Stretch="Uniform" VerticalAlignment="Top"/>
                                                 </Border>
 
-                                                <!-- 游戏信息 -->
-                                                <Border Grid.Row="1" Background="#FF1A2445" CornerRadius="0,0,8,8" Padding="10,8">
+                                                <!-- 底部渐变遮罩，让文字更清晰 -->
+                                                <Border VerticalAlignment="Bottom" Height="60" CornerRadius="0,0,8,8" ClipToBounds="True">
+                                                    <Border.Background>
+                                                        <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                                            <GradientStop Color="Transparent" Offset="0"/>
+                                                            <GradientStop Color="#CC000000" Offset="0.3"/>
+                                                            <GradientStop Color="#E6000000" Offset="1"/>
+                                                        </LinearGradientBrush>
+                                                    </Border.Background>
+                                                </Border>
+
+                                                <!-- 游戏信息（悬浮在图片上） -->
+                                                <Border VerticalAlignment="Bottom" Padding="10,8" CornerRadius="0,0,8,8">
                                                     <StackPanel>
-                                                        <TextBlock Text="{Binding GameName}" 
-                                                                   FontSize="13" FontWeight="Bold" 
-                                                                   Foreground="#FFFFFFFF" 
-                                                                   TextTrimming="CharacterEllipsis"
-                                                                   Margin="0,0,0,4"/>
-                                                        <TextBlock Text="{Binding GameId}" 
-                                                                   FontSize="13" 
-                                                                   Foreground="#FFB4BED6"
-                                                                   TextTrimming="CharacterEllipsis"/>
+                                                        <!-- 第一行：英文名 + 中文名 -->
+                                                        <TextBlock Margin="0,0,0,4">
+                                                            <Run Text="{Binding GameName, Mode=OneWay}" FontSize="13" FontWeight="Bold" Foreground="#FFFFFFFF"/>
+                                                            <Run Text="{Binding ChineseNameDisplay, Mode=OneWay}" FontSize="13" Foreground="#FFD0D0D0"/>
+                                                        </TextBlock>
+                                                        <!-- 第二行：GameID + 标签 -->
+                                                        <StackPanel Orientation="Horizontal">
+                                                            <TextBlock Text="{Binding GameIdDisplay, Mode=OneWay}" 
+                                                                       FontSize="13" 
+                                                                       Foreground="#FFB4BED6"
+                                                                       Margin="0,0,8,0"/>
+                                                            <!-- 补丁类型标签 -->
+                                                            <Border Background="{Binding PatchTypeColor, Mode=OneWay}" CornerRadius="3" Padding="4,2">
+                                                                <TextBlock Text="{Binding PatchTypeName, Mode=OneWay}" FontSize="13" FontWeight="Bold" Foreground="#FFFFFFFF"/>
+                                                            </Border>
+                                                        </StackPanel>
                                                     </StackPanel>
                                                 </Border>
                                             </Grid>
                                         </Border>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
-
-                                <!-- ELDEN RING 游戏卡片（字母排序 E） -->
-                                <Border x:Name="CardEldenRing" Width="275" Height="160" Margin="0,0,15,15"
-                                        Background="#FF202D55" CornerRadius="8" Cursor="Hand"
-                                        MouseLeftButtonDown="GameCard_MouseLeftButtonDown" Tag="er">
-                                    <Border.Style>
-                                        <Style TargetType="Border">
-                                            <Setter Property="BorderThickness" Value="0"/>
-                                            <Style.Triggers>
-                                                <Trigger Property="IsMouseOver" Value="True">
-                                                    <Setter Property="BorderThickness" Value="2"/>
-                                                    <Setter Property="BorderBrush" Value="#FF0099F2"/>
-                                                </Trigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </Border.Style>
-                                    <Grid>
-                                        <!-- 游戏封面（完整显示，9:5 比例） -->
-                                        <Border Background="#FF1A2445" CornerRadius="8,8,0,0" ClipToBounds="True">
-                                            <Image Source="Resources/pic/outside/1245620.jpg" Stretch="Uniform" VerticalAlignment="Top"/>
-                                        </Border>
-
-                                        <!-- 底部渐变遮罩，让文字更清晰 -->
-                                        <Border VerticalAlignment="Bottom" Height="60" CornerRadius="0,0,8,8" ClipToBounds="True">
-                                            <Border.Background>
-                                                <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
-                                                    <GradientStop Color="Transparent" Offset="0"/>
-                                                    <GradientStop Color="#CC000000" Offset="0.3"/>
-                                                    <GradientStop Color="#E6000000" Offset="1"/>
-                                                </LinearGradientBrush>
-                                            </Border.Background>
-                                        </Border>
-
-                                        <!-- 游戏信息（悬浮在图片上） -->
-                                        <Border VerticalAlignment="Bottom" Padding="10,8" CornerRadius="0,0,8,8">
-                                            <StackPanel>
-                                                <!-- 第一行：英文名 + 中文名 -->
-                                                <TextBlock Margin="0,0,0,4">
-                                                    <Run Text="ELDEN RING" FontSize="13" FontWeight="Bold" Foreground="#FFFFFFFF"/>
-                                                    <Run Text="  艾尔登法环" FontSize="13" Foreground="#FFD0D0D0"/>
-                                                </TextBlock>
-                                                <!-- 第二行：GameID + 标签 -->
-                                                <StackPanel Orientation="Horizontal">
-                                                    <TextBlock Text="Game ID: 1245620" 
-                                                               FontSize="13" 
-                                                               Foreground="#FFB4BED6"
-                                                               Margin="0,0,8,0"/>
-                                                    <!-- 补丁类型标签 -->
-                                                    <Border Background="#FF4CAF50" CornerRadius="3" Padding="4,2">
-                                                        <TextBlock Text="🌐 局域网联机" FontSize="13" FontWeight="Bold" Foreground="#FFFFFFFF"/>
-                                                    </Border>
-                                                </StackPanel>
-                                            </StackPanel>
-                                        </Border>
-                                    </Grid>
-                                </Border>
-
-                                <!-- ELDEN RING Steam 联机版游戏卡片 -->
-                                <Border x:Name="CardEldenRingSteam" Width="275" Height="160" Margin="0,0,15,15"
-                                        Background="#FF202D55" CornerRadius="8" Cursor="Hand"
-                                        MouseLeftButtonDown="GameCard_MouseLeftButtonDown" Tag="er_steam">
-                                    <Border.Style>
-                                        <Style TargetType="Border">
-                                            <Setter Property="BorderThickness" Value="0"/>
-                                            <Style.Triggers>
-                                                <Trigger Property="IsMouseOver" Value="True">
-                                                    <Setter Property="BorderThickness" Value="2"/>
-                                                    <Setter Property="BorderBrush" Value="#FF0099F2"/>
-                                                </Trigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </Border.Style>
-                                    <Grid>
-                                        <!-- 游戏封面（完整显示） -->
-                                        <Border Background="#FF1A2445" CornerRadius="8,8,0,0" ClipToBounds="True">
-                                            <Image Source="Resources/pic/outside/1245620.jpg" Stretch="Uniform" VerticalAlignment="Top"/>
-                                        </Border>
-
-                                        <!-- 底部渐变遮罩，让文字更清晰 -->
-                                        <Border VerticalAlignment="Bottom" Height="60" CornerRadius="0,0,8,8" ClipToBounds="True">
-                                            <Border.Background>
-                                                <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
-                                                    <GradientStop Color="Transparent" Offset="0"/>
-                                                    <GradientStop Color="#CC000000" Offset="0.3"/>
-                                                    <GradientStop Color="#E6000000" Offset="1"/>
-                                                </LinearGradientBrush>
-                                            </Border.Background>
-                                        </Border>
-
-                                        <!-- 游戏信息（悬浮在图片上） -->
-                                        <Border VerticalAlignment="Bottom" Padding="10,8" CornerRadius="0,0,8,8">
-                                            <StackPanel>
-                                                <!-- 第一行：英文名 + 中文名 -->
-                                                <TextBlock Margin="0,0,0,4">
-                                                    <Run Text="ELDEN RING" FontSize="13" FontWeight="Bold" Foreground="#FFFFFFFF"/>
-                                                    <Run Text="  艾尔登法环" FontSize="13" Foreground="#FFD0D0D0"/>
-                                                </TextBlock>
-                                                <!-- 第二行：GameID + 标签 -->
-                                                <StackPanel Orientation="Horizontal">
-                                                    <TextBlock Text="Game ID: 1245620" 
-                                                               FontSize="13" 
-                                                               Foreground="#FFB4BED6"
-                                                               Margin="0,0,8,0"/>
-                                                    <!-- 补丁类型标签 -->
-                                                    <Border Background="#FF9C27B0" CornerRadius="3" Padding="4,2">
-                                                        <TextBlock Text="🌍 Steam 联机" FontSize="13" FontWeight="Bold" Foreground="#FFFFFFFF"/>
-                                                    </Border>
-                                                </StackPanel>
-                                            </StackPanel>
-                                        </Border>
-                                    </Grid>
-                                </Border>
-
-                                <!-- Monster Hunter: World 游戏卡片（字母排序 M） -->
-                                <Border x:Name="CardMonsterHunter" Width="275" Height="160" Margin="0,0,15,15"
-                                        Background="#FF202D55" CornerRadius="8" Cursor="Hand"
-                                        MouseLeftButtonDown="GameCard_MouseLeftButtonDown" Tag="mhw">
-                                    <Border.Style>
-                                        <Style TargetType="Border">
-                                            <Setter Property="BorderThickness" Value="0"/>
-                                            <Style.Triggers>
-                                                <Trigger Property="IsMouseOver" Value="True">
-                                                    <Setter Property="BorderThickness" Value="2"/>
-                                                    <Setter Property="BorderBrush" Value="#FF0099F2"/>
-                                                </Trigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </Border.Style>
-                                    <Grid>
-                                        <!-- 游戏封面（完整显示） -->
-                                        <Border Background="#FF1A2445" CornerRadius="8,8,0,0" ClipToBounds="True">
-                                            <Image Source="Resources/pic/outside/582010.jpg" Stretch="Uniform" VerticalAlignment="Top"/>
-                                        </Border>
-
-                                        <!-- 底部渐变遮罩，让文字更清晰 -->
-                                        <Border VerticalAlignment="Bottom" Height="60" CornerRadius="0,0,8,8" ClipToBounds="True">
-                                            <Border.Background>
-                                                <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
-                                                    <GradientStop Color="Transparent" Offset="0"/>
-                                                    <GradientStop Color="#CC000000" Offset="0.3"/>
-                                                    <GradientStop Color="#E6000000" Offset="1"/>
-                                                </LinearGradientBrush>
-                                            </Border.Background>
-                                        </Border>
-
-                                        <!-- 游戏信息（悬浮在图片上） -->
-                                        <Border VerticalAlignment="Bottom" Padding="10,8" CornerRadius="0,0,8,8">
-                                            <StackPanel>
-                                                <!-- 第一行：英文名 + 中文名 -->
-                                                <TextBlock Margin="0,0,0,4">
-                                                    <Run Text="Monster Hunter: World" FontSize="13" FontWeight="Bold" Foreground="#FFFFFFFF"/>
-                                                    <Run Text="  怪物猎人：世界" FontSize="13" Foreground="#FFD0D0D0"/>
-                                                </TextBlock>
-                                                <!-- 第二行：GameID + 标签 -->
-                                                <StackPanel Orientation="Horizontal">
-                                                    <TextBlock Text="Game ID: 582010" 
-                                                               FontSize="13" 
-                                                               Foreground="#FFB4BED6"
-                                                               Margin="0,0,8,0"/>
-                                                    <!-- 补丁类型标签 -->
-                                                    <Border Background="#FF4CAF50" CornerRadius="3" Padding="4,2">
-                                                        <TextBlock Text="🌐 局域网联机" FontSize="13" FontWeight="Bold" Foreground="#FFFFFFFF"/>
-                                                    </Border>
-                                                </StackPanel>
-                                            </StackPanel>
-                                        </Border>
-                                    </Grid>
-                                </Border>
-
-                                <!-- Resident Evil 4 游戏卡片（字母排序 R） -->
-                                <Border x:Name="CardResidentEvil4" Width="275" Height="160" Margin="0,0,15,15"
-                                        Background="#FF202D55" CornerRadius="8" Cursor="Hand"
-                                        MouseLeftButtonDown="GameCard_MouseLeftButtonDown" Tag="re4">
-                                    <Border.Style>
-                                        <Style TargetType="Border">
-                                            <Setter Property="BorderThickness" Value="0"/>
-                                            <Style.Triggers>
-                                                <Trigger Property="IsMouseOver" Value="True">
-                                                    <Setter Property="BorderThickness" Value="2"/>
-                                                    <Setter Property="BorderBrush" Value="#FF0099F2"/>
-                                                </Trigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </Border.Style>
-                                    <Grid>
-                                        <!-- 游戏封面（完整显示） -->
-                                        <Border Background="#FF1A2445" CornerRadius="8,8,0,0" ClipToBounds="True">
-                                            <Image Source="Resources/pic/outside/2050650.jpg" Stretch="Uniform" VerticalAlignment="Top"/>
-                                        </Border>
-
-                                        <!-- 底部渐变遮罩，让文字更清晰 -->
-                                        <Border VerticalAlignment="Bottom" Height="60" CornerRadius="0,0,8,8" ClipToBounds="True">
-                                            <Border.Background>
-                                                <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
-                                                    <GradientStop Color="Transparent" Offset="0"/>
-                                                    <GradientStop Color="#CC000000" Offset="0.3"/>
-                                                    <GradientStop Color="#E6000000" Offset="1"/>
-                                                </LinearGradientBrush>
-                                            </Border.Background>
-                                        </Border>
-
-                                        <!-- 游戏信息（悬浮在图片上） -->
-                                        <Border VerticalAlignment="Bottom" Padding="10,8" CornerRadius="0,0,8,8">
-                                            <StackPanel>
-                                                <!-- 第一行：英文名 + 中文名 -->
-                                                <TextBlock Margin="0,0,0,4">
-                                                    <Run Text="Resident Evil 4" FontSize="13" FontWeight="Bold" Foreground="#FFFFFFFF"/>
-                                                    <Run Text="  生化危机 4" FontSize="13" Foreground="#FFD0D0D0"/>
-                                                </TextBlock>
-                                                <!-- 第二行：GameID + 标签 -->
-                                                <StackPanel Orientation="Horizontal">
-                                                    <TextBlock Text="Game ID: 2050650" 
-                                                               FontSize="13" 
-                                                               Foreground="#FFB4BED6"
-                                                               Margin="0,0,8,0"/>
-                                                    <!-- 补丁类型标签 -->
-                                                    <Border Background="#FF0099F2" CornerRadius="3" Padding="4,2">
-                                                        <TextBlock Text="🚫 免 Steam 启动" FontSize="13" FontWeight="Bold" Foreground="#FFFFFFFF"/>
-                                                    </Border>
-                                                </StackPanel>
-                                            </StackPanel>
-                                        </Border>
-                                    </Grid>
-                                </Border>
-
-                                <!-- Forza Horizon 5 游戏卡片（字母排序 F） -->
-                                <Border x:Name="CardForzaHorizon5" Width="275" Height="160" Margin="0,0,0,15"
-                                        Background="#FF202D55" CornerRadius="8" Cursor="Hand"
-                                        MouseLeftButtonDown="GameCard_MouseLeftButtonDown" Tag="fh5">
-                                    <Border.Style>
-                                        <Style TargetType="Border">
-                                            <Setter Property="BorderThickness" Value="0"/>
-                                            <Style.Triggers>
-                                                <Trigger Property="IsMouseOver" Value="True">
-                                                    <Setter Property="BorderThickness" Value="2"/>
-                                                    <Setter Property="BorderBrush" Value="#FF0099F2"/>
-                                                </Trigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </Border.Style>
-                                    <Grid>
-                                        <!-- 游戏封面（完整显示） -->
-                                        <Border Background="#FF1A2445" CornerRadius="8,8,0,0" ClipToBounds="True">
-                                            <Image Source="Resources/pic/outside/1551360.jpg" Stretch="Uniform" VerticalAlignment="Top"/>
-                                        </Border>
-
-                                        <!-- 底部渐变遮罩，让文字更清晰 -->
-                                        <Border VerticalAlignment="Bottom" Height="60" CornerRadius="0,0,8,8" ClipToBounds="True">
-                                            <Border.Background>
-                                                <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
-                                                    <GradientStop Color="Transparent" Offset="0"/>
-                                                    <GradientStop Color="#CC000000" Offset="0.3"/>
-                                                    <GradientStop Color="#E6000000" Offset="1"/>
-                                                </LinearGradientBrush>
-                                            </Border.Background>
-                                        </Border>
-
-                                        <!-- 游戏信息（悬浮在图片上） -->
-                                        <Border VerticalAlignment="Bottom" Padding="10,8" CornerRadius="0,0,8,8">
-                                            <StackPanel>
-                                                <!-- 第一行：英文名 + 中文名 -->
-                                                <TextBlock Margin="0,0,0,4">
-                                                    <Run Text="Forza Horizon 5" FontSize="13" FontWeight="Bold" Foreground="#FFFFFFFF"/>
-                                                    <Run Text="  极限竞速：地平线 5" FontSize="13" Foreground="#FFD0D0D0"/>
-                                                </TextBlock>
-                                                <!-- 第二行：GameID + 标签 -->
-                                                <StackPanel Orientation="Horizontal">
-                                                    <TextBlock Text="Game ID: 1551360" 
-                                                               FontSize="13" 
-                                                               Foreground="#FFB4BED6"
-                                                               Margin="0,0,8,0"/>
-                                                    <!-- 补丁类型标签 -->
-                                                    <Border Background="#FF9C27B0" CornerRadius="3" Padding="4,2">
-                                                        <TextBlock Text="🌍 Steam 联机" FontSize="13" FontWeight="Bold" Foreground="#FFFFFFFF"/>
-                                                    </Border>
-                                                </StackPanel>
-                                            </StackPanel>
-                                        </Border>
-                                    </Grid>
-                                </Border>
-
-                                <!-- Crimson Desert 游戏卡片（字母排序 C） -->
-                                <Border x:Name="CardCrimsonDesert" Width="275" Height="160" Margin="0,0,15,15"
-                                        Background="#FF202D55" CornerRadius="8" Cursor="Hand"
-                                        MouseLeftButtonDown="GameCard_MouseLeftButtonDown" Tag="cd">
-                                    <Border.Style>
-                                        <Style TargetType="Border">
-                                            <Setter Property="BorderThickness" Value="0"/>
-                                            <Style.Triggers>
-                                                <Trigger Property="IsMouseOver" Value="True">
-                                                    <Setter Property="BorderThickness" Value="2"/>
-                                                    <Setter Property="BorderBrush" Value="#FF0099F2"/>
-                                                </Trigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </Border.Style>
-                                    <Grid>
-                                        <!-- 游戏封面（完整显示） -->
-                                        <Border Background="#FF1A2445" CornerRadius="8,8,0,0" ClipToBounds="True">
-                                            <Image Source="Resources/pic/outside/3321460.jpg" Stretch="Uniform" VerticalAlignment="Top"/>
-                                        </Border>
-
-                                        <!-- 底部渐变遮罩，让文字更清晰 -->
-                                        <Border VerticalAlignment="Bottom" Height="60" CornerRadius="0,0,8,8" ClipToBounds="True">
-                                            <Border.Background>
-                                                <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
-                                                    <GradientStop Color="Transparent" Offset="0"/>
-                                                    <GradientStop Color="#CC000000" Offset="0.3"/>
-                                                    <GradientStop Color="#E6000000" Offset="1"/>
-                                                </LinearGradientBrush>
-                                            </Border.Background>
-                                        </Border>
-
-                                        <!-- 游戏信息（悬浮在图片上） -->
-                                        <Border VerticalAlignment="Bottom" Padding="10,8" CornerRadius="0,0,8,8">
-                                            <StackPanel>
-                                                <!-- 第一行：英文名 + 中文名 -->
-                                                <TextBlock Margin="0,0,0,4">
-                                                    <Run Text="Crimson Desert" FontSize="13" FontWeight="Bold" Foreground="#FFFFFFFF"/>
-                                                    <Run Text="  红色沙漠" FontSize="13" Foreground="#FFD0D0D0"/>
-                                                </TextBlock>
-                                                <!-- 第二行：GameID + 标签 -->
-                                                <StackPanel Orientation="Horizontal">
-                                                    <TextBlock Text="Game ID: 3321460" 
-                                                               FontSize="13" 
-                                                               Foreground="#FFB4BED6"
-                                                               Margin="0,0,8,0"/>
-                                                    <!-- 补丁类型标签 -->
-                                                    <Border Background="#FF0099F2" CornerRadius="3" Padding="4,2">
-                                                        <TextBlock Text="🚫 免 Steam 启动" FontSize="13" FontWeight="Bold" Foreground="#FFFFFFFF"/>
-                                                    </Border>
-                                                </StackPanel>
-                                            </StackPanel>
-                                        </Border>
-                                    </Grid>
-                                </Border>
-
-                                <!-- Nioh 3 游戏卡片（字母排序 N） -->
-                                <Border x:Name="CardNioh3" Width="275" Height="160" Margin="0,0,15,15"
-                                        Background="#FF202D55" CornerRadius="8" Cursor="Hand"
-                                        MouseLeftButtonDown="GameCard_MouseLeftButtonDown" Tag="nioh3">
-                                    <Border.Style>
-                                        <Style TargetType="Border">
-                                            <Setter Property="BorderThickness" Value="0"/>
-                                            <Style.Triggers>
-                                                <Trigger Property="IsMouseOver" Value="True">
-                                                    <Setter Property="BorderThickness" Value="2"/>
-                                                    <Setter Property="BorderBrush" Value="#FF0099F2"/>
-                                                </Trigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </Border.Style>
-                                    <Grid>
-                                        <!-- 游戏封面（完整显示） -->
-                                        <Border Background="#FF1A2445" CornerRadius="8,8,0,0" ClipToBounds="True">
-                                            <Image Source="Resources/pic/outside/3681010.jpg" Stretch="Uniform" VerticalAlignment="Top"/>
-                                        </Border>
-
-                                        <!-- 底部渐变遮罩，让文字更清晰 -->
-                                        <Border VerticalAlignment="Bottom" Height="60" CornerRadius="0,0,8,8" ClipToBounds="True">
-                                            <Border.Background>
-                                                <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
-                                                    <GradientStop Color="Transparent" Offset="0"/>
-                                                    <GradientStop Color="#CC000000" Offset="0.3"/>
-                                                    <GradientStop Color="#E6000000" Offset="1"/>
-                                                </LinearGradientBrush>
-                                            </Border.Background>
-                                        </Border>
-
-                                        <!-- 游戏信息（悬浮在图片上） -->
-                                        <Border VerticalAlignment="Bottom" Padding="10,8" CornerRadius="0,0,8,8">
-                                            <StackPanel>
-                                                <!-- 第一行：英文名 + 中文名 -->
-                                                <TextBlock Margin="0,0,0,4">
-                                                    <Run Text="Nioh 3" FontSize="13" FontWeight="Bold" Foreground="#FFFFFFFF"/>
-                                                    <Run Text="  仁王 3" FontSize="13" Foreground="#FFD0D0D0"/>
-                                                </TextBlock>
-                                                <!-- 第二行：GameID + 标签 -->
-                                                <StackPanel Orientation="Horizontal">
-                                                    <TextBlock Text="Game ID: 3681010" 
-                                                               FontSize="13" 
-                                                               Foreground="#FFB4BED6"
-                                                               Margin="0,0,8,0"/>
-                                                    <!-- 补丁类型标签 -->
-                                                    <Border Background="#FF9C27B0" CornerRadius="3" Padding="4,2">
-                                                        <TextBlock Text="🌍 Steam 联机" FontSize="13" FontWeight="Bold" Foreground="#FFFFFFFF"/>
-                                                    </Border>
-                                                </StackPanel>
-                                            </StackPanel>
-                                        </Border>
-                                    </Grid>
-                                </Border>
-
-                                <!-- Resident Evil Requiem 游戏卡片（字母排序 R） -->
-                                <Border x:Name="CardResidentEvilRequiem" Width="275" Height="160" Margin="0,0,15,15"
-                                        Background="#FF202D55" CornerRadius="8" Cursor="Hand"
-                                        MouseLeftButtonDown="GameCard_MouseLeftButtonDown" Tag="rer">
-                                    <Border.Style>
-                                        <Style TargetType="Border">
-                                            <Setter Property="BorderThickness" Value="0"/>
-                                            <Style.Triggers>
-                                                <Trigger Property="IsMouseOver" Value="True">
-                                                    <Setter Property="BorderThickness" Value="2"/>
-                                                    <Setter Property="BorderBrush" Value="#FF0099F2"/>
-                                                </Trigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </Border.Style>
-                                    <Grid>
-                                        <!-- 游戏封面（完整显示） -->
-                                        <Border Background="#FF1A2445" CornerRadius="8,8,0,0" ClipToBounds="True">
-                                            <Image Source="Resources/pic/outside/3764200.jpg" Stretch="Uniform" VerticalAlignment="Top"/>
-                                        </Border>
-
-                                        <!-- 底部渐变遮罩，让文字更清晰 -->
-                                        <Border VerticalAlignment="Bottom" Height="60" CornerRadius="0,0,8,8" ClipToBounds="True">
-                                            <Border.Background>
-                                                <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
-                                                    <GradientStop Color="Transparent" Offset="0"/>
-                                                    <GradientStop Color="#CC000000" Offset="0.3"/>
-                                                    <GradientStop Color="#E6000000" Offset="1"/>
-                                                </LinearGradientBrush>
-                                            </Border.Background>
-                                        </Border>
-
-                                        <!-- 游戏信息（悬浮在图片上） -->
-                                        <Border VerticalAlignment="Bottom" Padding="10,8" CornerRadius="0,0,8,8">
-                                            <StackPanel>
-                                                <!-- 第一行：英文名 + 中文名 -->
-                                                <TextBlock Margin="0,0,0,4">
-                                                    <Run Text="Resident Evil Requiem" FontSize="13" FontWeight="Bold" Foreground="#FFFFFFFF"/>
-                                                    <Run Text="  生化危机：安魂曲" FontSize="13" Foreground="#FFD0D0D0"/>
-                                                </TextBlock>
-                                                <!-- 第二行：GameID + 标签 -->
-                                                <StackPanel Orientation="Horizontal">
-                                                    <TextBlock Text="Game ID: 3764200" 
-                                                               FontSize="13" 
-                                                               Foreground="#FFB4BED6"
-                                                               Margin="0,0,8,0"/>
-                                                    <!-- 补丁类型标签 -->
-                                                    <Border Background="#FF0099F2" CornerRadius="3" Padding="4,2">
-                                                        <TextBlock Text="🚫 免 Steam 启动" FontSize="13" FontWeight="Bold" Foreground="#FFFFFFFF"/>
-                                                    </Border>
-                                                </StackPanel>
-                                            </StackPanel>
-                                        </Border>
-                                    </Grid>
-                                </Border>
-
-                                <!-- Resident Evil Requiem D 加密虚拟机版 游戏卡片（字母排序 R） -->
-                                <Border x:Name="CardResidentEvilRequiemDEncrypted" Width="275" Height="160" Margin="0,0,0,15"
-                                        Background="#FF202D55" CornerRadius="8" Cursor="Hand"
-                                        MouseLeftButtonDown="GameCard_MouseLeftButtonDown" Tag="rer_denuvo">
-                                    <Border.Style>
-                                        <Style TargetType="Border">
-                                            <Setter Property="BorderThickness" Value="0"/>
-                                            <Style.Triggers>
-                                                <Trigger Property="IsMouseOver" Value="True">
-                                                    <Setter Property="BorderThickness" Value="2"/>
-                                                    <Setter Property="BorderBrush" Value="#FF0099F2"/>
-                                                </Trigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </Border.Style>
-                                    <Grid>
-                                        <!-- 游戏封面（完整显示） -->
-                                        <Border Background="#FF1A2445" CornerRadius="8,8,0,0" ClipToBounds="True">
-                                            <Image Source="Resources/pic/outside/3764200.jpg" Stretch="Uniform" VerticalAlignment="Top"/>
-                                        </Border>
-
-                                        <!-- 底部渐变遮罩，让文字更清晰 -->
-                                        <Border VerticalAlignment="Bottom" Height="60" CornerRadius="0,0,8,8" ClipToBounds="True">
-                                            <Border.Background>
-                                                <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
-                                                    <GradientStop Color="Transparent" Offset="0"/>
-                                                    <GradientStop Color="#CC000000" Offset="0.3"/>
-                                                    <GradientStop Color="#E6000000" Offset="1"/>
-                                                </LinearGradientBrush>
-                                            </Border.Background>
-                                        </Border>
-
-                                        <!-- 游戏信息（悬浮在图片上） -->
-                                        <Border VerticalAlignment="Bottom" Padding="10,8" CornerRadius="0,0,8,8">
-                                            <StackPanel>
-                                                <!-- 第一行：英文名 + 中文名 -->
-                                                <TextBlock Margin="0,0,0,4">
-                                                    <Run Text="Resident Evil Requiem" FontSize="13" FontWeight="Bold" Foreground="#FFFFFFFF"/>
-                                                    <Run Text="  生化危机：安魂曲" FontSize="13" Foreground="#FFD0D0D0"/>
-                                                </TextBlock>
-                                                <!-- 第二行：GameID + 标签 -->
-                                                <StackPanel Orientation="Horizontal">
-                                                    <TextBlock Text="Game ID: 3764200" 
-                                                               FontSize="13" 
-                                                               Foreground="#FFB4BED6"
-                                                               Margin="0,0,8,0"/>
-                                                    <!-- 补丁类型标签 -->
-                                                    <Border Background="#FFFF5722" CornerRadius="3" Padding="4,2">
-                                                        <TextBlock Text="🔒 D 加密虚拟机" FontSize="13" FontWeight="Bold" Foreground="#FFFFFFFF"/>
-                                                    </Border>
-                                                </StackPanel>
-                                            </StackPanel>
-                                        </Border>
-                                    </Grid>
-                                </Border>
                             </ItemsControl>
                         </ScrollViewer>
 
                         <!-- 游戏列表（列表视图） -->
-                        <ScrollViewer Grid.Row="1" x:Name="ListViewScrollViewer" VerticalScrollBarVisibility="Auto" Background="Transparent" Visibility="Collapsed">
-                            <StackPanel>
-                                <!-- ELDEN RING 列表卡片（字母排序 E） -->
-                                <Border x:Name="ListCardEldenRing" Height="60" Margin="0,0,0,8" Background="#FF202D55" CornerRadius="8" Cursor="Hand"
-                                        MouseLeftButtonDown="ListGameCard_MouseLeftButtonDown" Tag="er">
-                                    <Border.Style>
-                                        <Style TargetType="Border">
-                                            <Setter Property="BorderThickness" Value="0"/>
-                                            <Style.Triggers>
-                                                <Trigger Property="IsMouseOver" Value="True">
-                                                    <Setter Property="Background" Value="#FF2A3555"/>
-                                                </Trigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </Border.Style>
-                                    <Grid Margin="15,10">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="Auto" MinWidth="72" MaxWidth="120"/>
-                                            <ColumnDefinition Width="*"/>
-                                        </Grid.ColumnDefinitions>
-
-                                        <!-- 游戏图标（使用 outside 目录，根据图片比例自适应） -->
-                                        <Border Grid.Column="0" Width="Auto" MinWidth="72" MaxWidth="120" Height="40" Background="#FF1A2445" CornerRadius="8" ClipToBounds="True">
-                                            <Image Source="Resources/pic/outside/1245620.jpg" Stretch="Uniform"/>
-                                        </Border>
-
-                                        <!-- 游戏名称和标签 -->
-                                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="15,0,0,0">
-                                            <StackPanel Orientation="Horizontal">
-                                                <TextBlock Text="ELDEN RING" FontSize="14" FontWeight="Bold" Foreground="#FFFFFFFF" VerticalAlignment="Center"/>
-                                                <!-- 补丁类型标签 -->
-                                                <Border Background="#FF4CAF50" CornerRadius="3" Padding="5,2" Margin="10,0,0,0">
-                                                    <TextBlock Text="🌐 局域网联机" FontSize="13" FontWeight="Bold" Foreground="#FFFFFFFF"/>
+                        <ScrollViewer Grid.Row="1" x:Name="ListViewScrollViewer" VerticalScrollBarVisibility="Auto" 
+                                      Background="Transparent" Visibility="Collapsed"
+                                      ScrollChanged="ScrollViewer_ScrollChanged"
+                                      CanContentScroll="True"
+                                      IsDeferredScrollingEnabled="True"
+                                      PanningMode="VerticalOnly"
+                                      PanningDeceleration="0.001">
+                            <ItemsControl x:Name="ListGameCardsPanel">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <StackPanel Orientation="Vertical"/>
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Height="60" Margin="0,0,0,8" Background="#FF202D55" CornerRadius="8" Cursor="Hand"
+                                                Tag="{Binding Tag}"
+                                                MouseLeftButtonDown="ListGameCard_MouseLeftButtonDown">
+                                            <Border.Style>
+                                                <Style TargetType="Border">
+                                                    <Setter Property="BorderThickness" Value="0"/>
+                                                    <Style.Triggers>
+                                                        <Trigger Property="IsMouseOver" Value="True">
+                                                            <Setter Property="Background" Value="#FF2A3555"/>
+                                                        </Trigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Border.Style>
+                                            <Grid Margin="15,10">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto" MinWidth="72" MaxWidth="120"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                </Grid.ColumnDefinitions>
+                                                <Border Grid.Column="0" Width="Auto" MinWidth="72" MaxWidth="120" Height="40" 
+                                                        Background="#FF1A2445" CornerRadius="8" ClipToBounds="True" 
+                                                        Margin="0,2,0,2">
+                                                    <Image Source="{Binding OutsideCoverImage, Mode=OneWay}" 
+                                                           Stretch="UniformToFill" 
+                                                           HorizontalAlignment="Stretch" 
+                                                           VerticalAlignment="Stretch"/>
                                                 </Border>
-                                            </StackPanel>
-                                            <TextBlock Text="Game ID: 1245620" FontSize="13" Foreground="#FFB4BED6" Margin="0,3,0,0"/>
-                                        </StackPanel>
-                                    </Grid>
-                                </Border>
-
-                                <!-- ELDEN RING Steam 联机版列表卡片 -->
-                                <Border x:Name="ListCardEldenRingSteam" Height="60" Margin="0,0,0,8" Background="#FF202D55" CornerRadius="8" Cursor="Hand"
-                                        MouseLeftButtonDown="ListGameCard_MouseLeftButtonDown" Tag="er_steam">
-                                    <Border.Style>
-                                        <Style TargetType="Border">
-                                            <Setter Property="BorderThickness" Value="0"/>
-                                            <Style.Triggers>
-                                                <Trigger Property="IsMouseOver" Value="True">
-                                                    <Setter Property="Background" Value="#FF2A3555"/>
-                                                </Trigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </Border.Style>
-                                    <Grid Margin="15,10">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="Auto" MinWidth="72" MaxWidth="120"/>
-                                            <ColumnDefinition Width="*"/>
-                                        </Grid.ColumnDefinitions>
-
-                                        <!-- 游戏图标（使用 outside 目录，根据图片比例自适应） -->
-                                        <Border Grid.Column="0" Width="Auto" MinWidth="72" MaxWidth="120" Height="40" Background="#FF1A2445" CornerRadius="8" ClipToBounds="True">
-                                            <Image Source="Resources/pic/outside/1245620.jpg" Stretch="Uniform"/>
+                                                <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="15,0,0,0">
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <TextBlock Margin="0,0,0,0">
+                                                            <Run Text="{Binding GameName, Mode=OneWay}" FontSize="14" FontWeight="Bold" Foreground="#FFFFFFFF"/>
+                                                            <Run Text="{Binding ChineseNameDisplay, Mode=OneWay}" FontSize="14" Foreground="#FFD0D0D0"/>
+                                                        </TextBlock>
+                                                        <Border Background="{Binding PatchTypeColor, Mode=OneWay}" CornerRadius="3" Padding="5,2" Margin="10,0,0,0">
+                                                            <TextBlock Text="{Binding PatchTypeName, Mode=OneWay}" FontSize="13" FontWeight="Bold" Foreground="#FFFFFFFF"/>
+                                                        </Border>
+                                                    </StackPanel>
+                                                    <TextBlock Text="{Binding GameIdDisplay, Mode=OneWay}" FontSize="13" Foreground="#FFB4BED6" Margin="0,3,0,0"/>
+                                                </StackPanel>
+                                            </Grid>
                                         </Border>
-
-                                        <!-- 游戏名称和标签 -->
-                                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="15,0,0,0">
-                                            <StackPanel Orientation="Horizontal">
-                                                <TextBlock Text="ELDEN RING" FontSize="14" FontWeight="Bold" Foreground="#FFFFFFFF" VerticalAlignment="Center"/>
-                                                <!-- 补丁类型标签 -->
-                                                <Border Background="#FF9C27B0" CornerRadius="3" Padding="5,2" Margin="10,0,0,0">
-                                                    <TextBlock Text="🌍 Steam 联机" FontSize="13" FontWeight="Bold" Foreground="#FFFFFFFF"/>
-                                                </Border>
-                                            </StackPanel>
-                                            <TextBlock Text="Game ID: 1245620" FontSize="13" Foreground="#FFB4BED6" Margin="0,3,0,0"/>
-                                        </StackPanel>
-                                    </Grid>
-                                </Border>
-
-                                <!-- Monster Hunter: World 列表卡片（字母排序 M） -->
-                                <Border x:Name="ListCardMonsterHunter" Height="60" Margin="0,0,0,8" Background="#FF202D55" CornerRadius="8" Cursor="Hand"
-                                        MouseLeftButtonDown="ListGameCard_MouseLeftButtonDown" Tag="mhw">
-                                    <Border.Style>
-                                        <Style TargetType="Border">
-                                            <Setter Property="BorderThickness" Value="0"/>
-                                            <Style.Triggers>
-                                                <Trigger Property="IsMouseOver" Value="True">
-                                                    <Setter Property="Background" Value="#FF2A3555"/>
-                                                </Trigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </Border.Style>
-                                    <Grid Margin="15,10">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="Auto" MinWidth="72" MaxWidth="120"/>
-                                            <ColumnDefinition Width="*"/>
-                                        </Grid.ColumnDefinitions>
-
-                                        <!-- 游戏图标（使用 outside 目录，根据图片比例自适应） -->
-                                        <Border Grid.Column="0" Width="Auto" MinWidth="72" MaxWidth="120" Height="40" Background="#FF1A2445" CornerRadius="8" ClipToBounds="True">
-                                            <Image Source="Resources/pic/outside/582010.jpg" Stretch="Uniform"/>
-                                        </Border>
-
-                                        <!-- 游戏名称和标签 -->
-                                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="15,0,0,0">
-                                            <StackPanel Orientation="Horizontal">
-                                                <TextBlock Text="Monster Hunter: World" FontSize="14" FontWeight="Bold" Foreground="#FFFFFFFF" VerticalAlignment="Center"/>
-                                                <!-- 补丁类型标签 -->
-                                                <Border Background="#FF4CAF50" CornerRadius="3" Padding="5,2" Margin="10,0,0,0">
-                                                    <TextBlock Text="🌐 局域网联机" FontSize="13" FontWeight="Bold" Foreground="#FFFFFFFF"/>
-                                                </Border>
-                                            </StackPanel>
-                                            <TextBlock Text="Game ID: 582010" FontSize="13" Foreground="#FFB4BED6" Margin="0,3,0,0"/>
-                                        </StackPanel>
-                                    </Grid>
-                                </Border>
-
-                                <!-- Resident Evil 4 列表卡片（字母排序 R） -->
-                                <Border x:Name="ListCardResidentEvil4" Height="60" Margin="0,0,0,8" Background="#FF202D55" CornerRadius="8" Cursor="Hand"
-                                        MouseLeftButtonDown="ListGameCard_MouseLeftButtonDown" Tag="re4">
-                                    <Border.Style>
-                                        <Style TargetType="Border">
-                                            <Setter Property="BorderThickness" Value="0"/>
-                                            <Style.Triggers>
-                                                <Trigger Property="IsMouseOver" Value="True">
-                                                    <Setter Property="Background" Value="#FF2A3555"/>
-                                                </Trigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </Border.Style>
-                                    <Grid Margin="15,10">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="Auto" MinWidth="72" MaxWidth="120"/>
-                                            <ColumnDefinition Width="*"/>
-                                        </Grid.ColumnDefinitions>
-
-                                        <!-- 游戏图标（使用 outside 目录，根据图片比例自适应） -->
-                                        <Border Grid.Column="0" Width="Auto" MinWidth="72" MaxWidth="120" Height="40" Background="#FF1A2445" CornerRadius="8" ClipToBounds="True">
-                                            <Image Source="Resources/pic/outside/2050650.jpg" Stretch="Uniform"/>
-                                        </Border>
-
-                                        <!-- 游戏名称和标签 -->
-                                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="15,0,0,0">
-                                            <StackPanel Orientation="Horizontal">
-                                                <TextBlock Text="Resident Evil 4" FontSize="14" FontWeight="Bold" Foreground="#FFFFFFFF" VerticalAlignment="Center"/>
-                                                <!-- 补丁类型标签 -->
-                                                <Border Background="#FF0099F2" CornerRadius="3" Padding="5,2" Margin="10,0,0,0">
-                                                    <TextBlock Text="🚫 免 Steam 启动" FontSize="13" FontWeight="Bold" Foreground="#FFFFFFFF"/>
-                                                </Border>
-                                            </StackPanel>
-                                            <TextBlock Text="Game ID: 2050650" FontSize="13" Foreground="#FFB4BED6" Margin="0,3,0,0"/>
-                                        </StackPanel>
-                                    </Grid>
-                                </Border>
-
-                                <!-- Forza Horizon 5 列表卡片（字母排序 F） -->
-                                <Border x:Name="ListCardForzaHorizon5" Height="60" Margin="0,0,0,8" Background="#FF202D55" CornerRadius="8" Cursor="Hand"
-                                        MouseLeftButtonDown="ListGameCard_MouseLeftButtonDown" Tag="fh5">
-                                    <Border.Style>
-                                        <Style TargetType="Border">
-                                            <Setter Property="BorderThickness" Value="0"/>
-                                            <Style.Triggers>
-                                                <Trigger Property="IsMouseOver" Value="True">
-                                                    <Setter Property="Background" Value="#FF2A3555"/>
-                                                </Trigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </Border.Style>
-                                    <Grid Margin="15,10">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="Auto" MinWidth="72" MaxWidth="120"/>
-                                            <ColumnDefinition Width="*"/>
-                                        </Grid.ColumnDefinitions>
-
-                                        <!-- 游戏图标（使用 outside 目录，根据图片比例自适应） -->
-                                        <Border Grid.Column="0" Width="Auto" MinWidth="72" MaxWidth="120" Height="40" Background="#FF1A2445" CornerRadius="8" ClipToBounds="True">
-                                            <Image Source="Resources/pic/outside/1551360.jpg" Stretch="Uniform"/>
-                                        </Border>
-
-                                        <!-- 游戏名称和标签 -->
-                                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="15,0,0,0">
-                                            <StackPanel Orientation="Horizontal">
-                                                <TextBlock Text="Forza Horizon 5" FontSize="14" FontWeight="Bold" Foreground="#FFFFFFFF" VerticalAlignment="Center"/>
-                                                <!-- 补丁类型标签 -->
-                                                <Border Background="#FF9C27B0" CornerRadius="3" Padding="5,2" Margin="10,0,0,0">
-                                                    <TextBlock Text="🌍 Steam 联机" FontSize="13" FontWeight="Bold" Foreground="#FFFFFFFF"/>
-                                                </Border>
-                                            </StackPanel>
-                                            <TextBlock Text="Game ID: 1551360" FontSize="13" Foreground="#FFB4BED6" Margin="0,3,0,0"/>
-                                        </StackPanel>
-                                    </Grid>
-                                </Border>
-
-                                <!-- Crimson Desert 列表卡片（字母排序 C） -->
-                                <Border x:Name="ListCardCrimsonDesert" Height="60" Margin="0,0,0,8" Background="#FF202D55" CornerRadius="8" Cursor="Hand"
-                                        MouseLeftButtonDown="ListGameCard_MouseLeftButtonDown" Tag="cd">
-                                    <Border.Style>
-                                        <Style TargetType="Border">
-                                            <Setter Property="BorderThickness" Value="0"/>
-                                            <Style.Triggers>
-                                                <Trigger Property="IsMouseOver" Value="True">
-                                                    <Setter Property="Background" Value="#FF2A3555"/>
-                                                </Trigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </Border.Style>
-                                    <Grid Margin="15,10">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="Auto" MinWidth="72" MaxWidth="120"/>
-                                            <ColumnDefinition Width="*"/>
-                                        </Grid.ColumnDefinitions>
-
-                                        <!-- 游戏图标（使用 outside 目录，根据图片比例自适应） -->
-                                        <Border Grid.Column="0" Width="Auto" MinWidth="72" MaxWidth="120" Height="40" Background="#FF1A2445" CornerRadius="8" ClipToBounds="True">
-                                            <Image Source="Resources/pic/outside/3321460.jpg" Stretch="Uniform"/>
-                                        </Border>
-
-                                        <!-- 游戏名称和标签 -->
-                                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="15,0,0,0">
-                                            <StackPanel Orientation="Horizontal">
-                                                <TextBlock Text="Crimson Desert" FontSize="14" FontWeight="Bold" Foreground="#FFFFFFFF" VerticalAlignment="Center"/>
-                                                <!-- 补丁类型标签 -->
-                                                <Border Background="#FF0099F2" CornerRadius="3" Padding="5,2" Margin="10,0,0,0">
-                                                    <TextBlock Text="🚫 免 Steam 启动" FontSize="13" FontWeight="Bold" Foreground="#FFFFFFFF"/>
-                                                </Border>
-                                            </StackPanel>
-                                            <TextBlock Text="Game ID: 3321460" FontSize="13" Foreground="#FFB4BED6" Margin="0,3,0,0"/>
-                                        </StackPanel>
-                                    </Grid>
-                                </Border>
-
-                                <!-- Nioh 3 列表卡片（字母排序 N） -->
-                                <Border x:Name="ListCardNioh3" Height="60" Margin="0,0,0,8" Background="#FF202D55" CornerRadius="8" Cursor="Hand"
-                                        MouseLeftButtonDown="ListGameCard_MouseLeftButtonDown" Tag="nioh3">
-                                    <Border.Style>
-                                        <Style TargetType="Border">
-                                            <Setter Property="BorderThickness" Value="0"/>
-                                            <Style.Triggers>
-                                                <Trigger Property="IsMouseOver" Value="True">
-                                                    <Setter Property="Background" Value="#FF2A3555"/>
-                                                </Trigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </Border.Style>
-                                    <Grid Margin="15,10">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="Auto" MinWidth="72" MaxWidth="120"/>
-                                            <ColumnDefinition Width="*"/>
-                                        </Grid.ColumnDefinitions>
-
-                                        <!-- 游戏图标（使用 outside 目录，根据图片比例自适应） -->
-                                        <Border Grid.Column="0" Width="Auto" MinWidth="72" MaxWidth="120" Height="40" Background="#FF1A2445" CornerRadius="8" ClipToBounds="True">
-                                            <Image Source="Resources/pic/outside/3681010.jpg" Stretch="Uniform"/>
-                                        </Border>
-
-                                        <!-- 游戏名称和标签 -->
-                                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="15,0,0,0">
-                                            <StackPanel Orientation="Horizontal">
-                                                <TextBlock Text="Nioh 3" FontSize="14" FontWeight="Bold" Foreground="#FFFFFFFF" VerticalAlignment="Center"/>
-                                                <!-- 补丁类型标签 -->
-                                                <Border Background="#FF9C27B0" CornerRadius="3" Padding="5,2" Margin="10,0,0,0">
-                                                    <TextBlock Text="🌍 Steam 联机" FontSize="13" FontWeight="Bold" Foreground="#FFFFFFFF"/>
-                                                </Border>
-                                            </StackPanel>
-                                            <TextBlock Text="Game ID: 3681010" FontSize="13" Foreground="#FFB4BED6" Margin="0,3,0,0"/>
-                                        </StackPanel>
-                                    </Grid>
-                                </Border>
-
-                                <!-- Resident Evil Requiem 列表卡片（字母排序 R） -->
-                                <Border x:Name="ListCardResidentEvilRequiem" Height="60" Margin="0,0,0,8" Background="#FF202D55" CornerRadius="8" Cursor="Hand"
-                                        MouseLeftButtonDown="ListGameCard_MouseLeftButtonDown" Tag="rer">
-                                    <Border.Style>
-                                        <Style TargetType="Border">
-                                            <Setter Property="BorderThickness" Value="0"/>
-                                            <Style.Triggers>
-                                                <Trigger Property="IsMouseOver" Value="True">
-                                                    <Setter Property="Background" Value="#FF2A3555"/>
-                                                </Trigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </Border.Style>
-                                    <Grid Margin="15,10">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="Auto" MinWidth="72" MaxWidth="120"/>
-                                            <ColumnDefinition Width="*"/>
-                                        </Grid.ColumnDefinitions>
-
-                                        <!-- 游戏图标（使用 outside 目录，根据图片比例自适应） -->
-                                        <Border Grid.Column="0" Width="Auto" MinWidth="72" MaxWidth="120" Height="40" Background="#FF1A2445" CornerRadius="8" ClipToBounds="True">
-                                            <Image Source="Resources/pic/outside/3764200.jpg" Stretch="Uniform"/>
-                                        </Border>
-
-                                        <!-- 游戏名称和标签 -->
-                                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="15,0,0,0">
-                                            <StackPanel Orientation="Horizontal">
-                                                <TextBlock Text="Resident Evil Requiem" FontSize="14" FontWeight="Bold" Foreground="#FFFFFFFF" VerticalAlignment="Center"/>
-                                                <!-- 补丁类型标签 -->
-                                                <Border Background="#FF0099F2" CornerRadius="3" Padding="5,2" Margin="10,0,0,0">
-                                                    <TextBlock Text="🚫 免 Steam 启动" FontSize="13" FontWeight="Bold" Foreground="#FFFFFFFF"/>
-                                                </Border>
-                                            </StackPanel>
-                                            <TextBlock Text="Game ID: 3764200" FontSize="13" Foreground="#FFB4BED6" Margin="0,3,0,0"/>
-                                        </StackPanel>
-                                    </Grid>
-                                </Border>
-
-                                <!-- Resident Evil Requiem D 加密虚拟机版 列表卡片 -->
-                                <Border x:Name="ListCardResidentEvilRequiemDEncrypted" Height="60" Margin="0,0,0,8" Background="#FF202D55" CornerRadius="8" Cursor="Hand"
-                                        MouseLeftButtonDown="ListGameCard_MouseLeftButtonDown" Tag="rer_denuvo">
-                                    <Border.Style>
-                                        <Style TargetType="Border">
-                                            <Setter Property="BorderThickness" Value="0"/>
-                                            <Style.Triggers>
-                                                <Trigger Property="IsMouseOver" Value="True">
-                                                    <Setter Property="Background" Value="#FF2A3555"/>
-                                                </Trigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </Border.Style>
-                                    <Grid Margin="15,10">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="Auto" MinWidth="72" MaxWidth="120"/>
-                                            <ColumnDefinition Width="*"/>
-                                        </Grid.ColumnDefinitions>
-
-                                        <!-- 游戏图标（使用 outside 目录，根据图片比例自适应） -->
-                                        <Border Grid.Column="0" Width="Auto" MinWidth="72" MaxWidth="120" Height="40" Background="#FF1A2445" CornerRadius="8" ClipToBounds="True">
-                                            <Image Source="Resources/pic/outside/3764200.jpg" Stretch="Uniform"/>
-                                        </Border>
-
-                                        <!-- 游戏名称和标签 -->
-                                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="15,0,0,0">
-                                            <StackPanel Orientation="Horizontal">
-                                                <TextBlock Text="Resident Evil Requiem" FontSize="14" FontWeight="Bold" Foreground="#FFFFFFFF" VerticalAlignment="Center"/>
-                                                <!-- 补丁类型标签 -->
-                                                <Border Background="#FFFF5722" CornerRadius="3" Padding="5,2" Margin="10,0,0,0">
-                                                    <TextBlock Text="🔒 D 加密虚拟机" FontSize="13" FontWeight="Bold" Foreground="#FFFFFFFF"/>
-                                                </Border>
-                                            </StackPanel>
-                                            <TextBlock Text="Game ID: 3764200" FontSize="13" Foreground="#FFB4BED6" Margin="0,3,0,0"/>
-                                        </StackPanel>
-                                    </Grid>
-                                </Border>
-                            </StackPanel>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
                         </ScrollViewer>
                     </Grid>
                 </Border>
@@ -1456,7 +726,12 @@
 
             <!-- 游戏详情页面（注入补丁界面） -->
             <Grid x:Name="GameDetailPanel" Visibility="Collapsed" Margin="15">
-                <ScrollViewer VerticalScrollBarVisibility="Auto" Background="#FF111930">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" 
+                              Background="#FF111930"
+                              CanContentScroll="True"
+                              IsDeferredScrollingEnabled="True"
+                              PanningMode="VerticalOnly"
+                              PanningDeceleration="0.001">
                     <Grid>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
@@ -1562,6 +837,24 @@
                             </Grid>
                         </Border>
 
+                        <!-- 特殊说明面板（动态显示） -->
+                        <Border x:Name="SpecialInstructionsPanel" 
+        Grid.Row="1" 
+        Margin="0,0,0,10" 
+        Padding="15,10" 
+        Background="#FFFF9800" 
+        CornerRadius="8" 
+        Visibility="Collapsed">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="⚠️" FontSize="16" Margin="0,0,10,0"/>
+                                <TextBlock x:Name="TxtSpecialInstructions" 
+                   FontSize="13" 
+                   Foreground="#FF000000" 
+                   TextWrapping="Wrap"
+                   FontWeight="Medium"/>
+                            </StackPanel>
+                        </Border>
+
                         <!-- 游戏封面和路径选择 -->
                         <Border Grid.Row="1" Background="#FF1A2445" Padding="15,10" Margin="0,0,0,10" MinHeight="300">
                             <Grid>
@@ -1617,7 +910,11 @@
                                 <Border Background="#FF111930" CornerRadius="8" Padding="15" Margin="0,15,0,0" Height="300">
                                     <StackPanel>
                                         <TextBlock Text="📖 使用说明" FontSize="13" FontWeight="Bold" Foreground="#FFB4BED6" Margin="0,0,0,10"/>
-                                        <ScrollViewer VerticalScrollBarVisibility="Auto" Height="250">
+                                        <ScrollViewer VerticalScrollBarVisibility="Auto" Height="250"
+                                                      CanContentScroll="True"
+                                                      IsDeferredScrollingEnabled="True"
+                                                      PanningMode="VerticalOnly"
+                                                      PanningDeceleration="0.001">
                                             <TextBox x:Name="TxtUsageInstructions" 
                                                      IsReadOnly="True"
                                                      TextWrapping="Wrap"
@@ -1651,7 +948,11 @@
                                         </Grid.RowDefinitions>
 
                                         <TextBlock Grid.Row="0" Text="即将复制的补丁文件：" FontSize="13" FontWeight="Bold" Foreground="#FFB4BED6" Margin="0,0,0,10"/>
-                                        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" MaxHeight="200">
+                                        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" MaxHeight="200"
+                                                      CanContentScroll="True"
+                                                      IsDeferredScrollingEnabled="True"
+                                                      PanningMode="VerticalOnly"
+                                                      PanningDeceleration="0.001">
                                             <StackPanel x:Name="PatchFilesList">
                                                 <!-- 补丁文件列表将在这里动态生成 -->
                                             </StackPanel>
@@ -1671,7 +972,11 @@
                                             <TextBlock x:Name="TxtInjectProgress" Grid.Column="1" Text="0/0" FontSize="13" Foreground="#FFFFFFFF"/>
                                         </Grid>
                                         <ProgressBar x:Name="InjectProgressBar" Height="20" Background="#FF0A0F20" Foreground="#FF0099F2" BorderBrush="#FF3C4A5C" BorderThickness="1"/>
-                                        <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="150" Margin="0,10,0,0">
+                                        <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="150" Margin="0,10,0,0"
+                                                      CanContentScroll="True"
+                                                      IsDeferredScrollingEnabled="True"
+                                                      PanningMode="VerticalOnly"
+                                                      PanningDeceleration="0.001">
                                             <TextBox x:Name="TxtInjectLog" 
                                              IsReadOnly="True"
                                              TextWrapping="Wrap"
@@ -1882,7 +1187,12 @@
                 </GroupBox>
 
                 <GroupBox Grid.Row="2" Header="下载日志" Foreground="#FFFFFFFF" Background="#FF1A2445" BorderBrush="#FF3C4A5C" Margin="0,0,0,0" Padding="10">
-                    <ScrollViewer VerticalScrollBarVisibility="Auto" Background="#FF0A0F20">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" 
+                                  Background="#FF0A0F20"
+                                  CanContentScroll="True"
+                                  IsDeferredScrollingEnabled="True"
+                                  PanningMode="VerticalOnly"
+                                  PanningDeceleration="0.001">
                         <TextBox x:Name="TxtDownloadLog"
                                  IsReadOnly="True"
                                  TextWrapping="Wrap"
@@ -1992,7 +1302,12 @@
                     </StackPanel>
                 </Border>
 
-                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Background="#FF1A2445" Padding="5">
+                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" 
+                              Background="#FF1A2445" Padding="5"
+                              CanContentScroll="True"
+                              IsDeferredScrollingEnabled="True"
+                              PanningMode="VerticalOnly"
+                              PanningDeceleration="0.001">
                     <Grid x:Name="PatchContentPanel">
                         <StackPanel x:Name="PatchBasicPanel" Visibility="Visible">
                             <DockPanel Margin="0,0,0,10">
@@ -2135,7 +1450,12 @@
                             </StackPanel>
 
                             <GroupBox Header="操作日志" Foreground="#FFFFFFFF" Background="#FF111930" BorderBrush="#FF3C4A5C" Padding="8" Margin="0,3">
-                                <ScrollViewer Height="120" VerticalScrollBarVisibility="Auto" Background="#FF111930">
+                                <ScrollViewer Height="120" VerticalScrollBarVisibility="Auto" 
+                                              Background="#FF111930"
+                                              CanContentScroll="True"
+                                              IsDeferredScrollingEnabled="True"
+                                              PanningMode="VerticalOnly"
+                                              PanningDeceleration="0.001">
                                     <TextBox x:Name="TxtPatchLog" IsReadOnly="True" TextWrapping="Wrap"
                                             AcceptsReturn="True" VerticalScrollBarVisibility="Auto"
                                             Background="#FF111930" Foreground="#FFB4BED6"

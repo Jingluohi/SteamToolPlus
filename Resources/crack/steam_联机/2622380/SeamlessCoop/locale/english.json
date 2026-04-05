@@ -1,0 +1,14 @@
+{
+
+	"MODMESSAGE_YUINEXUSPLAYERCOUNTREMAINING": "{} / {}",
+	"MODMESSAGE_YUINEXUSBEGINONEPLAYER": "Solo Mission",
+	"MODMESSAGE_YUINEXUSBEGINTWOPLAYER": "Up to 6 players",
+	"MODMESSAGE_YUINEXUSBEGINTHREEPLAYER": "Up to 6 players",
+
+	"MODMESSAGE_YUINEXUSNOSEAMLESS": "Failed to join lobby\nThe host is not using seamless co-op",
+	"MODMESSAGE_YUINEXUSWRONGSSR": "Failed to join lobby\nThe host version of seamless co-op does not match",
+	"MODMESSAGE_YUINEXUSPAUSED": "Paused",
+	"MODMESSAGE_YUINEXUSRESUMED": "Resumed",
+	
+	"CREDITS": "Yui"
+}
