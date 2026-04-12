@@ -571,6 +571,9 @@ public partial class MainWindow : Window
     /// <param name="isPatchLog">是否为补丁日志</param>
     private void AppendLog(string message, bool isPatchLog = false)
     {
+        var logSource = isPatchLog ? "PATCH" : "DOWNLOAD";
+        FileLogger.Info($"[{logSource}] {message}");
+
         if (isPatchLog)
         {
             // 补丁日志同时输出到 TxtInjectLog 和 TxtPatchLog
@@ -582,7 +585,7 @@ public partial class MainWindow : Window
                     TxtInjectLog.ScrollToEnd();
                 }, System.Windows.Threading.DispatcherPriority.Background);
             }
-            
+
             if (TxtPatchLog != null)
             {
                 Dispatcher.BeginInvoke(() =>
@@ -631,8 +634,11 @@ public partial class MainWindow : Window
     /// <summary>
     /// 显示错误消息框
     /// </summary>
-    private void ShowError(string message, string title = "错误") => 
+    private void ShowError(string message, string title = "错误")
+    {
+        FileLogger.Error($"{title}：{message}");
         MessageBox.Show(message, title, MessageBoxButton.OK, MessageBoxImage.Error);
+    }
 
     /// <summary>
     /// 显示确认对话框
@@ -723,10 +729,11 @@ public partial class MainWindow : Window
     {
         try
         {
+            AppendDownloadLog("应用启动初始化开始");
             AppendDownloadLog("=" + new string('=', 49));
             // AppendDownloadLog("🚀 程序启动，正在初始化...");
             // AppendDownloadLog($"📂 程序运行目录：{AppPath}");
-            
+
             // 加载游戏配置
             try
             {
@@ -744,18 +751,19 @@ public partial class MainWindow : Window
             catch (Exception ex)
             {
                 // AppendDownloadLog($"❌ 加载游戏配置失败：{ex.Message}");
-                MessageBox.Show($"加载游戏配置失败：{ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                ShowError($"加载游戏配置失败：{ex.Message}");
             }
 
             // 自动检测 ddv20.exe
             AutoDetectDdv20();
             // 初始化保存目录
             InitSaveDirectory();
-            
+
             // 动态加载游戏卡片
             LoadGameCards();
             // AppendDownloadLog($"✅ 游戏卡片初始化完成，共 {_gameCardViewModels.Count} 个游戏");
-            
+
+            AppendDownloadLog("应用启动初始化完成");
             // AppendDownloadLog("✅ 初始化完成");
             // AppendDownloadLog("=" + new string('=', 49));
 
@@ -765,7 +773,8 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"程序初始化失败：{ex.Message}\n\n堆栈跟踪：{ex.StackTrace}", "严重错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            FileLogger.Error("程序初始化失败", ex);
+            ShowError($"程序初始化失败：{ex.Message}\n\n堆栈跟踪：{ex.StackTrace}", "严重错误");
         }
     }
 
