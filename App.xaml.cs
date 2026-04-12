@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿using Application = System.Windows.Application;
+﻿﻿using Application = System.Windows.Application;
 using System.Windows;
 using MessageBox = System.Windows.MessageBox;
 
@@ -10,17 +10,21 @@ public partial class App : Application
     {
         base.OnStartup(e);
         System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
-        
+
         // 添加全局异常处理
         AppDomain.CurrentDomain.UnhandledException += (sender, args) =>
         {
             MessageBox.Show($"应用程序发生严重错误：{args.ExceptionObject}\n\n程序将退出。", "致命错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            Current.Shutdown();
+            Environment.Exit(1);
         };
-        
+
         DispatcherUnhandledException += (sender, args) =>
         {
             MessageBox.Show($"UI 线程发生错误：{args.Exception.Message}\n\n{args.Exception.StackTrace}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
             args.Handled = true;
+            Current.Shutdown();
+            Environment.Exit(1);
         };
     }
 }
