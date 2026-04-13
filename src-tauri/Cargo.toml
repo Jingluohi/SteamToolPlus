@@ -1,0 +1,36 @@
+[package]
+name = "steam-tool-plus"
+version = "1.0.0"
+description = "Steam/Xbox 风格游戏管理工具"
+authors = ["Steam Tool Plus"]
+edition = "2021"
+
+[lib]
+name = "steam_tool_plus_lib"
+crate-type = ["lib"]
+
+[build-dependencies]
+tauri-build = { version = "2.0.0", features = [] }
+
+[dependencies]
+tauri = { version = "2.0.0", features = [] }
+tauri-plugin-shell = "2.0.0"
+tauri-plugin-dialog = "2.0.0"
+tauri-plugin-fs = "2.0.0"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["fs"] }
+sevenz-rust = "0.6"
+base64 = "0.22"
+
+[profile.dev]
+# 开发模式优化
+incremental = true
+
+[profile.release]
+# 优化发布构建
+panic = "abort"
+codegen-units = 1
+lto = true
+opt-level = 3
+strip = true

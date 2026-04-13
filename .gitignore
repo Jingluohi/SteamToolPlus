@@ -1,0 +1,78 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build outputs
+dist/
+build/
+out/
+
+# Tauri build outputs
+src-tauri/target/
+PublicOut/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Local env files
+.env
+.env.local
+.env.*.local
+
+# Test directories
+2.py v.s. 我的程序/
+
+# Runtime resources (large files)
+resources/
+!resources/.gitkeep
+
+# Compiled executables
+*.exe
+*.dll
+*.msi
+
+# Lock files (optional, but recommended to keep for reproducibility)
+# package-lock.json
+# Cargo.lock
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+
+# IDE specific
+*.iml
+modules.xml
+workspace.xml
+
+# Build scripts (optional)
+build.bat
+build-release.ps1
+run.bat

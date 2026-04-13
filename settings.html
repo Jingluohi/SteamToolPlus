@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>设置 - Steam Tool Plus</title>
+    <style>
+      /* 全局样式 - 确保独立窗口也有正确的 CSS 变量 */
+      :root {
+        /* 浅色主题默认值 */
+        --bg-primary: #f8fafc;
+        --bg-secondary: #f1f5f9;
+        --bg-surface: #e2e8f0;
+        --text-primary: #1e293b;
+        --text-secondary: #64748b;
+        --accent-color: #3b82f6;
+        --accent-hover: #2563eb;
+        --border-color: #cbd5e1;
+        --card-border: #e2e8f0;
+      }
+
+      .dark {
+        --bg-primary: #16213e;
+        --bg-secondary: #1a1a2e;
+        --bg-surface: #0f3460;
+        --text-primary: #ffffff;
+        --text-secondary: #a0a0a0;
+        --accent-color: #3b82f6;
+        --accent-hover: #60a5fa;
+        --border-color: #1e3a5f;
+        --card-border: #1e3a5f;
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      html, body {
+        height: 100%;
+        width: 100%;
+        overflow: hidden;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+      }
+
+      #app {
+        height: 100%;
+        width: 100%;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/src/settings-main.ts"></script>
+  </body>
+</html>
