@@ -20,24 +20,22 @@
       </div>
 
       <div class="modal-body">
-        <!-- 启用局域网联机 -->
         <div class="config-item">
           <label class="toggle-label">
-            <input type="checkbox" v-model="config.enabled" class="toggle-input" />
+            <input v-model="config.enabled" type="checkbox" class="toggle-input" />
             <span class="toggle-slider"></span>
             <span class="toggle-text">启用局域网联机</span>
           </label>
         </div>
 
-        <!-- 自定义广播IP -->
         <div class="config-group">
           <label class="config-label">自定义广播 IP / 域名</label>
           <p class="config-desc">添加自定义 IP 地址或域名，模拟器将向这些地址发送广播包</p>
           <div class="ip-list">
             <div v-for="(ip, index) in config.customBroadcasts" :key="index" class="ip-item">
               <input
-                type="text"
                 v-model="config.customBroadcasts[index]"
+                type="text"
                 class="config-input"
                 placeholder="例如: 192.168.1.100 或 friend.example.com"
               />
@@ -58,26 +56,24 @@
           </div>
         </div>
 
-        <!-- 自动接受邀请 -->
         <div class="config-group">
           <label class="config-label">自动接受邀请</label>
           <p class="config-desc">配置自动接受来自指定 Steam ID 的游戏/大厅邀请（实验版功能）</p>
-          <div class="invite-options">
+          <div class="radio-group">
             <label class="radio-label">
-              <input type="radio" v-model="config.autoAcceptInvite" value="none" />
+              <input v-model="config.autoAcceptInvite" type="radio" value="none" />
               <span>不自动接受</span>
             </label>
             <label class="radio-label">
-              <input type="radio" v-model="config.autoAcceptInvite" value="all" />
+              <input v-model="config.autoAcceptInvite" type="radio" value="all" />
               <span>接受所有人的邀请</span>
             </label>
             <label class="radio-label">
-              <input type="radio" v-model="config.autoAcceptInvite" value="whitelist" />
+              <input v-model="config.autoAcceptInvite" type="radio" value="whitelist" />
               <span>仅接受白名单用户的邀请</span>
             </label>
           </div>
 
-          <!-- 白名单列表 -->
           <div v-if="config.autoAcceptInvite === 'whitelist'" class="whitelist-section">
             <p class="config-desc">输入 SteamID64（每行一个）</p>
             <textarea
@@ -91,13 +87,12 @@
           </div>
         </div>
 
-        <!-- 监听端口配置 -->
         <div class="config-group">
           <label class="config-label">监听端口</label>
           <p class="config-desc">模拟器使用的 UDP 端口（默认 47584）</p>
           <input
-            type="number"
             v-model.number="config.listenPort"
+            type="number"
             class="config-input"
             placeholder="47584"
             min="1024"
@@ -120,12 +115,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 
-// ============================================
-// Props 和 Emits
-// ============================================
+interface LanConfig {
+  enabled: boolean
+  customBroadcasts: string[]
+  autoAcceptInvite: 'none' | 'all' | 'whitelist'
+  listenPort: number
+}
 
 const props = defineProps<{
   gamePath: string
@@ -137,21 +135,6 @@ const emit = defineEmits<{
   saved: []
 }>()
 
-// ============================================
-// 类型定义
-// ============================================
-
-interface LanConfig {
-  enabled: boolean
-  customBroadcasts: string[]
-  autoAcceptInvite: 'none' | 'all' | 'whitelist'
-  listenPort: number
-}
-
-// ============================================
-// 响应式状态
-// ============================================
-
 const config = ref<LanConfig>({
   enabled: true,
   customBroadcasts: [],
@@ -161,33 +144,17 @@ const config = ref<LanConfig>({
 
 const whitelistText = ref('')
 
-// ============================================
-// 方法
-// ============================================
-
-/**
- * 添加广播 IP
- */
-const addBroadcastIp = () => {
+function addBroadcastIp() {
   config.value.customBroadcasts.push('')
 }
 
-/**
- * 移除广播 IP
- */
-const removeBroadcastIp = (index: number) => {
+function removeBroadcastIp(index: number) {
   config.value.customBroadcasts.splice(index, 1)
 }
 
-/**
- * 保存配置
- */
-const saveConfig = async () => {
+async function saveConfig() {
   try {
-    // 过滤空值
     const filteredBroadcasts = config.value.customBroadcasts.filter(ip => ip.trim() !== '')
-
-    // 解析白名单
     const whitelist = whitelistText.value
       .split('\n')
       .map(id => id.trim())
@@ -218,10 +185,7 @@ const saveConfig = async () => {
   }
 }
 
-/**
- * 加载现有配置
- */
-const loadConfig = async () => {
+async function loadConfig() {
   try {
     const result = await invoke<{
       exists: boolean
@@ -247,10 +211,6 @@ const loadConfig = async () => {
   }
 }
 
-// ============================================
-// 生命周期
-// ============================================
-
 onMounted(() => {
   loadConfig()
 })
@@ -271,9 +231,9 @@ onMounted(() => {
 }
 
 .modal-content {
-  background-color: var(--bg-secondary);
+  background-color: var(--steam-bg-primary);
   border-radius: 12px;
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--steam-border);
   width: 90%;
   max-width: 600px;
   max-height: 80vh;
@@ -286,7 +246,8 @@ onMounted(() => {
   align-items: center;
   gap: 12px;
   padding: 20px;
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--steam-border);
+  flex-shrink: 0;
 }
 
 .header-icon {
@@ -296,6 +257,7 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
 }
 
 .header-icon.lan {
@@ -312,7 +274,7 @@ onMounted(() => {
   flex: 1;
   font-size: 18px;
   font-weight: 600;
-  color: var(--text-primary);
+  color: var(--steam-text-primary);
   margin: 0;
 }
 
@@ -322,17 +284,18 @@ onMounted(() => {
   border: none;
   border-radius: 8px;
   background-color: transparent;
-  color: var(--text-secondary);
+  color: var(--steam-text-secondary);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: all 0.15s ease;
+  flex-shrink: 0;
 }
 
 .close-btn:hover {
-  background-color: var(--bg-surface);
-  color: var(--text-primary);
+  background-color: var(--steam-bg-tertiary);
+  color: var(--steam-text-primary);
 }
 
 .close-btn svg {
@@ -351,33 +314,64 @@ onMounted(() => {
   justify-content: flex-end;
   gap: 12px;
   padding: 16px 20px;
-  border-top: 1px solid var(--border-color);
+  border-top: 1px solid var(--steam-border);
+  flex-shrink: 0;
 }
 
-/* 配置项样式 */
 .config-item {
   margin-bottom: 20px;
 }
 
 .config-group {
-  margin-bottom: 24px;
+  margin-bottom: 20px;
 }
 
 .config-label {
   display: block;
   font-size: 14px;
   font-weight: 600;
-  color: var(--text-primary);
+  color: var(--steam-text-primary);
   margin-bottom: 8px;
 }
 
 .config-desc {
   font-size: 12px;
-  color: var(--text-secondary);
+  color: var(--steam-text-secondary);
   margin: 0 0 12px 0;
 }
 
-/* 切换开关 */
+.config-input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--steam-border);
+  border-radius: 8px;
+  background-color: var(--steam-bg-secondary);
+  color: var(--steam-text-primary);
+  font-size: 14px;
+  outline: none;
+}
+
+.config-input:focus {
+  border-color: var(--steam-accent-blue);
+}
+
+.config-textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--steam-border);
+  border-radius: 8px;
+  background-color: var(--steam-bg-secondary);
+  color: var(--steam-text-primary);
+  font-size: 13px;
+  font-family: 'Courier New', monospace;
+  resize: vertical;
+  outline: none;
+}
+
+.config-textarea:focus {
+  border-color: var(--steam-accent-blue);
+}
+
 .toggle-label {
   display: flex;
   align-items: center;
@@ -392,10 +386,11 @@ onMounted(() => {
 .toggle-slider {
   width: 48px;
   height: 26px;
-  background-color: var(--border-color);
+  background-color: var(--steam-border);
   border-radius: 13px;
   position: relative;
   transition: background-color 0.2s ease;
+  flex-shrink: 0;
 }
 
 .toggle-slider::after {
@@ -411,7 +406,7 @@ onMounted(() => {
 }
 
 .toggle-input:checked + .toggle-slider {
-  background-color: var(--accent-color);
+  background-color: var(--steam-accent-blue);
 }
 
 .toggle-input:checked + .toggle-slider::after {
@@ -420,10 +415,9 @@ onMounted(() => {
 
 .toggle-text {
   font-size: 14px;
-  color: var(--text-primary);
+  color: var(--steam-text-primary);
 }
 
-/* IP 列表 */
 .ip-list {
   display: flex;
   flex-direction: column;
@@ -433,22 +427,38 @@ onMounted(() => {
 .ip-item {
   display: flex;
   gap: 8px;
+  align-items: center;
 }
 
-.config-input {
+.ip-item .config-input {
   flex: 1;
-  padding: 10px 12px;
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  background-color: var(--bg-primary);
-  color: var(--text-primary);
-  font-size: 14px;
-  outline: none;
-  transition: border-color 0.15s ease;
 }
 
-.config-input:focus {
-  border-color: var(--accent-color);
+.add-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px;
+  border: 1px dashed var(--steam-border);
+  border-radius: 8px;
+  background-color: transparent;
+  color: var(--steam-accent-blue);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  width: 100%;
+}
+
+.add-btn:hover {
+  border-color: var(--steam-accent-blue);
+  background-color: rgba(59, 130, 246, 0.05);
+}
+
+.add-btn svg {
+  width: 16px;
+  height: 16px;
 }
 
 .remove-btn {
@@ -463,6 +473,7 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   transition: all 0.15s ease;
+  flex-shrink: 0;
 }
 
 .remove-btn:hover {
@@ -474,34 +485,7 @@ onMounted(() => {
   height: 16px;
 }
 
-.add-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 10px;
-  border: 1px dashed var(--border-color);
-  border-radius: 8px;
-  background-color: transparent;
-  color: var(--accent-color);
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.add-btn:hover {
-  border-color: var(--accent-color);
-  background-color: rgba(59, 130, 246, 0.05);
-}
-
-.add-btn svg {
-  width: 16px;
-  height: 16px;
-}
-
-/* 单选按钮组 */
-.invite-options {
+.radio-group {
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -513,43 +497,27 @@ onMounted(() => {
   gap: 8px;
   cursor: pointer;
   font-size: 14px;
-  color: var(--text-primary);
+  color: var(--steam-text-primary);
 }
 
 .radio-label input[type="radio"] {
   width: 18px;
   height: 18px;
-  accent-color: var(--accent-color);
+  accent-color: var(--steam-accent-blue);
 }
 
-/* 白名单区域 */
 .whitelist-section {
   margin-top: 12px;
   padding: 12px;
-  background-color: var(--bg-primary);
+  background-color: var(--steam-bg-secondary);
   border-radius: 8px;
 }
 
-.config-textarea {
-  width: 100%;
-  padding: 10px 12px;
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  background-color: var(--bg-secondary);
-  color: var(--text-primary);
-  font-size: 13px;
-  font-family: 'Courier New', monospace;
-  resize: vertical;
-  outline: none;
+.whitelist-section .config-textarea {
+  background-color: var(--steam-bg-primary);
 }
 
-.config-textarea:focus {
-  border-color: var(--accent-color);
-}
-
-/* 按钮样式 */
-.btn-primary,
-.btn-secondary {
+.btn-primary {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -560,35 +528,38 @@ onMounted(() => {
   font-weight: 500;
   cursor: pointer;
   transition: all 0.15s ease;
-}
-
-.btn-primary {
-  background-color: var(--accent-color);
+  background-color: var(--steam-accent-blue);
   color: white;
 }
 
 .btn-primary:hover:not(:disabled) {
-  background-color: var(--accent-hover);
+  background-color: var(--steam-accent-hover);
 }
 
 .btn-primary:disabled {
-  background-color: var(--text-secondary);
+  background-color: var(--steam-text-secondary);
   cursor: not-allowed;
   opacity: 0.5;
-}
-
-.btn-secondary {
-  background-color: var(--bg-surface);
-  color: var(--text-primary);
-  border: 1px solid var(--border-color);
-}
-
-.btn-secondary:hover {
-  background-color: var(--border-color);
 }
 
 .btn-primary svg {
   width: 16px;
   height: 16px;
+}
+
+.btn-secondary {
+  padding: 10px 20px;
+  border: 1px solid var(--steam-border);
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  background-color: var(--steam-bg-tertiary);
+  color: var(--steam-text-primary);
+}
+
+.btn-secondary:hover {
+  background-color: var(--steam-border);
 }
 </style>

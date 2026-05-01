@@ -1,4 +1,9 @@
 <template>
+  <!-- 
+    GameCard.vue - 游戏卡片组件
+    仿照旧版实现，显示游戏封面、名称、ID等信息
+    支持懒加载和内存管理
+  -->
   <div
     ref="cardRef"
     class="game-card gpu-accelerated"
@@ -15,43 +20,59 @@
         <img
           v-if="imageLoaded && coverUrl"
           :src="coverUrl"
-          :alt="game.chinese_name"
+          :alt="gameName"
           class="card-image"
           loading="lazy"
           @error="handleImageError"
           @load="onImageLoad"
         />
-        <div v-else class="card-placeholder" :style="placeholderStyle"></div>
+        <div v-else class="card-placeholder" :style="placeholderStyle">
+          <span class="placeholder-text">{{ gameId.slice(0, 4) }}</span>
+        </div>
 
         <!-- 底部渐变遮罩 -->
         <div class="card-overlay"></div>
+        
+        <!-- 可下载标记 -->
+        <div v-if="downloadable" class="downloadable-badge">可下载</div>
       </div>
 
       <!-- 游戏信息 -->
       <div class="card-info">
-        <h3 class="game-name">{{ game.chinese_name }}</h3>
-        <span class="game-en-name">{{ game.game_name }}</span>
-        <span class="game-id">ID: {{ game.game_id }}</span>
+        <h3 class="game-name">{{ gameName }}</h3>
+        <span class="game-en-name">{{ gameEnName }}</span>
+        <span class="game-id">ID: {{ gameId }}</span>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { useGamesStore, type Game } from '../../stores/games'
+/**
+ * GameCard.vue - 游戏卡片组件
+ * 仿照旧版实现，展示单个游戏的信息
+ */
 
-// 组件属性
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
+import { invoke, convertFileSrc } from '@tauri-apps/api/core'
+import type { GameConfigData } from '../../types'
+
+/**
+ * 组件属性定义
+ */
 interface Props {
-  game: Game
+  /** 游戏数据 */
+  game: GameConfigData
 }
 
 const props = defineProps<Props>()
-const gamesStore = useGamesStore()
 
-// 组件事件
+/**
+ * 组件事件定义
+ */
 const emit = defineEmits<{
-  click: [game: Game]
+  /** 点击卡片 */
+  (e: 'click', game: GameConfigData): void
 }>()
 
 // 组件引用
@@ -69,8 +90,22 @@ let observer: IntersectionObserver | null = null
 // 释放图片的定时器
 let releaseTimer: ReturnType<typeof setTimeout> | null = null
 
-// 图片释放延迟时间（毫秒）- 滚动出视口5秒后释放
-const RELEASE_DELAY = 5000
+// 释放延迟时间（毫秒）- 滚动出视口2秒后释放
+const RELEASE_DELAY = 2000
+
+// 计算属性：游戏名称
+const gameName = computed(() => props.game.chinese_name || props.game.game_name)
+
+// 计算属性：游戏英文名
+const gameEnName = computed(() => props.game.game_name)
+
+// 计算属性：游戏ID
+const gameId = computed(() => props.game.game_id)
+
+// 计算属性：是否可下载
+const downloadable = computed(() => props.game.downloadable)
+
+
 
 // 生成占位符颜色（基于游戏ID的哈希值）
 const placeholderStyle = computed(() => {
@@ -84,22 +119,23 @@ const placeholderStyle = computed(() => {
   }
 })
 
+
+
 // 加载封面图片
+// 使用 convertFileSrc 将本地文件路径转换为 asset URL，避免 base64 内存开销
 const loadCover = async () => {
-  if (coverUrl.value) return // 已经加载过
+  // 如果已经加载过且 URL 有效，直接返回
+  if (coverUrl.value && imageLoaded.value) return
 
   try {
-    // 优先使用 store 中已加载的封面
-    if (props.game.coverUrl) {
-      coverUrl.value = props.game.coverUrl
-      imageLoaded.value = true
-      return
-    }
-
-    // 否则按需加载
-    const url = await gamesStore.loadGameCoverOnDemand(props.game.game_id)
-    if (url) {
-      coverUrl.value = url
+    // 调用后端获取图片文件路径，使用 game_id（games_config.json 中的 ID）
+    const filePath = await invoke<string>('get_game_cover_image', {
+      gameId: props.game.game_id
+    })
+    if (filePath) {
+      // 使用 convertFileSrc 将本地文件路径转换为安全的 asset URL
+      // 这样浏览器可以直接从文件系统加载图片，不需要 base64 编码，大幅降低内存占用
+      coverUrl.value = convertFileSrc(filePath)
       imageLoaded.value = true
     }
   } catch (error) {
@@ -109,11 +145,18 @@ const loadCover = async () => {
 
 // 释放图片内存
 const releaseCover = () => {
-  // 清除本地引用
-  coverUrl.value = ''
+  // 先标记为未加载，让 img 元素从 DOM 中移除
   imageLoaded.value = false
-  isVisible.value = false
-  console.log(`释放图片内存: ${props.game.game_id}`)
+  
+  // 使用 nextTick 确保 DOM 更新后再清除 URL
+  nextTick(() => {
+    // 清除 URL 引用
+    if (coverUrl.value) {
+      coverUrl.value = ''
+    }
+    isVisible.value = false
+    console.log(`释放图片内存: ${props.game.game_id}`)
+  })
 }
 
 // 处理图片加载错误
@@ -207,10 +250,10 @@ onUnmounted(() => {
   /* 使用 padding-bottom 技巧保持比例，确保Grid能正确计算行高 */
   padding-bottom: 47%; /* 约 2.13:1 比例 */
   border-radius: 12px;
-  border: 2px solid var(--card-border);
+  border: 2px solid var(--steam-border);
   overflow: hidden;
   cursor: pointer;
-  background-color: var(--bg-secondary);
+  background-color: var(--steam-bg-secondary);
   transition: transform 0.15s ease-out, border-color 0.15s ease;
   will-change: transform;
 }
@@ -218,7 +261,7 @@ onUnmounted(() => {
 /* 悬浮效果 - 仅使用 transform */
 .game-card:hover {
   transform: scale(1.02);
-  border-color: var(--accent-color);
+  border-color: var(--steam-accent-blue);
 }
 
 /* 按压效果 */
@@ -263,6 +306,13 @@ onUnmounted(() => {
   justify-content: center;
 }
 
+.placeholder-text {
+  font-size: 24px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.5);
+  text-transform: uppercase;
+}
+
 /* 底部渐变遮罩 - 用于文字显示 */
 .card-overlay {
   position: absolute;
@@ -279,6 +329,20 @@ onUnmounted(() => {
   pointer-events: none;
 }
 
+/* 可下载标记 */
+.downloadable-badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  padding: 4px 8px;
+  background-color: var(--steam-accent-blue);
+  color: white;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 4px;
+  z-index: 2;
+}
+
 /* 游戏信息 - 固定在底部 */
 .card-info {
   position: absolute;
@@ -290,7 +354,7 @@ onUnmounted(() => {
 }
 
 .game-name {
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 600;
   color: #ffffff;
   margin: 0;
@@ -302,7 +366,7 @@ onUnmounted(() => {
 }
 
 .game-en-name {
-  font-size: 11px;
+  font-size: 12px;
   color: rgba(255, 255, 255, 0.9);
   margin: 0;
   white-space: nowrap;
@@ -314,10 +378,16 @@ onUnmounted(() => {
 }
 
 .game-id {
-  font-size: 10px;
+  font-size: 11px;
   color: rgba(255, 255, 255, 0.7);
   font-family: 'Courier New', monospace;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
   line-height: 1.3;
+}
+
+/* GPU加速 */
+.gpu-accelerated {
+  transform: translateZ(0);
+  backface-visibility: hidden;
 }
 </style>

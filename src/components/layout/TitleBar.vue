@@ -1,378 +1,393 @@
 <template>
-  <!-- 整个标题栏设置为可拖动区域 -->
-  <header class="title-bar no-select" data-tauri-drag-region="true">
-    <!-- 左侧：页面标题 -->
-    <div class="title-left">
-      <h1 class="page-title">{{ pageTitle }}</h1>
-    </div>
-
-    <!-- 中间：搜索框 -->
-    <!-- 阻止 mousedown 事件冒泡，使搜索框区域可以正常交互 -->
-    <div class="title-center" @mousedown.stop>
-      <div class="search-box">
-        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-          <circle cx="11" cy="11" r="8" stroke-width="2"/>
-          <path d="M21 21l-4.35-4.35" stroke-width="2" stroke-linecap="round"/>
+  <!--
+    TitleBar.vue - 顶部标题栏组件
+    完全对标Steam官方客户端的标题栏设计
+    包含：Logo、导航菜单（游戏、设置、帮助）、窗口控制按钮
+  -->
+  <header
+    class="title-bar"
+    data-tauri-drag-region
+  >
+    <!-- 左侧区域：Logo、程序名称和导航菜单 -->
+    <div class="title-bar-left">
+      <div class="logo">
+        <svg class="logo-icon" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
         </svg>
-        <input
-          v-model="searchText"
-          type="text"
-          class="search-input"
-          placeholder="搜索游戏..."
-          @input="handleSearch"
-        />
-        <button
-          v-if="searchText"
-          class="search-clear"
-          @click="clearSearch"
-        >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-            <path d="M18 6L6 18M6 6l12 12" stroke-width="2" stroke-linecap="round"/>
+        <span class="logo-text">Steam Tool Plus v1.11</span>
+      </div>
+      <!-- 导航菜单 -->
+      <nav class="title-bar-nav">
+      <!-- 游戏菜单 -->
+      <div
+        class="nav-menu"
+        @mouseenter="showGameMenu = true"
+        @mouseleave="showGameMenu = false"
+      >
+        <button class="nav-menu-btn">
+          <span>游戏</span>
+          <svg class="dropdown-icon" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M7 10l5 5 5-5z"/>
           </svg>
         </button>
+        <!-- 游戏下拉菜单 -->
+        <Transition name="dropdown">
+          <div v-show="showGameMenu" class="dropdown-menu">
+            <RouterLink
+              v-for="item in gameMenuItems"
+              :key="item.path"
+              :to="item.path"
+              class="dropdown-item"
+              @click="showGameMenu = false"
+            >
+              {{ item.name }}
+            </RouterLink>
+          </div>
+        </Transition>
       </div>
+
+      <!-- 设置菜单 -->
+      <div
+        class="nav-menu"
+        @mouseenter="showSettingsMenu = true"
+        @mouseleave="showSettingsMenu = false"
+      >
+        <button class="nav-menu-btn">
+          <span>设置</span>
+          <svg class="dropdown-icon" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M7 10l5 5 5-5z"/>
+          </svg>
+        </button>
+        <!-- 设置下拉菜单 -->
+        <Transition name="dropdown">
+          <div v-show="showSettingsMenu" class="dropdown-menu">
+            <RouterLink
+              v-for="item in settingsMenuItems"
+              :key="item.path"
+              :to="item.path"
+              class="dropdown-item"
+              @click="showSettingsMenu = false"
+            >
+              {{ item.name }}
+            </RouterLink>
+          </div>
+        </Transition>
+      </div>
+
+      <!-- 帮助菜单 -->
+      <div
+        class="nav-menu"
+        @mouseenter="showHelpMenu = true"
+        @mouseleave="showHelpMenu = false"
+      >
+        <button class="nav-menu-btn">
+          <span>帮助</span>
+          <svg class="dropdown-icon" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M7 10l5 5 5-5z"/>
+          </svg>
+        </button>
+        <!-- 帮助下拉菜单 -->
+        <Transition name="dropdown">
+          <div v-show="showHelpMenu" class="dropdown-menu">
+            <RouterLink
+              v-for="item in helpMenuItems"
+              :key="item.name"
+              :to="item.path"
+              class="dropdown-item"
+              @click="handleMenuClick(item.path)"
+            >
+              {{ item.name }}
+            </RouterLink>
+          </div>
+        </Transition>
+      </div>
+      </nav>
     </div>
 
-    <!-- 右侧：设置 + 主题切换 + 窗口控制 -->
-    <!-- 阻止 mousedown 事件冒泡，使按钮可以正常交互 -->
-    <div class="title-right" @mousedown.stop>
-      <!-- 设置按钮 -->
-      <button class="window-btn settings-btn" @click="openSettings" title="设置">
-        <svg class="settings-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="12" cy="12" r="3"/>
-          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-        </svg>
-      </button>
-
-      <!-- 主题切换按钮 -->
-      <button class="window-btn theme-btn" @click="themeStore.toggleTheme" title="切换主题">
-        <IconSun v-if="themeStore.isDark" class="theme-icon" />
-        <IconMoon v-else class="theme-icon" />
-      </button>
-
-      <!-- 窗口控制按钮 -->
-      <button class="window-btn minimize" @click="minimizeWindow" title="最小化">
+    <!-- 右侧区域：窗口控制按钮 -->
+    <div class="title-bar-controls">
+      <!-- 全屏按钮 -->
+      <button
+        class="control-btn"
+        title="全屏"
+        @click="handleFullscreen"
+      >
         <svg viewBox="0 0 24 24" fill="currentColor">
-          <rect x="4" y="11" width="16" height="2" rx="1"/>
+          <path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/>
         </svg>
       </button>
-      <button class="window-btn maximize" @click="toggleMaximize" title="最大化/还原">
-        <svg v-if="isMaximized" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M4 8v10h10V8H4zm8 8H6v-6h6v6zm4-12v10h-2V6h-6V4h10v2h-2z"/>
+
+      <!-- 最小化按钮 -->
+      <button
+        class="control-btn"
+        title="最小化"
+        @click="handleMinimize"
+      >
+        <svg viewBox="0 0 24 24" fill="currentColor">
+          <path d="M19 13H5v-2h14v2z"/>
+        </svg>
+      </button>
+
+      <!-- 最大化/还原按钮 -->
+      <button
+        class="control-btn"
+        :title="isMaximized ? '还原' : '最大化'"
+        @click="handleMaximize"
+      >
+        <svg v-if="!isMaximized" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/>
         </svg>
         <svg v-else viewBox="0 0 24 24" fill="currentColor">
-          <rect x="4" y="4" width="16" height="16" rx="2"/>
+          <path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z"/>
         </svg>
       </button>
-      <button class="window-btn close" @click="closeWindow" title="关闭">
+
+      <!-- 关闭按钮 -->
+      <button
+        class="control-btn close-btn"
+        title="关闭"
+        @click="handleClose"
+      >
         <svg viewBox="0 0 24 24" fill="currentColor">
-          <path d="M18.3 5.7a1 1 0 0 0-1.4 0L12 10.6 7.1 5.7a1 1 0 0 0-1.4 1.4L10.6 12l-4.9 4.9a1 1 0 0 0 1.4 1.4L12 13.4l4.9 4.9a1 1 0 0 0 1.4-1.4L13.4 12l4.9-4.9a1 1 0 0 0 0-1.4z"/>
+          <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
         </svg>
       </button>
     </div>
+
   </header>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { useRoute } from 'vue-router'
-import { getCurrentWindow } from '@tauri-apps/api/window'
-import { WebviewWindow } from '@tauri-apps/api/webviewWindow'
-import { useThemeStore } from '../../stores/theme'
-import { useGamesStore } from '../../stores/games'
-import IconSun from '../icons/IconSun.vue'
-import IconMoon from '../icons/IconMoon.vue'
+/**
+ * TitleBar.vue - 顶部标题栏组件
+ * 实现Steam风格的无边框窗口标题栏
+ */
 
-const route = useRoute()
-const themeStore = useThemeStore()
-const gamesStore = useGamesStore()
+import { ref } from 'vue'
+import { useWindowStore } from '../../store/window.store'
+import { openHelpWindow } from '../../api/window.api'
 
-// 搜索文本
-const searchText = ref('')
+// 获取窗口store
+const windowStore = useWindowStore()
 
-// 窗口最大化状态
+// 菜单显示状态
+const showGameMenu = ref(false)
+const showSettingsMenu = ref(false)
+const showHelpMenu = ref(false)
+
+// 是否最大化
 const isMaximized = ref(false)
 
-// 窗口大小变化监听器清理函数
-let unlistenResize: (() => void) | null = null
+// 游戏菜单项
+const gameMenuItems = [
+  { name: '浏览', path: '/' },
+  { name: '本体下载', path: '/download' },
+  { name: '免Steam补丁', path: '/patch' },
+  { name: '库', path: '/library' }
+]
 
-// 当前页面标题
-const pageTitle = computed(() => {
-  return (route.meta.title as string) || '全部游戏'
-})
+// 设置菜单项
+const settingsMenuItems = [
+  { name: '全局设置', path: '/settings' },
+  { name: '管理扩展', path: '/extensions' }
+]
 
-// 处理搜索输入
-const handleSearch = () => {
-  gamesStore.setSearchQuery(searchText.value)
+// 帮助菜单项
+const helpMenuItems = [
+  { name: '关于软件', path: '/about' },
+  { name: '使用说明', path: '/help' },
+  { name: '检查更新', path: '/update-check' }
+]
+
+// 处理最小化
+const handleMinimize = () => {
+  windowStore.minimize()
 }
 
-// 清空搜索
-const clearSearch = () => {
-  searchText.value = ''
-  gamesStore.setSearchQuery('')
+// 处理最大化/还原
+const handleMaximize = () => {
+  windowStore.maximize()
+  isMaximized.value = !isMaximized.value
 }
 
-// 窗口控制函数
-const minimizeWindow = async () => {
-  const window = getCurrentWindow()
-  await window.minimize()
+// 处理关闭
+const handleClose = () => {
+  windowStore.close()
 }
 
-const toggleMaximize = async () => {
-  const window = getCurrentWindow()
-  const maximized = await window.isMaximized()
-  if (maximized) {
-    await window.unmaximize()
-  } else {
-    await window.maximize()
-  }
-  isMaximized.value = await window.isMaximized()
+// 处理全屏
+const handleFullscreen = () => {
+  windowStore.toggleFullscreen()
 }
 
-const closeWindow = async () => {
-  const window = getCurrentWindow()
-  await window.close()
-}
-
-// 打开设置窗口
-const openSettings = async () => {
-  console.log('开始打开设置窗口...')
+// 打开帮助窗口（独立窗口）
+const handleOpenHelpWindow = async () => {
+  showHelpMenu.value = false
   try {
-    // 检查设置窗口是否已存在
-    const existingWindow = await WebviewWindow.getByLabel('settings')
-    console.log('检查已存在窗口:', existingWindow)
-    if (existingWindow) {
-      // 如果窗口已存在，将其置于前台
-      await existingWindow.setFocus()
-      console.log('已有窗口，设置为焦点')
-      return
-    }
-
-    // 获取当前窗口的 URL 基础路径
-    const baseUrl = window.location.origin
-    const settingsUrl = `${baseUrl}/settings.html`
-    console.log('创建窗口，URL:', settingsUrl)
-
-    // 创建新的设置窗口
-    const settingsWindow = new WebviewWindow('settings', {
-      url: settingsUrl,
-      title: '设置',
-      width: 720,
-      height: 480,
-      minWidth: 720,
-      minHeight: 480,
-      maxWidth: 720,
-      maxHeight: 480,
-      resizable: false,
-      center: true,
-      decorations: false,
-      transparent: false,
-      shadow: true,
-      visible: true
-    })
-
-    // 监听窗口创建成功事件
-    settingsWindow.once('tauri://created', () => {
-      console.log('设置窗口创建成功')
-    })
-
-    // 监听窗口创建失败事件
-    settingsWindow.once('tauri://error', (e) => {
-      console.error('设置窗口创建失败:', e)
-    })
-
-    console.log('设置窗口已创建')
+    await openHelpWindow()
   } catch (error) {
-    console.error('打开设置窗口失败:', error)
+    console.error('打开帮助窗口失败:', error)
   }
 }
 
-// 初始化窗口状态
-onMounted(async () => {
-  const window = getCurrentWindow()
-  isMaximized.value = await window.isMaximized()
-  
-  // 监听窗口大小变化
-  unlistenResize = await window.onResized(async () => {
-    isMaximized.value = await window.isMaximized()
-  })
-})
-
-// 组件卸载时清理监听器
-onUnmounted(() => {
-  unlistenResize?.()
-})
+// 处理菜单点击
+const handleMenuClick = (path: string) => {
+  showHelpMenu.value = false
+}
 </script>
 
 <style scoped>
-/* 标题栏 - 整个区域可拖动 */
 .title-bar {
+  height: 48px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 48px;
+  background: var(--steam-bg-primary);
+  border-bottom: 1px solid var(--steam-border);
   padding: 0 16px;
-  background-color: var(--bg-primary);
-  border-bottom: 1px solid var(--border-color);
-  transition: background-color 0.2s ease;
-  /* 整个标题栏都是拖动区域 */
-  app-region: drag;
+  user-select: none;
   -webkit-app-region: drag;
-}
-
-/* 左侧标题 */
-.title-left {
-  width: 200px;
-  flex-shrink: 0;
-}
-
-.page-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--text-primary);
-  margin: 0;
-}
-
-/* 中间搜索框 */
-.title-center {
-  flex: 1;
-  display: flex;
-  justify-content: center;
-  /* 允许在此区域进行鼠标交互 */
-  app-region: no-drag;
-  -webkit-app-region: no-drag;
-}
-
-.search-box {
   position: relative;
-  width: 100%;
-  max-width: 400px;
+  z-index: 100;
+}
+
+.title-bar-left {
   display: flex;
   align-items: center;
+  gap: 10px;
 }
 
-.search-icon {
-  position: absolute;
-  left: 12px;
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.logo-icon {
   width: 16px;
   height: 16px;
-  color: var(--text-secondary);
-  pointer-events: none;
+  color: var(--steam-accent-blue);
 }
 
-.search-input {
-  width: 100%;
-  height: 32px;
-  padding: 0 36px;
-  border: 1px solid var(--border-color);
-  border-radius: 6px;
-  background-color: var(--bg-secondary);
-  color: var(--text-primary);
+.logo-text {
   font-size: 13px;
-  outline: none;
-  transition: border-color 0.15s ease, background-color 0.15s ease;
-  /* 输入框不参与拖动 */
-  app-region: no-drag;
-  -webkit-app-region: no-drag;
+  font-weight: 500;
+  color: var(--steam-text-primary);
 }
 
-.search-input::placeholder {
-  color: var(--text-secondary);
-}
-
-.search-input:focus {
-  border-color: var(--accent-color);
-  background-color: var(--bg-primary);
-}
-
-.search-clear {
-  position: absolute;
-  right: 8px;
-  width: 20px;
-  height: 20px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: none;
-  border-radius: 4px;
-  background: transparent;
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition: background-color 0.15s ease, color 0.15s ease;
-  /* 按钮不参与拖动 */
-  app-region: no-drag;
-  -webkit-app-region: no-drag;
-}
-
-.search-clear:hover {
-  background-color: var(--bg-surface);
-  color: var(--text-primary);
-}
-
-.search-clear svg {
-  width: 14px;
-  height: 14px;
-}
-
-/* 右侧控制按钮 */
-.title-right {
+/* 导航菜单 */
+.title-bar-nav {
   display: flex;
   align-items: center;
   gap: 4px;
-  /* 允许在此区域进行鼠标交互 */
-  app-region: no-drag;
   -webkit-app-region: no-drag;
 }
 
-.window-btn {
-  width: 32px;
+.nav-menu {
+  position: relative;
+}
+
+.nav-menu-btn {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0 6px;
   height: 32px;
+  font-size: 16px;
+  font-weight: 400;
+  color: var(--steam-text-primary);
+  background: transparent;
+  border-radius: 4px;
+  transition: background var(--transition-fast);
+}
+
+.nav-menu-btn:hover {
+  background: var(--steam-accent-hover);
+}
+
+.dropdown-icon {
+  width: 16px;
+  height: 16px;
+  opacity: 0.7;
+}
+
+/* 下拉菜单 */
+.dropdown-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  width: 120px;
+  min-width: 120px;
+  background: var(--steam-bg-secondary);
+  border: 1px solid var(--steam-border);
+  border-radius: 8px;
+  box-shadow: var(--shadow-steam);
+  padding: 8px 0;
+  z-index: 1000;
+  margin-top: 4px;
+}
+
+.dropdown-item {
+  display: block;
+  width: 100%;
+  padding: 10px 16px;
+  font-size: 14px;
+  color: var(--steam-text-primary);
+  background: transparent;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+  text-decoration: none;
+}
+
+.dropdown-item:hover {
+  background: var(--steam-accent-hover);
+}
+
+/* 窗口控制按钮 */
+.title-bar-controls {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  -webkit-app-region: no-drag;
+}
+
+.control-btn {
+  width: 36px;
+  height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border: none;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition: background-color 0.15s ease, color 0.15s ease;
-  /* 按钮不参与拖动 */
-  app-region: no-drag;
-  -webkit-app-region: no-drag;
+  color: var(--steam-text-secondary);
+  border-radius: 4px;
+  transition: all var(--transition-fast);
 }
 
-.window-btn:hover {
-  background-color: var(--bg-surface);
-  color: var(--text-primary);
+.control-btn:hover {
+  background: var(--steam-accent-hover);
+  color: var(--steam-text-primary);
 }
 
-.window-btn.close:hover {
-  background-color: #e11d48;
-  color: #ffffff;
-}
-
-.window-btn svg {
-  width: 14px;
-  height: 14px;
-}
-
-.theme-btn svg {
+.control-btn svg {
   width: 16px;
   height: 16px;
 }
 
-.theme-icon {
-  width: 16px;
-  height: 16px;
+.control-btn.close-btn:hover {
+  background: #e81123;
+  color: white;
 }
 
-.settings-btn svg {
-  width: 16px;
-  height: 16px;
+/* 下拉动画 */
+.dropdown-enter-active,
+.dropdown-leave-active {
+  transition: all 0.2s ease-out;
 }
 
-.settings-icon {
-  width: 16px;
-  height: 16px;
+.dropdown-enter-from,
+.dropdown-leave-to {
+  opacity: 0;
+  transform: translateY(-8px);
 }
 </style>

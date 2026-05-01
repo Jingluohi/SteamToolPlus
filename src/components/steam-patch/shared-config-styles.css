@@ -1,0 +1,253 @@
+/**
+ * shared-config-styles.css - Steam补丁配置组件共享样式
+ * 所有配置组件通用的CSS样式，避免重复定义
+ */
+
+/* ============================================
+   配置组容器
+   ============================================ */
+.config-group {
+  margin-bottom: 20px;
+}
+
+/* ============================================
+   配置标签
+   ============================================ */
+.config-label {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--steam-text-primary);
+  margin-bottom: 8px;
+}
+
+/* ============================================
+   配置描述文本
+   ============================================ */
+.config-desc {
+  font-size: 12px;
+  color: var(--steam-text-secondary);
+  margin: 0 0 12px 0;
+}
+
+/* ============================================
+   配置输入框
+   ============================================ */
+.config-input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--steam-border);
+  border-radius: 8px;
+  background-color: var(--steam-bg-secondary);
+  color: var(--steam-text-primary);
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.config-input:focus {
+  border-color: var(--steam-accent-blue);
+}
+
+/* ============================================
+   配置文本域
+   ============================================ */
+.config-textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--steam-border);
+  border-radius: 8px;
+  background-color: var(--steam-bg-secondary);
+  color: var(--steam-text-primary);
+  font-size: 13px;
+  font-family: 'Courier New', monospace;
+  resize: vertical;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.config-textarea:focus {
+  border-color: var(--steam-accent-blue);
+}
+
+/* ============================================
+   切换开关
+   ============================================ */
+.toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+}
+
+.toggle-input {
+  display: none;
+}
+
+.toggle-slider {
+  width: 48px;
+  height: 26px;
+  background-color: var(--steam-border);
+  border-radius: 13px;
+  position: relative;
+  transition: background-color 0.2s ease;
+  flex-shrink: 0;
+}
+
+.toggle-slider::after {
+  content: '';
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  background-color: white;
+  border-radius: 50%;
+  top: 2px;
+  left: 2px;
+  transition: transform 0.2s ease;
+}
+
+.toggle-input:checked + .toggle-slider {
+  background-color: var(--steam-accent-blue);
+}
+
+.toggle-input:checked + .toggle-slider::after {
+  transform: translateX(22px);
+}
+
+.toggle-text {
+  font-size: 14px;
+  color: var(--steam-text-primary);
+}
+
+/* ============================================
+   复选框标签
+   ============================================ */
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--steam-text-primary);
+}
+
+/* ============================================
+   IP列表（用于局域网联机配置）
+   ============================================ */
+.ip-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ip-item {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.ip-item .config-input {
+  flex: 1;
+}
+
+/* ============================================
+   添加按钮
+   ============================================ */
+.add-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px;
+  border: 1px dashed var(--steam-border);
+  border-radius: 8px;
+  background-color: transparent;
+  color: var(--steam-accent-blue);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  width: 100%;
+}
+
+.add-btn:hover {
+  border-color: var(--steam-accent-blue);
+  background-color: rgba(59, 130, 246, 0.05);
+}
+
+.add-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* ============================================
+   移除按钮
+   ============================================ */
+.remove-btn {
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 8px;
+  background-color: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.remove-btn:hover {
+  background-color: rgba(239, 68, 68, 0.2);
+}
+
+.remove-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* ============================================
+   单选按钮组
+   ============================================ */
+.radio-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.radio-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--steam-text-primary);
+}
+
+.radio-label input[type="radio"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--steam-accent-blue);
+}
+
+/* ============================================
+   白名单区域
+   ============================================ */
+.whitelist-section {
+  margin-top: 12px;
+  padding: 12px;
+  background-color: var(--steam-bg-secondary);
+  border-radius: 8px;
+}
+
+.whitelist-section .config-textarea {
+  background-color: var(--steam-bg-primary);
+}
+
+/* ============================================
+   配置项（单个配置条目）
+   ============================================ */
+.config-item {
+  margin-bottom: 20px;
+}

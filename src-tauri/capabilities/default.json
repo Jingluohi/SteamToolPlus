@@ -1,21 +1,35 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "默认能力配置",
-  "windows": ["main", "settings"],
+  "description": "Capability for the main window",
+  "windows": ["main"],
   "permissions": [
     "core:default",
-    "core:window:default",
-    "core:window:allow-minimize",
-    "core:window:allow-maximize",
-    "core:window:allow-unmaximize",
-    "core:window:allow-close",
-    "core:window:allow-is-maximized",
-    "core:window:allow-start-dragging",
-    "core:webview:allow-create-webview-window",
-    "dialog:default",
+    "shell:allow-open",
     "dialog:allow-open",
-    "fs:default",
-    "shell:allow-open"
+    "fs:allow-read-file",
+    "fs:allow-write-file",
+    "fs:allow-read-dir",
+    "fs:allow-copy-file",
+    "fs:allow-remove",
+    "fs:allow-create",
+    "fs:allow-exists",
+    {
+      "identifier": "fs:scope",
+      "allow": [
+        {
+          "path": "$APPDATA/**"
+        },
+        {
+          "path": "$RESOURCE/**"
+        },
+        {
+          "path": "$HOME/**"
+        },
+        {
+          "path": "**"
+        }
+      ]
+    }
   ]
 }

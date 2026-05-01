@@ -33,7 +33,6 @@ lerna-debug.log*
 *.sw?
 
 # OS generated files
-.DS_Store
 .DS_Store?
 ._*
 .Spotlight-V100
@@ -46,33 +45,35 @@ Thumbs.db
 .env.local
 .env.*.local
 
-# Test directories
-2.py v.s. 我的程序/
-
-# Runtime resources (large files)
+# Runtime resources (large binary files)
 resources/
 !resources/.gitkeep
+3321460/
+
+# Python scripts (not for open source)
+lua_to_vdf_converter.py
+steam_cover_downloader.py
+
+# Extensions directory
+extensions/
 
 # Compiled executables
 *.exe
 *.dll
 *.msi
 
-# Lock files (optional, but recommended to keep for reproducibility)
-# package-lock.json
-# Cargo.lock
-
-# Temporary files
-*.tmp
-*.temp
-.cache/
+# Backup directories
+旧版备份*/
 
 # IDE specific
 *.iml
 modules.xml
 workspace.xml
 
-# Build scripts (optional)
-build.bat
-build-release.ps1
-run.bat
+# Temporary files
+*.tmp
+*.temp
+.cache/
+
+# Trae rules (private)
+.trae/

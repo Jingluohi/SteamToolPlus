@@ -1,54 +1,58 @@
 {
-  "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Steam Tool Plus",
+  "version": "1.11.0",
+  "identifier": "com.steamtoolplus.app",
   "build": {
-    "beforeBuildCommand": "npm run build",
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "npm run build",
     "frontendDist": "../dist"
   },
-  "bundle": {
-    "active": true,
-    "category": "Game",
-    "copyright": "© 2024 Steam Tool Plus",
-    "targets": ["nsis"],
-    "externalBin": [],
-    "icon": [
-      "icons/icon.png",
-      "icons/icon.ico"
-    ],
-    "windows": {
-      "certificateThumbprint": null,
-      "digestAlgorithm": "sha256",
-      "timestampUrl": ""
-    },
-    "longDescription": "Steam/Xbox 风格游戏管理工具",
-    "shortDescription": "游戏管理工具"
-  },
-  "productName": "Steam Tool Plus",
-  "version": "1.0.0",
-  "identifier": "com.steamtoolplus.app",
-  "plugins": {},
   "app": {
-    "security": {
-      "csp": null,
-      "capabilities": ["default"]
-    },
     "windows": [
       {
-        "fullscreen": false,
-        "height": 800,
-        "resizable": true,
         "title": "Steam Tool Plus",
-        "width": 1450,
-        "minWidth": 1450,
-        "minHeight": 600,
+        "width": 1500,
+        "height": 1000,
+        "minWidth": 1500,
+        "minHeight": 1000,
         "center": true,
+        "resizable": true,
+        "maximizable": true,
+        "minimizable": true,
+        "closable": true,
         "decorations": false,
-        "transparent": false,
+        "transparent": true,
         "shadow": true,
         "visible": true,
-        "dragDropEnabled": false
+        "fullscreen": false,
+        "focus": true
       }
-    ]
+    ],
+    "security": {
+      "csp": {
+        "default-src": "'self'",
+        "script-src": "'self'",
+        "style-src": "'self' 'unsafe-inline'",
+        "img-src": "'self' blob: data: asset: http://asset.localhost",
+        "font-src": "'self'",
+        "connect-src": "'self'"
+      },
+      "assetProtocol": {
+        "enable": true,
+        "scope": ["**"]
+      },
+      "capabilities": ["default"]
+    },
+    "macOSPrivateApi": false
+  },
+  "bundle": {
+    "active": false
+  },
+  "plugins": {
+    "shell": {
+      "open": true
+    }
   }
 }
