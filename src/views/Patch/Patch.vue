@@ -37,7 +37,9 @@
           <div class="config-options-wrapper">
             <!-- 模拟器模式选择 -->
             <div class="emulator-mode-section">
-              <label class="mode-label">模拟器模式：</label>
+              <div class="mode-label-wrapper">
+                <label class="mode-label">模拟器模式：</label>
+              </div>
               <div class="mode-options">
                 <label 
                   class="mode-radio" 
@@ -85,7 +87,9 @@
 
             <!-- 标准模式下的 DLL 版本选择 -->
             <div class="dll-version-section" v-if="emulatorMode === 0">
-              <label class="dll-version-label">DLL 版本：</label>
+              <div class="dll-version-label-wrapper">
+                <label class="dll-version-label">DLL 版本：</label>
+              </div>
               <div class="dll-version-options">
                 <label 
                   class="dll-radio" 
@@ -247,25 +251,38 @@
     </div>
 
     <!-- 高级功能子菜单 -->
-    <div v-if="basicConfigApplied" class="advanced-features-section">
+    <div class="advanced-features-section">
       <div class="section-card">
         <h3 class="section-title">
-          <svg class="section-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-          </svg>
           高级功能配置
         </h3>
-        <p class="section-desc">基础配置已应用，点击下方按钮配置更多功能</p>
+        <p class="section-desc">
+          {{ basicConfigApplied ? '基础配置已应用，点击下方按钮配置更多功能' : '请先完成上方的基础配置，或点击配置按钮时确认继续' }}
+        </p>
 
         <div class="feature-grid">
+          <!-- 完整配置管理器 -->
+          <div class="feature-card recommended" @click="openCompleteConfigManager">
+            <div class="feature-icon complete">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="3"/>
+                <path d="M12 1v6m0 6v6m4.22-10.22l4.24-4.24M6.34 17.66l-4.24 4.24M23 12h-6m-6 0H1m20.24 4.24l-4.24-4.24M6.34 6.34L2.1 2.1"/>
+              </svg>
+            </div>
+            <h4 class="feature-title">完整配置管理器</h4>
+            <p class="feature-desc">一站式管理所有 gbe_fork 配置，界面简洁操作方便</p>
+            <span class="feature-status recommended">推荐使用</span>
+          </div>
+
           <!-- 局域网联机 -->
           <div class="feature-card" @click="openLanMultiplayerConfig">
             <div class="feature-icon lan">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-                <circle cx="9" cy="7" r="4"/>
-                <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                <rect x="2" y="8" width="20" height="8" rx="2"/>
+                <path d="M6 12h.01"/>
+                <path d="M10 12h.01"/>
+                <path d="M14 12h.01"/>
+                <path d="M18 12h.01"/>
               </svg>
             </div>
             <h4 class="feature-title">局域网联机</h4>
@@ -390,34 +407,18 @@
             </span>
           </div>
 
-          <!-- DLC 和 depot -->
-          <div class="feature-card" @click="openDlcConfig">
-            <div class="feature-icon dlc">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-                <line x1="12" y1="8" x2="12" y2="16"/>
-                <line x1="8" y1="12" x2="16" y2="12"/>
-              </svg>
-            </div>
-            <h4 class="feature-title">DLC 与 Depot</h4>
-            <p class="feature-desc">配置已安装的 DLC 和 depot 列表</p>
-            <span class="feature-status" :class="{ configured: configStatus.dlc }">
-              {{ configStatus.dlc ? '已配置' : '未配置' }}
-            </span>
-          </div>
-
-          <!-- 主配置 -->
-          <div class="feature-card" @click="openMainConfig">
-            <div class="feature-icon main">
+          <!-- 其他配置（DLC + 主配置） -->
+          <div class="feature-card" @click="openOtherConfig">
+            <div class="feature-icon other">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <circle cx="12" cy="12" r="3"/>
                 <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
               </svg>
             </div>
-            <h4 class="feature-title">主配置</h4>
-            <p class="feature-desc">配置模拟器核心选项和高级设置</p>
-            <span class="feature-status" :class="{ configured: configStatus.main }">
-              {{ configStatus.main ? '已配置' : '未配置' }}
+            <h4 class="feature-title">其他配置</h4>
+            <p class="feature-desc">配置 DLC、Depot 和模拟器核心选项</p>
+            <span class="feature-status" :class="{ configured: configStatus.other }">
+              {{ configStatus.other ? '已配置' : '未配置' }}
             </span>
           </div>
         </div>
@@ -505,6 +506,12 @@
       @close="showMainModal = false"
       @saved="onConfigSaved('main')"
     />
+
+    <CompleteConfigManager
+      v-if="showCompleteConfigManager"
+      :game-path="gamePath"
+      @close="showCompleteConfigManager = false"
+    />
   </div>
 </template>
 
@@ -524,6 +531,7 @@ import LeaderboardsConfig from '../../components/steam-patch/LeaderboardsConfig.
 import StatsConfig from '../../components/steam-patch/StatsConfig.vue'
 import DlcConfig from '../../components/steam-patch/DlcConfig.vue'
 import MainConfig from '../../components/steam-patch/MainConfig.vue'
+import CompleteConfigManager from '../../components/steam-patch/CompleteConfigManager.vue'
 
 // ============================================
 // 状态
@@ -562,8 +570,7 @@ const configStatus = ref({
   user: false,
   leaderboards: false,
   stats: false,
-  dlc: false,
-  main: false,
+  other: false,
 })
 
 /** 弹窗显示状态 */
@@ -577,6 +584,7 @@ const showLeaderboardsModal = ref(false)
 const showStatsModal = ref(false)
 const showDlcModal = ref(false)
 const showMainModal = ref(false)
+const showCompleteConfigManager = ref(false)
 
 // ============================================
 // 计算属性
@@ -785,6 +793,15 @@ const openMainConfig = () => {
   showMainModal.value = true
 }
 
+const openCompleteConfigManager = () => {
+  showCompleteConfigManager.value = true
+}
+
+const openOtherConfig = () => {
+  // 打开其他配置，可以同时管理 DLC 和主配置
+  showDlcModal.value = true
+}
+
 // ============================================
 // Tooltip 控制
 // ============================================
@@ -809,7 +826,6 @@ const hideTooltip = () => {
   height: 100%;
   overflow-y: auto;
   padding: 24px 32px;
-  background-color: var(--steam-bg-secondary);
 }
 
 /* ============================================
@@ -871,7 +887,7 @@ const hideTooltip = () => {
    ============================================ */
 .section-card,
 .config-card {
-  background-color: var(--steam-bg-primary);
+  background-color: rgba(var(--steam-bg-primary-rgb), 0.2);
   border-radius: 12px;
   border: 1px solid var(--steam-border);
   padding: 20px;
@@ -940,8 +956,13 @@ const hideTooltip = () => {
 /* 模拟器模式选择 */
 .emulator-mode-section {
   display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mode-label-wrapper {
+  display: flex;
   align-items: center;
-  gap: 12px;
 }
 
 .mode-label {
@@ -954,7 +975,6 @@ const hideTooltip = () => {
 .mode-options {
   display: flex;
   gap: 12px;
-  flex: 1;
 }
 
 .mode-radio {
@@ -967,7 +987,7 @@ const hideTooltip = () => {
   cursor: pointer;
   transition: all 0.15s ease;
   flex: 1;
-  background-color: var(--steam-bg-secondary);
+  background-color: rgba(var(--steam-bg-secondary-rgb), 0.2);
   position: relative;
 }
 
@@ -1002,7 +1022,7 @@ const hideTooltip = () => {
   transform: translateX(-50%) scale(0.95);
   width: 280px;
   padding: 12px 16px;
-  background-color: var(--steam-bg-primary);
+  background-color: rgba(var(--steam-bg-primary-rgb), 0.2);
   border: 1px solid var(--steam-border);
   border-radius: 8px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
@@ -1056,12 +1076,13 @@ const hideTooltip = () => {
 /* DLL 版本选择 */
 .dll-version-section {
   display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dll-version-label-wrapper {
+  display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 10px 14px;
-  background-color: var(--steam-bg-secondary);
-  border-radius: 8px;
-  border: 1px solid var(--steam-border);
 }
 
 .dll-version-label {
@@ -1074,7 +1095,6 @@ const hideTooltip = () => {
 .dll-version-options {
   display: flex;
   gap: 12px;
-  flex: 1;
 }
 
 .dll-radio {
@@ -1087,7 +1107,7 @@ const hideTooltip = () => {
   cursor: pointer;
   transition: all 0.15s ease;
   flex: 1;
-  background-color: var(--steam-bg-primary);
+  background-color: rgba(var(--steam-bg-primary-rgb), 0.2);
   position: relative;
 }
 
@@ -1140,7 +1160,7 @@ const hideTooltip = () => {
   padding: 10px 12px;
   border: 1px solid var(--steam-border);
   border-radius: 8px;
-  background-color: var(--steam-bg-secondary);
+  background-color: rgba(var(--steam-bg-secondary-rgb), 0.2);
   color: var(--steam-text-primary);
   font-size: 14px;
   outline: none;
@@ -1161,7 +1181,7 @@ const hideTooltip = () => {
   padding: 10px 12px;
   border: 1px solid var(--steam-border);
   border-radius: 8px;
-  background-color: var(--steam-bg-secondary);
+  background-color: rgba(var(--steam-bg-secondary-rgb), 0.2);
   color: var(--steam-text-primary);
   font-size: 13px;
   outline: none;
@@ -1191,7 +1211,7 @@ const hideTooltip = () => {
   padding: 10px 16px;
   border: 1px solid var(--steam-border);
   border-radius: 8px;
-  background-color: var(--steam-bg-tertiary);
+  background-color: rgba(var(--steam-bg-tertiary-rgb), 0.2);
   color: var(--steam-text-primary);
   font-size: 13px;
   font-weight: 500;
@@ -1200,7 +1220,7 @@ const hideTooltip = () => {
 }
 
 .clear-btn:hover {
-  background-color: var(--steam-border);
+  background-color: rgba(var(--steam-bg-tertiary-rgb), 0.4);
 }
 
 .config-hint {
@@ -1322,13 +1342,13 @@ const hideTooltip = () => {
 }
 
 .btn-secondary {
-  background-color: var(--steam-bg-tertiary);
+  background-color: rgba(var(--steam-bg-tertiary-rgb), 0.2);
   color: var(--steam-text-primary);
   border: 1px solid var(--steam-border);
 }
 
 .btn-secondary:hover {
-  background-color: var(--steam-border);
+  background-color: rgba(var(--steam-bg-tertiary-rgb), 0.4);
 }
 
 .btn-primary svg,
@@ -1346,12 +1366,12 @@ const hideTooltip = () => {
 
 .feature-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
   gap: 16px;
 }
 
 .feature-card {
-  background-color: var(--steam-bg-secondary);
+  background-color: rgba(var(--steam-bg-secondary-rgb), 0.2);
   border: 1px solid var(--steam-border);
   border-radius: 10px;
   padding: 16px;
@@ -1390,6 +1410,8 @@ const hideTooltip = () => {
 .feature-icon.stats { background-color: rgba(14, 165, 233, 0.1); color: #0ea5e9; }
 .feature-icon.dlc { background-color: rgba(168, 85, 247, 0.1); color: #a855f7; }
 .feature-icon.main { background-color: rgba(100, 116, 139, 0.1); color: #64748b; }
+.feature-icon.complete { background-color: rgba(16, 185, 129, 0.1); color: #10b981; }
+.feature-icon.other { background-color: rgba(100, 116, 139, 0.1); color: #64748b; }
 
 .feature-title {
   font-size: 14px;
@@ -1411,7 +1433,7 @@ const hideTooltip = () => {
   border-radius: 4px;
   font-size: 11px;
   font-weight: 500;
-  background-color: var(--steam-bg-tertiary);
+  background-color: rgba(var(--steam-bg-tertiary-rgb), 0.2);
   color: var(--steam-text-secondary);
 }
 
@@ -1423,6 +1445,20 @@ const hideTooltip = () => {
 .feature-status.disabled {
   background-color: rgba(239, 68, 68, 0.1);
   color: #ef4444;
+}
+
+.feature-status.recommended {
+  background-color: rgba(16, 185, 129, 0.2);
+  color: #10b981;
+}
+
+/* 推荐使用的卡片样式 */
+.feature-card.recommended {
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.feature-card.recommended:hover {
+  border-color: rgba(16, 185, 129, 0.5);
 }
 
 /* ============================================
@@ -1442,7 +1478,7 @@ const hideTooltip = () => {
 }
 
 .modal-content {
-  background-color: var(--steam-bg-primary);
+  background-color: rgba(var(--steam-bg-primary-rgb), 0.2);
   border-radius: 12px;
   border: 1px solid var(--steam-border);
   max-width: 500px;

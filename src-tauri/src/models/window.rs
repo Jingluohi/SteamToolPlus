@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 
 /// 窗口状态
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(dead_code)]
 pub struct WindowState {
     /// 窗口宽度
     pub width: u32,
@@ -36,13 +37,4 @@ pub struct SetWindowSizeRequest {
     pub width: u32,
     /// 高度
     pub height: u32,
-}
-
-/// 设置窗口位置请求
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SetWindowPositionRequest {
-    /// X坐标
-    pub x: i32,
-    /// Y坐标
-    pub y: i32,
 }

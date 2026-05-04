@@ -27,8 +27,7 @@ export async function logToFile(level: LogLevel, message: string, source: string
       source
     })
   } catch (err) {
-    // 如果后端日志失败，输出到控制台
-    console.error('日志记录失败:', err)
+    // 如果后端日志失败，静默处理
   }
 }
 

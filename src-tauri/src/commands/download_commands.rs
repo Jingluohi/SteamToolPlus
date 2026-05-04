@@ -5,6 +5,9 @@ use crate::services::{
     DownloadService, DownloadServiceTrait,
 };
 use tauri::AppHandle;
+use crate::services::game_data_service;
+use std::thread;
+use std::time::Duration;
 
 /// 读取清单文件夹
 #[tauri::command]
@@ -47,9 +50,70 @@ pub async fn start_game_download(
     app: AppHandle,
     manifest_path: String,
     download_path: String,
+    game_id: String,
 ) -> Result<crate::services::DownloadResult, String> {
     let service = DownloadService::new();
-    service.start_game_download(&app, &manifest_path, &download_path)
+    let result = service.start_game_download(&app, &manifest_path, &download_path);
+
+    // 如果下载启动成功，启动监控任务
+    if result.is_ok() {
+        let app_handle = app.clone();
+        let game_id_clone = game_id.clone();
+
+        // 更新游戏状态为 downloading
+        let _ = game_data_service::update_download_status(
+            app.clone(),
+            game_id.clone(),
+            "downloading".to_string(),
+            0,
+        ).await;
+
+        // 启动后台监控任务
+        thread::spawn(move || {
+            log::info!("启动下载监控任务，游戏ID: {}", game_id_clone);
+
+            // 持续监控直到 ddv20.exe 进程退出
+            loop {
+                thread::sleep(Duration::from_secs(5));
+
+                // 检查 ddv20.exe 是否还在运行
+                let is_running = crate::check_ddv20_running();
+
+                if !is_running {
+                    // ddv20.exe 已退出，检查游戏状态
+                    let app_handle_clone = app_handle.clone();
+                    let game_id_check = game_id_clone.clone();
+
+                    // 使用 tokio 运行时执行异步操作
+                    let rt = tokio::runtime::Runtime::new();
+                    if let Ok(rt) = rt {
+                        let _ = rt.block_on(async {
+                            // 检查游戏当前状态
+                            if let Ok(Some(game)) = game_data_service::get_game(app_handle_clone.clone(), game_id_check.clone()).await {
+                                // 如果状态是 downloading 且进度未到 100%，标记为 idle
+                                if game.download_status == "downloading" && game.download_progress < 100 {
+                                    let _ = game_data_service::update_download_status(
+                                        app_handle_clone,
+                                        game_id_check,
+                                        "idle".to_string(),
+                                        game.download_progress,
+                                    ).await;
+                                    log::info!("检测到 ddv20.exe 进程已退出，游戏 {} 下载状态已重置为 idle", game_id_clone);
+                                }
+                            }
+                        });
+                    }
+
+                    // 退出监控循环
+                    break;
+                }
+            }
+
+            log::info!("下载监控任务已结束，游戏ID: {}", game_id_clone);
+        });
+    }
+
+    result
 }
 
 /// 获取下载进度文件
@@ -96,9 +160,22 @@ pub fn check_and_cleanup_completed_downloads(app: AppHandle) -> Result<(), Strin
 }
 
 /// 停止下载进程
-/// 终止 ddv20.exe 进程
+/// 终止 ddv20.exe 进程，并将游戏状态设置为 idle（未下载）
 #[tauri::command]
-pub fn stop_download() -> Result<(), String> {
+pub async fn stop_download(app: AppHandle, game_id: String) -> Result<(), String> {
+    // 尝试终止 ddv20.exe 进程（如果存在）
     let service = DownloadService::new();
-    service.stop_download()
+    let _ = service.stop_download(); // 忽略错误，因为进程可能不存在
+
+    // 将游戏状态设置为 idle（未下载）
+    if let Ok(Some(game)) = game_data_service::get_game(app.clone(), game_id.clone()).await {
+        let _ = game_data_service::update_download_status(
+            app,
+            game_id,
+            "idle".to_string(),
+            game.download_progress,
+        ).await;
+    }
+
+    Ok(())
 }

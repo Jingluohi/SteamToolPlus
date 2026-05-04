@@ -13,34 +13,35 @@
  * Steam风格灰黑色调 - 多层次配色
  */
 :root {
-  /* 深色主题 - 中性灰色调，去除蓝色 */
-  --steam-bg-primary: #2a2a2a;
-  --steam-bg-primary-rgb: 42, 42, 42;
-  --steam-bg-secondary: #333333;
-  --steam-bg-secondary-rgb: 51, 51, 51;
-  --steam-bg-tertiary: #3d3d3d;
-  --steam-bg-tertiary-rgb: 61, 61, 61;
-  --steam-bg-quaternary: #474747;
-  --steam-bg-quaternary-rgb: 71, 71, 71;
-  --steam-bg-card: #525252;
-  --steam-bg-hover: #5c5c5c;
-  --steam-accent-hover: rgba(255, 255, 255, 0.1);
-  
-  /* 输入框和表单元素 - 中性灰色 */
-  --steam-input-bg: #404040;
-  --steam-input-border: #525252;
-  --steam-input-focus: #616161;
-  
-  /* 卡片和容器 - 不同层次的中性灰色 */
-  --steam-card-bg: #383838;
-  --steam-card-border: #4a4a4a;
-  --steam-panel-bg: #303030;
-  --steam-panel-border: #424242;
+  /* 深色主题 - 适中灰色调 */
+  --steam-bg-primary: #4f4f4f;
+  --steam-bg-primary-rgb: 79, 79, 79;
+  --steam-bg-secondary: #595959;
+  --steam-bg-secondary-rgb: 89, 89, 89;
+  --steam-bg-tertiary: #636363;
+  --steam-bg-tertiary-rgb: 99, 99, 99;
+  --steam-bg-quaternary: #6d6d6d;
+  --steam-bg-quaternary-rgb: 109, 109, 109;
+  --steam-bg-card: #777777;
+  --steam-bg-hover: #818181;
+  --steam-accent-hover: rgba(255, 255, 255, 0.12);
+
+  /* 输入框和表单元素 - 适中灰色 */
+  --steam-input-bg: #636363;
+  --steam-input-border: #757575;
+  --steam-input-focus: #858585;
+
+  /* 卡片和容器 - 适中灰色 */
+  --steam-card-bg: #5c5c5c;
+  --steam-card-border: #6d6d6d;
+  --steam-panel-bg: #555555;
+  --steam-panel-border: #666666;
   
   --steam-text-primary: #ffffff;
   --steam-text-secondary: #d0d4da;
   --steam-text-muted: #9ca3af;
   --steam-text-subtle: #6b7280;
+  --steam-text-outline: rgba(0, 0, 0, 0.8);
   
   /* 强调色 - 更鲜明的配色 */
   --steam-accent-blue: #60a5fa;
@@ -71,10 +72,10 @@
   --steam-border-light: rgba(255, 255, 255, 0.15);
   --steam-border-subtle: rgba(255, 255, 255, 0.08);
   
-  /* 玻璃态效果 */
-  --glass-bg: rgba(255, 255, 255, 0.08);
-  --glass-bg-hover: rgba(255, 255, 255, 0.12);
-  --glass-border: rgba(255, 255, 255, 0.15);
+  /* 玻璃态效果 - 深色主题使用深色系 */
+  --glass-bg: rgba(23, 26, 33, 0.75);
+  --glass-bg-hover: rgba(27, 40, 56, 0.85);
+  --glass-border: rgba(255, 255, 255, 0.1);
   --glass-backdrop: blur(20px) saturate(180%);
   
   /* 圆角 */
@@ -123,10 +124,11 @@
   --steam-panel-bg: #f8f9fa;
   --steam-panel-border: #e9ecef;
   
-  --steam-text-primary: #212529;
-  --steam-text-secondary: #495057;
-  --steam-text-muted: #868e96;
-  --steam-text-subtle: #adb5bd;
+  --steam-text-primary: #000000;
+  --steam-text-secondary: #333333;
+  --steam-text-muted: #666666;
+  --steam-text-subtle: #999999;
+  --steam-text-outline: rgba(255, 255, 255, 0.8);
   
   --steam-accent-blue: #4a9eff;
   --steam-accent-blue-rgb: 74, 158, 255;
@@ -145,7 +147,8 @@
   --steam-border-light: rgba(0, 0, 0, 0.12);
   --steam-border-subtle: rgba(0, 0, 0, 0.05);
   
-  --glass-bg: rgba(255, 255, 255, 0.7);
+  /* 玻璃态效果 - 浅色主题使用浅灰色系 */
+  --glass-bg: rgba(248, 249, 250, 0.75);
   --glass-bg-hover: rgba(255, 255, 255, 0.9);
   --glass-border: rgba(0, 0, 0, 0.08);
   --glass-backdrop: blur(20px) saturate(180%);
@@ -170,7 +173,7 @@ html {
 
 body {
   font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  background: var(--steam-bg-primary);
+  background: transparent;
   color: var(--steam-text-primary);
   line-height: 1.5;
   overflow: hidden;

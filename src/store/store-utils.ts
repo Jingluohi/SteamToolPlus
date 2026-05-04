@@ -30,7 +30,6 @@ export function createAsyncState() {
       return await action()
     } catch (err) {
       error.value = err instanceof Error ? err.message : `${context}失败`
-      console.error(`${context}失败:`, err)
       return undefined
     } finally {
       loading.value = false
@@ -144,7 +143,6 @@ export async function safeAsync<T>(
   try {
     return await action()
   } catch (err) {
-    console.error(errorMessage, err)
     return undefined
   }
 }

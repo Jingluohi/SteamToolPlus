@@ -131,7 +131,7 @@ async function selectSavePath() {
       form.value.savePath = selected
     }
   } catch (err) {
-    console.error('选择路径失败:', err)
+    // 选择路径失败时静默处理
   }
 }
 

@@ -16,7 +16,6 @@ export async function safeAsync<T>(
   try {
     return await fn()
   } catch (error) {
-    console.error(errorMessage, error)
     return null
   }
 }
@@ -36,7 +35,6 @@ export async function safeAsyncWithDefault<T>(
   try {
     return await fn()
   } catch (error) {
-    console.error(errorMessage, error)
     return defaultValue
   }
 }

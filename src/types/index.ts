@@ -4,7 +4,6 @@
  */
 
 export * from './game.types'
-export * from './extension.types'
 export * from './config.types'
 export * from './window.types'
 export * from './api.types'

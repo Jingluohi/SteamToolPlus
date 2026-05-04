@@ -22,8 +22,6 @@ export const useConfigStore = defineStore('config', () => {
   const themeConfig = computed(() => config.value?.theme)
   const gameDirsConfig = computed(() => config.value?.gameDirs)
   const launchConfig = computed(() => config.value?.launch)
-  const extensionConfig = computed(() => config.value?.extension)
-  const securityConfig = computed(() => config.value?.security)
 
   // ==================== Actions ====================
 
@@ -37,7 +35,6 @@ export const useConfigStore = defineStore('config', () => {
       config.value = await configApi.getConfig()
     } catch (err) {
       error.value = err instanceof Error ? err.message : '加载配置失败'
-      console.error('加载配置失败:', err)
     } finally {
       loading.value = false
     }
@@ -54,7 +51,45 @@ export const useConfigStore = defineStore('config', () => {
       config.value = configData
     } catch (err) {
       error.value = err instanceof Error ? err.message : '保存配置失败'
-      console.error('保存配置失败:', err)
+    } finally {
+      loading.value = false
+    }
+  }
+
+  /**
+   * 更新配置（部分更新）
+   */
+  async function updateConfig(partialConfig: Partial<AppConfig>) {
+    loading.value = true
+    error.value = null
+    try {
+      if (!config.value) {
+        throw new Error('配置未加载')
+      }
+      
+      // 使用 API 更新配置，让后端合并
+      const result = await configApi.updateConfig(partialConfig)
+      config.value = result
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : '更新配置失败'
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  /**
+   * 重置配置到默认值
+   */
+  async function resetConfig() {
+    loading.value = true
+    error.value = null
+    try {
+      const defaultConfig = await configApi.resetConfig()
+      config.value = defaultConfig
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : '重置配置失败'
+      throw err
     } finally {
       loading.value = false
     }
@@ -71,10 +106,10 @@ export const useConfigStore = defineStore('config', () => {
     themeConfig,
     gameDirsConfig,
     launchConfig,
-    extensionConfig,
-    securityConfig,
     // Actions
     loadConfig,
-    saveConfigData
+    saveConfigData,
+    updateConfig,
+    resetConfig
   }
 })

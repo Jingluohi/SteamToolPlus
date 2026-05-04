@@ -111,7 +111,7 @@ async function loadConfig() {
       config.value.mainIni = result.content
     }
   } catch (error) {
-    console.error('加载配置失败:', error)
+    // 加载配置失败时静默处理
   }
 }
 

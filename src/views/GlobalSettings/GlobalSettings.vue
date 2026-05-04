@@ -6,37 +6,20 @@
   <div class="settings-page">
     <div class="page-header">
       <h1 class="page-title">全局设置</h1>
-      <p class="page-desc">配置应用程序的各项参数</p>
+      <p class="page-desc">配置应用程序的基本参数</p>
     </div>
     
     <div class="settings-content">
-      <!-- 通用设置 -->
-      <section class="settings-section">
-        <h2 class="section-title">通用</h2>
-        
-        <div class="setting-item">
-          <div class="setting-info">
-            <h3 class="setting-name">主题</h3>
-            <p class="setting-desc">选择应用程序的主题模式</p>
-          </div>
-          <div class="setting-control">
-            <Dropdown
-              v-model="settings.theme"
-              :options="themeOptions"
-              @change="handleThemeChange"
-            />
-          </div>
-        </div>
-      </section>
-      
       <!-- 游戏设置 -->
       <section class="settings-section">
-        <h2 class="section-title">游戏</h2>
+        <h2 class="section-title">
+          游戏
+        </h2>
 
         <div class="setting-item">
           <div class="setting-info">
             <h3 class="setting-name">Steam路径</h3>
-            <p class="setting-desc">Steam安装目录路径，用于导入已安装的Steam游戏</p>
+            <p class="setting-desc">Steam安装目录路径，用于导入已安装的Steam游戏和清单入库功能</p>
           </div>
           <div class="setting-control">
             <div class="input-with-btn">
@@ -47,8 +30,8 @@
                 placeholder="选择Steam安装路径"
                 readonly
               />
-              <Button variant="secondary" @click="selectSteamPath">
-                浏览...
+              <Button variant="secondary" size="small" @click="selectSteamPath">
+                浏览
               </Button>
             </div>
           </div>
@@ -57,7 +40,9 @@
       
       <!-- 启动设置 -->
       <section class="settings-section">
-        <h2 class="section-title">启动</h2>
+        <h2 class="section-title">
+          启动
+        </h2>
         
         <div class="setting-item">
           <div class="setting-info">
@@ -78,15 +63,14 @@
             <Toggle v-model="settings.hideToTrayOnClose" />
           </div>
         </div>
-
       </section>
       
       <!-- 操作按钮 -->
       <div class="settings-actions">
-        <Button variant="ghost" @click="resetSettings">
+        <Button variant="ghost" size="small" @click="resetSettings">
           恢复默认
         </Button>
-        <Button variant="primary" @click="saveSettings">
+        <Button variant="primary" size="small" @click="saveSettings">
           保存设置
         </Button>
       </div>
@@ -100,32 +84,21 @@
  * 用于配置应用程序的各项设置
  */
 
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, nextTick } from 'vue'
 import { open } from '@tauri-apps/plugin-dialog'
 import { useConfigStore } from '../../store/config.store'
-import { useThemeStore } from '../../store/theme.store'
 import Button from '../../components/common/Button.vue'
-import Dropdown from '../../components/common/Dropdown.vue'
 import Toggle from './components/Toggle.vue'
 
 // Store
 const configStore = useConfigStore()
-const themeStore = useThemeStore()
 
 // 本地设置状态
 const settings = ref({
-  theme: 'auto',
   steamPath: '',
   startMinimizedToTray: false,
   hideToTrayOnClose: true
 })
-
-// 主题选项
-const themeOptions = [
-  { value: 'dark', label: '深色' },
-  { value: 'light', label: '浅色' },
-  { value: 'auto', label: '跟随系统' }
-]
 
 // 生命周期
 onMounted(async () => {
@@ -133,23 +106,20 @@ onMounted(async () => {
   if (!configStore.config) {
     await configStore.loadConfig()
   }
-  loadSettings()
+  // 使用 nextTick 确保响应式数据已更新
+  nextTick(() => {
+    loadSettings()
+  })
 })
 
 // 加载设置
 function loadSettings() {
   const config = configStore.config
   if (config) {
-    settings.value.theme = config.theme.mode
     settings.value.steamPath = config.gameDirs.steamPath || ''
     settings.value.startMinimizedToTray = config.launch.startMinimizedToTray ?? false
     settings.value.hideToTrayOnClose = config.launch.hideToTrayOnClose ?? true
   }
-}
-
-// 处理主题变更
-function handleThemeChange(value: string) {
-  themeStore.setThemeMode(value as 'dark' | 'light' | 'auto')
 }
 
 // 选择Steam路径
@@ -164,7 +134,7 @@ async function selectSteamPath() {
       settings.value.steamPath = selected
     }
   } catch (err) {
-    console.error('选择路径失败:', err)
+    // 选择路径失败时静默处理
   }
 }
 
@@ -178,16 +148,12 @@ async function saveSettings() {
       return
     }
 
+    // 确保 steamPath 有值
+    const steamPathValue = settings.value.steamPath?.trim() || ''
+
     const updateData = {
-      theme: {
-        mode: settings.value.theme as 'dark' | 'light' | 'auto',
-        followSystem: settings.value.theme === 'auto',
-        customVars: currentConfig.theme.customVars || {}
-      },
       gameDirs: {
-        steamPath: settings.value.steamPath && settings.value.steamPath.trim() !== ''
-          ? settings.value.steamPath
-          : currentConfig.gameDirs.steamPath,
+        steamPath: steamPathValue !== '' ? steamPathValue : currentConfig.gameDirs.steamPath,
         coversPath: currentConfig.gameDirs.coversPath || 'data/covers'
       },
       launch: {
@@ -196,11 +162,10 @@ async function saveSettings() {
         verifyBeforeLaunch: currentConfig.launch.verifyBeforeLaunch || false
       }
     }
-    
+
     await configStore.updateConfig(updateData)
     alert('设置已保存')
   } catch (err) {
-    console.error('保存设置失败:', err)
     alert('保存设置失败: ' + (err instanceof Error ? err.message : String(err)))
   }
 }
@@ -212,60 +177,76 @@ async function resetSettings() {
     loadSettings()
   }
 }
+
+
 </script>
 
 <style scoped>
 .settings-page {
   height: 100%;
   overflow-y: auto;
-  padding: 24px;
+  padding: 20px;
   background: var(--steam-bg-secondary);
 }
 
 .page-header {
-  margin-bottom: 32px;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--steam-border);
 }
 
 .page-title {
-  font-size: 28px;
+  font-size: 24px;
   font-weight: 600;
   color: var(--steam-text-primary);
-  margin-bottom: 8px;
+  margin-bottom: 4px;
 }
 
 .page-desc {
-  font-size: 14px;
+  font-size: 13px;
   color: var(--steam-text-secondary);
 }
 
 .settings-content {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 16px;
   width: 100%;
 }
 
 .settings-section {
-  background: var(--steam-bg-primary);
-  border-radius: 8px;
-  padding: 20px;
+  background: rgba(var(--steam-bg-primary-rgb), 0.8);
+  border-radius: 12px;
+  padding: 16px;
+  border: 1px solid var(--steam-border);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  position: relative;
 }
 
 .section-title {
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--steam-text-primary);
-  margin-bottom: 16px;
-  padding-bottom: 12px;
+  margin-bottom: 12px;
+  padding-bottom: 10px;
   border-bottom: 1px solid var(--steam-border);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.section-icon {
+  font-size: 16px;
+  filter: grayscale(0.3);
 }
 
 .setting-item {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
-  padding: 16px 0;
-  border-bottom: 1px solid var(--steam-border);
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  gap: 16px;
 }
 
 .setting-item:last-child {
@@ -274,6 +255,8 @@ async function resetSettings() {
 
 .setting-info {
   flex: 1;
+  min-width: 0;
+  padding-right: 16px;
 }
 
 .setting-name {
@@ -281,34 +264,46 @@ async function resetSettings() {
   font-weight: 500;
   color: var(--steam-text-primary);
   margin-bottom: 4px;
+  line-height: 1.4;
 }
 
 .setting-desc {
   font-size: 12px;
   color: var(--steam-text-muted);
+  line-height: 1.5;
+  word-wrap: break-word;
 }
 
 .setting-control {
-  min-width: 200px;
+  min-width: 140px;
   display: flex;
   justify-content: flex-end;
+  align-items: center;
+  padding-top: 2px;
 }
 
 /* 输入框 */
 .input-with-btn {
   display: flex;
   gap: 8px;
+  align-items: center;
 }
 
 .form-input {
-  width: 240px;
-  height: 36px;
-  padding: 0 12px;
+  width: 200px;
+  height: 32px;
+  padding: 0 10px;
   background: var(--steam-bg-tertiary);
   border: 1px solid var(--steam-border);
-  border-radius: 4px;
+  border-radius: 6px;
   color: var(--steam-text-primary);
-  font-size: 14px;
+  font-size: 13px;
+  transition: border-color 0.15s ease;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: var(--steam-accent);
 }
 
 .form-input::placeholder {
@@ -319,7 +314,9 @@ async function resetSettings() {
 .settings-actions {
   display: flex;
   justify-content: flex-end;
-  gap: 12px;
-  padding-top: 16px;
+  gap: 10px;
+  padding-top: 12px;
+  margin-top: 8px;
+  border-top: 1px solid var(--steam-border);
 }
 </style>

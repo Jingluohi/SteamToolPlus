@@ -11,7 +11,7 @@
           <img src="../../../src-tauri/icons/128x128.png" alt="Steam Tool Plus" />
         </div>
         <h1 class="app-name">Steam Tool Plus</h1>
-        <p class="app-version">版本 v1.11</p>
+        <p class="app-version">版本 v1.20</p>
       </div>
 
       <!-- 作者信息区域（来自旧版设置） -->
@@ -50,7 +50,7 @@ async function openBilibili() {
     // 使用 Tauri shell 插件在默认浏览器中打开链接
     await open('https://space.bilibili.com/405707676')
   } catch (error) {
-    console.error('打开链接失败:', error)
+    // 打开链接失败时静默处理
   }
 }
 
@@ -62,7 +62,7 @@ async function openGithub() {
     // 使用 Tauri shell 插件在默认浏览器中打开链接
     await open('https://github.com/Jingluohi/SteamToolPlus')
   } catch (error) {
-    console.error('打开链接失败:', error)
+    // 打开链接失败时静默处理
   }
 }
 </script>
@@ -72,13 +72,13 @@ async function openGithub() {
   height: 100%;
   overflow-y: auto;
   padding: 24px;
-  background: var(--steam-bg-secondary);
 }
 
 .about-content {
   max-width: 600px;
   margin: 0 auto;
-  background: var(--steam-bg-primary);
+  background: rgba(23, 26, 33, 0.3);
+  backdrop-filter: blur(10px);
   border-radius: 12px;
   padding: 40px;
 }
@@ -118,7 +118,7 @@ async function openGithub() {
 }
 
 .app-version {
-  font-size: 14px;
+  font-size: 16px;
   color: var(--steam-text-secondary);
 }
 
@@ -130,7 +130,7 @@ async function openGithub() {
 }
 
 .app-author {
-  font-size: 14px;
+  font-size: 16px;
   color: var(--steam-text-secondary);
   margin: 0 0 12px 0;
 }
@@ -148,14 +148,14 @@ async function openGithub() {
 }
 
 .app-license {
-  font-size: 12px;
+  font-size: 14px;
   color: #e11d48;
   margin: 12px 0 8px 0;
   font-weight: 500;
 }
 
 .app-copyright {
-  font-size: 12px;
+  font-size: 14px;
   color: var(--steam-text-secondary);
   margin: 8px 0 0 0;
 }
@@ -174,7 +174,7 @@ async function openGithub() {
   border-radius: 6px;
   color: var(--steam-text-primary);
   text-decoration: none;
-  font-size: 13px;
+  font-size: 15px;
   cursor: pointer;
   transition: background-color 0.15s ease, border-color 0.15s ease;
 }

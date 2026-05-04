@@ -14,10 +14,6 @@ export interface AppConfig {
   gameDirs: GameDirConfig
   /** 启动配置 */
   launch: LaunchConfig
-  /** 扩展配置 */
-  extension: ExtensionConfig
-  /** 安全配置 */
-  security: SecurityConfig
 }
 
 /**
@@ -73,32 +69,6 @@ export interface LaunchConfig {
 }
 
 /**
- * 扩展配置
- */
-export interface ExtensionConfig {
-  /** 扩展目录路径 */
-  extensionsPath: string
-  /** 是否启用扩展 */
-  enabled: boolean
-  /** 已启用扩展列表 */
-  enabledExtensions: string[]
-  /** 扩展权限配置 */
-  permissions: Record<string, unknown>
-}
-
-/**
- * 安全配置
- */
-export interface SecurityConfig {
-  /** 是否启用沙箱 */
-  sandboxEnabled: boolean
-  /** 允许扩展访问的文件路径 */
-  allowedPaths: string[]
-  /** 禁止扩展访问的路径 */
-  blockedPaths: string[]
-}
-
-/**
  * 更新配置请求
  */
 export interface UpdateConfigRequest {
@@ -110,8 +80,4 @@ export interface UpdateConfigRequest {
   gameDirs?: GameDirConfig
   /** 启动配置更新 */
   launch?: LaunchConfig
-  /** 扩展配置更新 */
-  extension?: ExtensionConfig
-  /** 安全配置更新 */
-  security?: SecurityConfig
 }

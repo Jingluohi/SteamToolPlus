@@ -5,18 +5,16 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod commands;
-// mod extension;
 mod models;
-mod security;
 mod services;
 mod utils;
 
-use commands::{config_commands, download_commands, extension_commands, game_commands, game_data_commands, help_commands, log_commands, patch_commands, window_commands};
+use commands::{background_commands, config_commands, download_commands, game_commands, game_data_commands, help_commands, log_commands, manifest_commands, patch_commands, window_commands};
 use services::{ConfigService, ConfigServiceTrait, GameService, GameServiceTrait};
 use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
-use tauri::Manager;
+use tauri::{Manager, Emitter};
 use tauri::tray::{TrayIconBuilder, TrayIconEvent, MouseButton};
 use tauri::menu::{Menu, MenuItem};
 use tauri::WindowEvent;
@@ -47,6 +45,40 @@ fn show_main_window(app_handle: &tauri::AppHandle) {
         let _ = window.set_focus();
         log::info!("主窗口已显示");
     }
+}
+
+/// 重启应用程序
+#[tauri::command]
+async fn restart_app(app_handle: tauri::AppHandle) -> Result<(), String> {
+    // 使用 tauri-plugin-process 的 restart 功能
+    app_handle.restart();
+    Ok(())
+}
+
+/// 检查 ddv20.exe 进程是否正在运行（不显示终端窗口）
+#[cfg(target_os = "windows")]
+pub fn check_ddv20_running() -> bool {
+    use std::os::windows::process::CommandExt;
+    use std::process::Command;
+
+    const CREATE_NO_WINDOW: u32 = 0x08000000;
+
+    let output = Command::new("tasklist")
+        .args(&["/FI", "IMAGENAME eq ddv20.exe", "/NH"])
+        .creation_flags(CREATE_NO_WINDOW)
+        .output();
+
+    if let Ok(output) = output {
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        return stdout.contains("ddv20.exe");
+    }
+
+    false
+}
+
+#[cfg(not(target_os = "windows"))]
+pub fn check_ddv20_running() -> bool {
+    false
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -113,7 +145,7 @@ fn main() {
             });
 
             // 处理托盘菜单事件
-            let app_handle = app.handle().clone();
+            let _app_handle = app.handle().clone();
             tray_icon.on_menu_event(move |tray, event| {
                 match event.id().as_ref() {
                     "open" => {
@@ -168,11 +200,53 @@ fn main() {
                                     if (window.gc) {
                                         window.gc();
                                     }
-                                    console.log('图片缓存已释放');
                                 "#);
                                 log::info!("图片缓存已释放");
                             });
                         }
+                    }
+                }
+            });
+
+            // 处理文件拖放事件
+            let window_clone = window.clone();
+            window.on_window_event(move |event| {
+                if let WindowEvent::DragDrop(drag_event) = event {
+                    match drag_event {
+                        tauri::DragDropEvent::Drop { paths, .. } => {
+                            // 过滤出Lua文件
+                            let lua_files: Vec<String> = paths
+                                .iter()
+                                .filter(|p| {
+                                    p.extension()
+                                        .map(|e| e.to_string_lossy().to_lowercase() == "lua")
+                                        .unwrap_or(false)
+                                })
+                                .map(|p| p.to_string_lossy().to_string())
+                                .collect();
+
+                            if !lua_files.is_empty() {
+                                // 发送事件给前端
+                                let _ = window_clone.emit("lua-files-dropped", lua_files);
+                            }
+
+                            // 过滤出VDF文件
+                            let vdf_files: Vec<String> = paths
+                                .iter()
+                                .filter(|p| {
+                                    p.extension()
+                                        .map(|e| e.to_string_lossy().to_lowercase() == "vdf")
+                                        .unwrap_or(false)
+                                })
+                                .map(|p| p.to_string_lossy().to_string())
+                                .collect();
+
+                            if !vdf_files.is_empty() {
+                                // 发送事件给前端
+                                let _ = window_clone.emit("vdf-files-dropped", vdf_files);
+                            }
+                        }
+                        _ => {}
                     }
                 }
             });
@@ -194,7 +268,6 @@ fn main() {
             game_commands::load_games_config_from_file,
             game_commands::get_game_cover_image,
             game_commands::check_game_installed,
-            game_commands::launch_game,
             game_commands::check_patch_file_exists,
             game_commands::get_game_cover_path,
             game_commands::get_game_library_image,
@@ -212,12 +285,13 @@ fn main() {
             window_commands::set_window_size,
             window_commands::open_help_window,
             window_commands::close_help_window,
-            // 扩展命令
-            extension_commands::get_extensions,
-            extension_commands::install_extension,
-            extension_commands::uninstall_extension,
-            extension_commands::toggle_extension,
-            extension_commands::reload_extension,
+            // 工具命令
+            commands::tool_commands::read_file_content,
+            commands::tool_commands::get_lua_files_in_folder,
+            commands::tool_commands::convert_lua_to_vdf,
+            commands::tool_commands::get_vdf_files_in_folder,
+            commands::tool_commands::convert_vdf_to_lua,
+            commands::tool_commands::download_steam_cover,
             // 下载命令
             download_commands::read_manifest_folder,
             download_commands::read_text_file,
@@ -236,31 +310,76 @@ fn main() {
             patch_commands::get_resource_dir,
             patch_commands::path_exists,
             patch_commands::backup_game_exe,
-            patch_commands::inject_patch,
             patch_commands::close_application,
-            patch_commands::select_file,
-            patch_commands::select_folder,
             patch_commands::open_external_link,
-            // 免Steam补丁注入新命令
+            patch_commands::write_text_file,
+            // 免Steam补丁注入新命令 - 100% 实现 gbe_fork 所有功能
             patch_commands::apply_steam_patch_basic,
             patch_commands::unpack_game_exe,
-            patch_commands::save_lan_multiplayer_config,
+            // 配置保存命令
+            patch_commands::save_main_config,
+            patch_commands::save_user_config,
             patch_commands::save_overlay_config,
             patch_commands::save_achievements_config,
-            patch_commands::save_items_config,
-            patch_commands::save_controller_config,
-            patch_commands::save_user_config,
-            patch_commands::save_leaderboards_config,
             patch_commands::save_stats_config,
+            patch_commands::save_items_config,
+            patch_commands::save_mods_config,
+            patch_commands::save_leaderboards_config,
+            patch_commands::save_controller_config,
             patch_commands::save_dlc_config,
-            patch_commands::save_main_config,
+            patch_commands::save_lan_multiplayer_config,
+            // 配置加载命令
             patch_commands::load_main_config,
+            patch_commands::load_user_config,
+            patch_commands::load_overlay_config,
+            patch_commands::load_achievements_config,
+            patch_commands::load_stats_config,
+            patch_commands::load_items_config,
+            patch_commands::load_mods_config,
+            patch_commands::load_leaderboards_config,
+            patch_commands::load_controller_config,
             patch_commands::load_lan_multiplayer_config,
+            // 导入导出命令
+            patch_commands::import_achievements_from_file,
+            patch_commands::export_achievements_config,
             // 7z补丁应用命令
             patch_commands::apply_patch,
             patch_commands::apply_patch_from_file,
             // 补丁说明读取命令
             patch_commands::get_patch_readme,
+            // 虚拟化环境配置教程
+            patch_commands::open_virtualization_tutorial,
+            // gbe_fork 额外配置文件命令
+            patch_commands::save_installed_app_ids,
+            patch_commands::load_installed_app_ids,
+            patch_commands::save_subscribed_groups,
+            patch_commands::load_subscribed_groups,
+            patch_commands::save_subscribed_groups_clans,
+            patch_commands::load_subscribed_groups_clans,
+            patch_commands::save_purchased_keys,
+            patch_commands::load_purchased_keys,
+            patch_commands::save_supported_languages,
+            patch_commands::load_supported_languages,
+            patch_commands::save_depots,
+            patch_commands::load_depots,
+            patch_commands::save_branches,
+            patch_commands::load_branches,
+            patch_commands::save_game_coordinator,
+            patch_commands::load_game_coordinator,
+            patch_commands::save_default_items,
+            patch_commands::load_default_items,
+            patch_commands::save_sound_file,
+            patch_commands::load_sound_file,
+            patch_commands::check_sound_file_exists,
+            patch_commands::save_avatar,
+            patch_commands::load_avatar,
+            patch_commands::check_avatar_exists,
+            patch_commands::save_font_file,
+            patch_commands::load_font_file,
+            patch_commands::list_font_files,
+            patch_commands::save_steam_http_response,
+            patch_commands::load_steam_http_response,
+            patch_commands::list_steam_http_configs,
             // 游戏数据管理命令
             game_data_commands::get_all_games_data,
             game_data_commands::get_game_data,
@@ -280,6 +399,25 @@ fn main() {
             // 帮助命令
             help_commands::read_readme_file,
             help_commands::check_readme_exists,
+            // 背景图片命令
+            background_commands::get_background_config,
+            background_commands::save_background_config,
+            background_commands::add_background_file,
+            background_commands::add_background_image,
+            background_commands::remove_background_file,
+            background_commands::remove_background_image,
+            background_commands::scan_background_files,
+            background_commands::scan_background_images,
+            background_commands::reset_background_config,
+            // 应用重启命令
+            restart_app,
+            // 清单入库命令
+            manifest_commands::scan_manifest_folder,
+            manifest_commands::extract_archive,
+            manifest_commands::import_manifest_to_steam,
+            manifest_commands::restart_steam,
+            manifest_commands::check_game_manifest_exists,
+            manifest_commands::import_game_manifest_to_steam,
         ])
         .run(tauri::generate_context!())
         .expect("应用程序启动失败");

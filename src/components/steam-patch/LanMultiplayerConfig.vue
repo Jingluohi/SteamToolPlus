@@ -207,7 +207,7 @@ async function loadConfig() {
       }
     }
   } catch (error) {
-    console.error('加载配置失败:', error)
+    // 加载配置失败时静默处理
   }
 }
 

@@ -1,13 +1,5 @@
 <template>
   <div class="library-page">
-    <!-- 背景图片 - 简化版 -->
-    <div
-      v-if="selectedGame && hasBackgroundImage"
-      class="blur-background"
-      :style="{ backgroundImage: `url(${currentBackgroundImage})` }"
-    ></div>
-    <div v-else class="blur-background fallback"></div>
-
     <!-- 左侧游戏列表 - 玻璃态侧边栏 -->
     <div class="library-sidebar">
       <!-- 搜索框 - 毛玻璃效果 -->
@@ -153,14 +145,12 @@
     <!-- 右侧游戏详情 -->
     <div class="library-content" v-if="selectedGame">
       <!-- 游戏封面大图区域 -->
-      <div class="game-hero" :class="{ 'no-image': !hasHeroImage }">
+      <div class="game-hero" :class="{ 'no-image': !selectedGame?.cover_path }">
         <img
-          v-if="hasHeroImage"
-          :src="currentHeroImage"
+          v-if="selectedGame?.cover_path"
+          :src="gameCovers[selectedGame.game_id] || selectedGame.cover_path"
           class="hero-image"
           alt=""
-          @load="onHeroImageLoad"
-          @error="onHeroImageError"
         />
         <!-- 内容层 -->
         <div class="hero-overlay">
@@ -332,136 +322,36 @@
       </div>
     </div>
 
-    <!-- 导入游戏对话框 -->
-    <div v-if="showImportDialog" class="dialog-overlay" @click.self="showImportDialog = false">
-      <div class="dialog">
-        <div class="dialog-header">
-          <h3>导入本地游戏</h3>
-          <button class="close-btn" @click="showImportDialog = false">
-            <svg viewBox="0 0 24 24" fill="currentColor">
-              <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
-            </svg>
-          </button>
-        </div>
-        <div class="dialog-body">
-          <div class="form-group">
-            <label>游戏名称（英文）</label>
-            <input v-model="importForm.game_name" type="text" placeholder="例如: Elden Ring" />
-          </div>
-          <div class="form-group">
-            <label>游戏中文名</label>
-            <input v-model="importForm.chinese_name" type="text" placeholder="例如: 艾尔登法环" />
-          </div>
-          <div class="form-group">
-            <label>游戏安装目录</label>
-            <div class="path-input-group">
-              <input v-model="importForm.install_path" type="text" readonly placeholder="请选择游戏安装目录..." />
-              <button @click="selectInstallPath">浏览</button>
-            </div>
-          </div>
-          <div class="form-group">
-            <label>游戏主程序 (exe)</label>
-            <div class="path-input-group">
-              <input v-model="importForm.exe_path" type="text" readonly placeholder="请选择游戏主程序..." />
-              <button @click="selectExePath">浏览</button>
-            </div>
-          </div>
-          <div class="form-group">
-            <label>游戏存档目录（可选）</label>
-            <div class="path-input-group">
-              <input v-model="importForm.save_path" type="text" readonly placeholder="请选择存档目录..." />
-              <button @click="selectSavePath">浏览</button>
-            </div>
-          </div>
-          <div class="form-group">
-            <label>游戏封面（可选）</label>
-            <div class="path-input-group">
-              <input v-model="importForm.cover_path" type="text" readonly placeholder="请选择封面图片..." />
-              <button @click="selectCoverPath">浏览</button>
-            </div>
-          </div>
-          <div class="form-group">
-            <label>Steam游戏ID（可选）</label>
-            <input v-model="importForm.steam_game_id" type="text" placeholder="例如: 1245620" />
-          </div>
-        </div>
-        <div class="dialog-footer">
-          <button class="cancel-btn" @click="showImportDialog = false">取消</button>
-          <button class="confirm-btn" @click="confirmImport" :disabled="!canImport">导入</button>
-        </div>
-      </div>
-    </div>
+    <!-- 导入游戏对话框 - 使用 GameFormDialog 复用组件 -->
+    <GameFormDialog
+      v-model="importForm"
+      :visible="showImportDialog"
+      title="导入本地游戏"
+      confirm-text="导入"
+      :auto-fill-name="true"
+      @close="showImportDialog = false"
+      @confirm="confirmImport"
+    />
 
-    <!-- 编辑游戏对话框 -->
-    <div v-if="showEditDialog" class="dialog-overlay" @click.self="showEditDialog = false">
-      <div class="dialog">
-        <div class="dialog-header">
-          <h3>编辑游戏信息</h3>
-          <button class="close-btn" @click="showEditDialog = false">
-            <svg viewBox="0 0 24 24" fill="currentColor">
-              <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
-            </svg>
-          </button>
-        </div>
-        <div class="dialog-body">
-          <div class="form-group">
-            <label>游戏名称（英文）</label>
-            <input v-model="editForm.game_name" type="text" placeholder="例如: Elden Ring" />
-          </div>
-          <div class="form-group">
-            <label>游戏中文名</label>
-            <input v-model="editForm.chinese_name" type="text" placeholder="例如: 艾尔登法环" />
-          </div>
-          <div class="form-group">
-            <label>游戏安装目录</label>
-            <div class="path-input-group">
-              <input v-model="editForm.install_path" type="text" readonly placeholder="请选择游戏安装目录..." />
-              <button @click="selectEditInstallPath">浏览</button>
-            </div>
-          </div>
-          <div class="form-group">
-            <label>游戏主程序 (exe)</label>
-            <div class="path-input-group">
-              <input v-model="editForm.exe_path" type="text" readonly placeholder="请选择游戏主程序..." />
-              <button @click="selectEditExePath">浏览</button>
-            </div>
-          </div>
-          <div class="form-group">
-            <label>游戏存档目录（可选）</label>
-            <div class="path-input-group">
-              <input v-model="editForm.save_path" type="text" readonly placeholder="请选择存档目录..." />
-              <button @click="selectEditSavePath">浏览</button>
-            </div>
-          </div>
-          <div class="form-group">
-            <label>游戏封面（可选）</label>
-            <div class="path-input-group">
-              <input v-model="editForm.cover_path" type="text" readonly placeholder="请选择封面图片..." />
-              <button @click="selectEditCoverPath">浏览</button>
-            </div>
-          </div>
-          <div class="form-group">
-            <label>Steam游戏ID（可选）</label>
-            <input v-model="editForm.steam_game_id" type="text" placeholder="例如: 1245620" />
-          </div>
-        </div>
-        <div class="dialog-footer">
-          <button class="cancel-btn" @click="showEditDialog = false">取消</button>
-          <button class="confirm-btn" @click="confirmEdit">保存</button>
-        </div>
-      </div>
-    </div>
+    <!-- 编辑游戏对话框 - 使用 GameFormDialog 复用组件 -->
+    <GameFormDialog
+      v-model="editForm"
+      :visible="showEditDialog"
+      title="编辑游戏信息"
+      confirm-text="保存"
+      @close="showEditDialog = false"
+      @confirm="confirmEdit"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { invoke, convertFileSrc } from '@tauri-apps/api/core'
-import { open } from '@tauri-apps/plugin-dialog'
-import { 
-  getAllGamesData, 
-  importCustomGame, 
+import { invoke } from '@tauri-apps/api/core'
+import {
+  getAllGamesData,
+  importCustomGame,
   launchGameWithTracking,
   closeGameProcess,
   updateGameData,
@@ -470,9 +360,11 @@ import {
   checkGameProcessStatus,
   formatPlayTime,
   formatDate,
-  type GameData 
+  type GameData
 } from '../../api/gameData.api'
-import { getGameLibraryImage, getGameCoverImage } from '../../api/game.api'
+import { getCachedCoverImage, getCachedLibraryImage } from '../../services/imageCache.service'
+import GameFormDialog from '../../components/game/GameFormDialog.vue'
+import type { GameFormData } from '../../components/game/GameFormDialog.vue'
 
 const router = useRouter()
 
@@ -483,48 +375,6 @@ const searchKeyword = ref('')
 const selectedGame = ref<GameData | null>(null)
 const showImportDialog = ref(false)
 const showEditDialog = ref(false)
-
-// 背景图片状态
-const backgroundImageLoaded = ref(false)
-const backgroundImageError = ref(false)
-
-// 当前背景图片
-const currentBackgroundImage = computed(() => {
-  if (!selectedGame.value) return ''
-  const url = gameCovers.value[selectedGame.value.game_id] || ''
-  console.log(`背景图片 URL (${selectedGame.value.game_id}):`, url)
-  return url
-})
-
-// 是否有背景图片
-const hasBackgroundImage = computed(() => {
-  return !!currentBackgroundImage.value && !backgroundImageError.value
-})
-
-// Hero 区域图片
-const currentHeroImage = computed(() => {
-  if (!selectedGame.value) return ''
-  return gameCovers.value[selectedGame.value.game_id] || ''
-})
-
-const hasHeroImage = computed(() => {
-  return !!currentHeroImage.value
-})
-
-const heroImageLoaded = ref(false)
-const heroImageError = ref(false)
-
-// Hero 图片加载成功
-const onHeroImageLoad = () => {
-  heroImageLoaded.value = true
-  heroImageError.value = false
-}
-
-// Hero 图片加载失败
-const onHeroImageError = () => {
-  heroImageLoaded.value = false
-  heroImageError.value = true
-}
 
 // 右键菜单状态
 const contextMenu = ref({
@@ -563,14 +413,6 @@ const editForm = ref({
   save_path: '',
   cover_path: '',
   steam_game_id: ''
-})
-
-// 计算属性
-const canImport = computed(() => {
-  return importForm.value.game_name && 
-         importForm.value.chinese_name && 
-         importForm.value.install_path && 
-         importForm.value.exe_path
 })
 
 const filteredGames = computed(() => {
@@ -629,7 +471,6 @@ const toggleFavorite = async (game: GameData | null) => {
       if (updated) selectedGame.value = updated
     }
   } catch (error) {
-    console.error('切换收藏状态失败:', error)
     alert('操作失败: ' + error)
   }
 }
@@ -650,7 +491,6 @@ const browseLocalFiles = async (game: GameData | null) => {
     // 调用后端命令使用 explorer.exe 打开游戏目录
     await invoke('open_game_directory', { path: game.install_path })
   } catch (error) {
-    console.error('打开游戏目录失败:', error)
     alert('打开游戏目录失败: ' + error)
   }
 }
@@ -694,7 +534,6 @@ const uninstallGame = async (game: GameData | null) => {
 
     alert('游戏已卸载，数据已保留')
   } catch (error) {
-    console.error('卸载游戏失败:', error)
     alert('卸载游戏失败: ' + error)
   }
 }
@@ -719,11 +558,11 @@ const loadGames = async () => {
       if (updated) selectedGame.value = updated
     }
   } catch (error) {
-    console.error('加载游戏数据失败:', error)
+    // 加载游戏数据失败时静默处理
   }
 }
 
-// 加载游戏封面 - 从 resources/pic/库 目录加载，如果没有则使用 Game_Cover
+// 加载游戏封面 - 使用全局缓存服务，避免资源竞争
 const loadGameCovers = async () => {
   for (const game of games.value) {
     try {
@@ -733,38 +572,31 @@ const loadGameCovers = async () => {
         ? String(game.steam_game_id)
         : game.game_id
 
-      console.log(`加载游戏 ${game.game_id} 的封面，使用 ID: ${imageId}`)
-
       // 先从默认路径加载 resources/pic/库/[imageId].xxx
-      let filePath = await getGameLibraryImage(imageId)
+      const libraryUrl = await getCachedLibraryImage(imageId)
 
-      if (filePath) {
-        console.log(`找到库封面: ${filePath}`)
-        gameCovers.value[game.game_id] = convertFileSrc(filePath)
+      if (libraryUrl) {
+        gameCovers.value[game.game_id] = libraryUrl
         continue
       }
 
       // 2. 库目录不存在，尝试使用 Game_Cover 目录的图片
-      console.log(`库目录无图片，尝试 Game_Cover 目录: ${imageId}`)
-      const coverFilePath = await getGameCoverImage(imageId)
+      const coverUrl = await getCachedCoverImage(imageId)
 
-      if (coverFilePath) {
-        console.log(`找到 Game_Cover 封面: ${coverFilePath}`)
-        gameCovers.value[game.game_id] = convertFileSrc(coverFilePath)
+      if (coverUrl) {
+        gameCovers.value[game.game_id] = coverUrl
         continue
       }
 
       // 3. 默认路径都不存在，使用用户设置的封面路径
       if (game.cover_path) {
-        console.log(`使用用户设置的封面: ${game.cover_path}`)
-        gameCovers.value[game.game_id] = convertFileSrc(game.cover_path)
+        gameCovers.value[game.game_id] = game.cover_path
         continue
       }
 
       // 4. 都没有，标记为无封面
-      console.warn(`游戏 ${game.game_id} 无封面图片`)
     } catch (err) {
-      console.warn(`加载游戏 ${game.game_id} 封面失败:`, err)
+      // 加载封面失败时静默处理
     }
   }
 }
@@ -772,12 +604,6 @@ const loadGameCovers = async () => {
 // 选择游戏
 const selectGame = (game: GameData) => {
   selectedGame.value = game
-  // 重置背景图片状态
-  backgroundImageLoaded.value = false
-  backgroundImageError.value = false
-  // 重置 Hero 图片状态
-  heroImageLoaded.value = false
-  heroImageError.value = false
 }
 
 // 搜索
@@ -800,7 +626,6 @@ const launchGame = async () => {
       if (updated) selectedGame.value = updated
     }
   } catch (error) {
-    console.error('启动游戏失败:', error)
     alert('启动游戏失败: ' + error)
   }
 }
@@ -840,14 +665,13 @@ const startGameMonitoring = () => {
       
       if (!isRunning) {
         // 游戏进程已结束，停止监控并保存时长
-        console.log(`游戏已关闭，本次游玩 ${minutes} 分钟`)
         cancelAnimationFrame(displayFrameId)
         await stopGameMonitoring()
         // 重新加载游戏数据以显示更新后的时长
         await loadGames()
       }
     } catch (error) {
-      console.error('检查游戏进程状态失败:', error)
+      // 检查进程状态失败时静默处理
     }
   }, 10000) // 每10秒检查一次
 }
@@ -865,23 +689,22 @@ const stopGameMonitoring = async (savePlayTime: boolean = true) => {
   }
   
   // 如果需要保存游玩时长
-  if (savePlayTime && runningGameId.value && gameStartTime.value) {
-    const elapsedSecs = Math.floor((Date.now() - gameStartTime.value.getTime()) / 1000)
-    const minutes = Math.floor(elapsedSecs / 60)
-    
-    if (minutes > 0) {
-      try {
-        // 调用后端保存游玩时长
-        await invoke('update_game_play_time', {
-          gameId: runningGameId.value,
-          additionalMinutes: minutes
-        })
-        console.log(`已保存游玩时长: ${minutes} 分钟`)
-      } catch (error) {
-        console.error('保存游玩时长失败:', error)
+    if (savePlayTime && runningGameId.value && gameStartTime.value) {
+      const elapsedSecs = Math.floor((Date.now() - gameStartTime.value.getTime()) / 1000)
+      const minutes = Math.floor(elapsedSecs / 60)
+
+      if (minutes > 0) {
+        try {
+          // 调用后端保存游玩时长
+          await invoke('update_game_play_time', {
+            game_id: runningGameId.value,
+            additional_minutes: minutes
+          })
+        } catch (error) {
+          // 保存失败时静默处理
+        }
       }
     }
-  }
   
   gameProcessPid.value = null
   isGameRunning.value = false
@@ -905,7 +728,6 @@ const closeGame = async () => {
     // 停止监控并保存时长
     await stopGameMonitoring(true)
   } catch (error) {
-    console.error('关闭游戏失败:', error)
     alert('关闭游戏失败: ' + error)
   }
 }
@@ -936,27 +758,6 @@ const editGame = () => {
   showEditDialog.value = true
 }
 
-// 选择路径
-const selectEditInstallPath = async () => {
-  const selected = await open({ directory: true, title: '选择游戏安装目录' })
-  if (selected) editForm.value.install_path = selected as string
-}
-
-const selectEditExePath = async () => {
-  const selected = await open({ title: '选择游戏主程序', filters: [{ name: '可执行文件', extensions: ['exe'] }] })
-  if (selected) editForm.value.exe_path = selected as string
-}
-
-const selectEditSavePath = async () => {
-  const selected = await open({ directory: true, title: '选择游戏存档目录' })
-  if (selected) editForm.value.save_path = selected as string
-}
-
-const selectEditCoverPath = async () => {
-  const selected = await open({ title: '选择游戏封面图片', filters: [{ name: '图片文件', extensions: ['jpg', 'jpeg', 'png', 'webp'] }] })
-  if (selected) editForm.value.cover_path = selected as string
-}
-
 const confirmEdit = async () => {
   if (!selectedGame.value) return
   try {
@@ -977,36 +778,8 @@ const confirmEdit = async () => {
     }
     alert('游戏信息更新成功！')
   } catch (error) {
-    console.error('更新游戏失败:', error)
     alert('更新游戏失败: ' + error)
   }
-}
-
-const selectInstallPath = async () => {
-  const selected = await open({ directory: true, title: '选择游戏安装目录' })
-  if (selected) importForm.value.install_path = selected as string
-}
-
-const selectExePath = async () => {
-  const selected = await open({ title: '选择游戏主程序', filters: [{ name: '可执行文件', extensions: ['exe'] }] })
-  if (selected) {
-    importForm.value.exe_path = selected as string
-    const pathParts = importForm.value.exe_path.split(/[\\/]/)
-    const exeName = pathParts[pathParts.length - 1] || ''
-    const gameName = exeName.replace('.exe', '')
-    if (!importForm.value.game_name) importForm.value.game_name = gameName
-    if (!importForm.value.chinese_name) importForm.value.chinese_name = gameName
-  }
-}
-
-const selectSavePath = async () => {
-  const selected = await open({ directory: true, title: '选择游戏存档目录' })
-  if (selected) importForm.value.save_path = selected as string
-}
-
-const selectCoverPath = async () => {
-  const selected = await open({ title: '选择游戏封面图片', filters: [{ name: '图片文件', extensions: ['jpg', 'jpeg', 'png', 'webp'] }] })
-  if (selected) importForm.value.cover_path = selected as string
 }
 
 const confirmImport = async () => {
@@ -1025,7 +798,6 @@ const confirmImport = async () => {
     await loadGames()
     alert('游戏导入成功！')
   } catch (error) {
-    console.error('导入游戏失败:', error)
     alert('导入游戏失败: ' + error)
   }
 }
@@ -1048,23 +820,13 @@ const formatDuration = (seconds: number): string => {
   }
 }
 
-// 简化的游戏时长显示
-const formatPlayTimeShort = (minutes: number): string => {
-  if (!minutes || minutes === 0) return '未游玩'
-  if (minutes < 60) return `${minutes}分钟`
-  const hours = Math.floor(minutes / 60)
-  const mins = minutes % 60
-  if (mins === 0) return `${hours}小时`
-  return `${hours}小时${mins}分`
-}
-
 onMounted(() => loadGames())
 onUnmounted(() => { if (gameMonitorInterval) clearInterval(gameMonitorInterval) })
 </script>
 
 <style scoped>
 /* ============================================
-   库页面整体布局 - Playnite风格全窗口模糊
+   库页面整体布局
    ============================================ */
 .library-page {
   display: flex;
@@ -1076,32 +838,14 @@ onUnmounted(() => { if (gameMonitorInterval) clearInterval(gameMonitorInterval) 
   margin-top: 0;
 }
 
-/* 背景图片 - 简化版 */
-.blur-background {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-size: cover;
-  background-position: center;
-  z-index: -1;
-  pointer-events: none;
-}
-
-/* 默认背景 */
-.blur-background.fallback {
-  background: var(--steam-bg-secondary);
-}
-
 /* ============================================
    左侧边栏 - 玻璃态效果
    ============================================ */
 .library-sidebar {
   width: 280px;
   min-width: 280px;
-  background: var(--steam-bg-primary);
-  backdrop-filter: blur(30px) saturate(200%);
+  background: rgba(79, 79, 79, 0.65);
+  backdrop-filter: blur(25px) saturate(180%);
   border-right: 1px solid var(--steam-border);
   display: flex;
   flex-direction: column;
@@ -1200,7 +944,7 @@ onUnmounted(() => { if (gameMonitorInterval) clearInterval(gameMonitorInterval) 
   align-items: center;
   gap: 6px;
   padding: 6px 10px;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--steam-text-muted);
   text-transform: uppercase;
@@ -1279,7 +1023,7 @@ onUnmounted(() => { if (gameMonitorInterval) clearInterval(gameMonitorInterval) 
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--steam-text-muted);
   background: var(--steam-bg-quaternary);
@@ -1310,7 +1054,7 @@ onUnmounted(() => { if (gameMonitorInterval) clearInterval(gameMonitorInterval) 
 }
 
 .game-meta {
-  font-size: 9px;
+  font-size: 12px;
   color: var(--steam-text-muted);
 }
 
@@ -1417,7 +1161,7 @@ onUnmounted(() => { if (gameMonitorInterval) clearInterval(gameMonitorInterval) 
 
 .empty-subtitle {
   margin: 0;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--steam-text-muted);
 }
 
@@ -1446,7 +1190,7 @@ onUnmounted(() => { if (gameMonitorInterval) clearInterval(gameMonitorInterval) 
   height: 420px;
   flex-shrink: 0;
   overflow: hidden;
-  background: var(--steam-bg-secondary);
+  background: rgba(89, 89, 89, 0.7);
 }
 
 .hero-image {
@@ -1483,10 +1227,10 @@ onUnmounted(() => { if (gameMonitorInterval) clearInterval(gameMonitorInterval) 
   align-items: center;
   gap: 6px;
   padding: 6px 12px;
-  background: var(--steam-bg-tertiary);
-  backdrop-filter: blur(10px);
+  background: rgba(99, 99, 99, 0.6);
+  backdrop-filter: blur(10px) saturate(180%);
   border-radius: 20px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 500;
   border: 1px solid var(--steam-border);
 }
@@ -1497,7 +1241,7 @@ onUnmounted(() => { if (gameMonitorInterval) clearInterval(gameMonitorInterval) 
 
 .platform-tag.date {
   color: var(--steam-text-muted);
-  background: var(--steam-bg-secondary);
+  background: rgba(89, 89, 89, 0.6);
 }
 
 .platform-tag svg {
@@ -1507,11 +1251,10 @@ onUnmounted(() => { if (gameMonitorInterval) clearInterval(gameMonitorInterval) 
 
 /* 游戏标题 */
 .hero-title {
-  font-size: 52px;
+  font-size: 20px;
   font-weight: 800;
   color: var(--steam-text-primary);
   margin: 0 0 8px 0;
-  text-shadow: 0 2px 20px rgba(0, 0, 0, 0.5);
   letter-spacing: -0.5px;
   line-height: 1.1;
 }
@@ -1594,8 +1337,8 @@ onUnmounted(() => { if (gameMonitorInterval) clearInterval(gameMonitorInterval) 
   justify-content: center;
   width: 48px;
   height: 48px;
-  background: var(--steam-bg-tertiary);
-  backdrop-filter: blur(10px);
+  background: rgba(99, 99, 99, 0.6);
+  backdrop-filter: blur(10px) saturate(180%);
   border: 1px solid var(--steam-border);
   border-radius: 12px;
   color: var(--steam-text-secondary);
@@ -1627,7 +1370,7 @@ onUnmounted(() => { if (gameMonitorInterval) clearInterval(gameMonitorInterval) 
   flex: 1;
   padding: 32px 48px;
   overflow-y: auto;
-  background: var(--steam-bg-secondary);
+  background: rgba(89, 89, 89, 0.6);
 }
 
 .info-grid {
@@ -1644,8 +1387,8 @@ onUnmounted(() => { if (gameMonitorInterval) clearInterval(gameMonitorInterval) 
   align-items: flex-start;
   gap: 14px;
   padding: 20px;
-  background: var(--steam-bg-tertiary);
-  backdrop-filter: blur(20px) saturate(180%);
+  background: rgba(99, 99, 99, 0.65);
+  backdrop-filter: blur(18px) saturate(180%);
   border-radius: 14px;
   border: 1px solid var(--steam-border);
   transition: all 0.25s ease;
@@ -1719,7 +1462,7 @@ onUnmounted(() => { if (gameMonitorInterval) clearInterval(gameMonitorInterval) 
 }
 
 .info-label {
-  font-size: 10px;
+  font-size: 12px;
   color: var(--steam-text-muted);
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -1739,7 +1482,7 @@ onUnmounted(() => { if (gameMonitorInterval) clearInterval(gameMonitorInterval) 
 }
 
 .info-value.path {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--steam-text-muted);
   white-space: nowrap;
   overflow: hidden;
@@ -1748,18 +1491,18 @@ onUnmounted(() => { if (gameMonitorInterval) clearInterval(gameMonitorInterval) 
 
 .current-session {
   color: var(--steam-accent-green);
-  font-size: 11px;
+  font-size: 12px;
   margin-left: 6px;
   font-weight: 500;
 }
 
 /* 额外信息区域 */
 .extra-info {
-  background: var(--steam-bg-tertiary);
+  background: rgba(99, 99, 99, 0.6);
   border-radius: 14px;
   padding: 24px;
   border: 1px solid var(--steam-border);
-  backdrop-filter: blur(10px);
+  backdrop-filter: blur(12px) saturate(180%);
 }
 
 .info-block h4 {
@@ -1796,7 +1539,7 @@ onUnmounted(() => { if (gameMonitorInterval) clearInterval(gameMonitorInterval) 
 
 .info-val.path {
   font-family: 'Consolas', 'Monaco', monospace;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--steam-text-muted);
   white-space: nowrap;
   overflow: hidden;
@@ -1835,7 +1578,7 @@ onUnmounted(() => { if (gameMonitorInterval) clearInterval(gameMonitorInterval) 
 
 .empty-state .empty-title {
   margin: 0;
-  font-size: 22px;
+  font-size: 20px;
   font-weight: 600;
   color: var(--steam-text-primary);
 }
@@ -1873,188 +1616,6 @@ onUnmounted(() => { if (gameMonitorInterval) clearInterval(gameMonitorInterval) 
   height: 18px;
 }
 
-/* ============================================
-   对话框样式 - 玻璃态
-   ============================================ */
-.dialog-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(10px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-
-.dialog {
-  background: var(--steam-bg-primary);
-  backdrop-filter: blur(30px) saturate(200%);
-  border-radius: 16px;
-  width: 500px;
-  max-height: 85vh;
-  overflow: hidden;
-  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6);
-  border: 1px solid var(--steam-border);
-  display: flex;
-  flex-direction: column;
-}
-
-.dialog-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 20px 24px;
-  border-bottom: 1px solid var(--steam-border);
-}
-
-.dialog-header h3 {
-  margin: 0;
-  font-size: 18px;
-  font-weight: 600;
-  color: var(--steam-text-primary);
-}
-
-.close-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  background: var(--steam-bg-tertiary);
-  border: 1px solid var(--steam-border);
-  border-radius: 8px;
-  color: var(--steam-text-muted);
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.close-btn:hover {
-  background: var(--steam-bg-hover);
-  color: var(--steam-text-primary);
-}
-
-.close-btn svg {
-  width: 18px;
-  height: 18px;
-}
-
-.dialog-body {
-  padding: 20px 24px;
-  overflow-y: auto;
-  flex: 1;
-}
-
-.dialog-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-  padding: 16px 24px;
-  border-top: 1px solid var(--steam-border);
-}
-
-.form-group {
-  margin-bottom: 16px;
-}
-
-.form-group label {
-  display: block;
-  margin-bottom: 6px;
-  font-size: 12px;
-  color: var(--steam-text-secondary);
-  font-weight: 500;
-}
-
-.form-group input {
-  width: 100%;
-  padding: 10px 14px;
-  background: var(--steam-bg-tertiary);
-  border: 1px solid var(--steam-border);
-  border-radius: 8px;
-  color: var(--steam-text-primary);
-  font-size: 13px;
-  outline: none;
-  transition: all 0.2s ease;
-}
-
-.form-group input:focus {
-  border-color: var(--steam-accent-blue);
-  background: var(--steam-bg-hover);
-  box-shadow: 0 0 0 3px rgba(var(--steam-accent-blue-rgb), 0.1);
-}
-
-.path-input-group {
-  display: flex;
-  gap: 8px;
-}
-
-.path-input-group input {
-  flex: 1;
-}
-
-.path-input-group button {
-  padding: 10px 16px;
-  background: var(--steam-bg-tertiary);
-  color: var(--steam-text-secondary);
-  border: 1px solid var(--steam-border);
-  border-radius: 8px;
-  font-size: 12px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.path-input-group button:hover {
-  background: var(--steam-bg-hover);
-  border-color: var(--steam-border-light);
-  color: var(--steam-text-primary);
-}
-
-.cancel-btn {
-  padding: 10px 20px;
-  background: transparent;
-  color: var(--steam-text-secondary);
-  border: 1px solid var(--steam-border);
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.cancel-btn:hover {
-  background: var(--steam-bg-tertiary);
-  color: var(--steam-text-primary);
-  border-color: var(--steam-border-light);
-}
-
-.confirm-btn {
-  padding: 10px 24px;
-  background: var(--steam-accent-blue);
-  color: white;
-  border: none;
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  box-shadow: 0 4px 12px rgba(var(--steam-accent-blue-rgb), 0.3);
-}
-
-.confirm-btn:hover:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow: 0 6px 16px rgba(var(--steam-accent-blue-rgb), 0.4);
-}
-
-.confirm-btn:disabled {
-  background: var(--steam-bg-hover);
-  cursor: not-allowed;
-  box-shadow: none;
-}
-
 /* 响应式调整 */
 @media (max-width: 1200px) {
   .info-grid {
@@ -2062,7 +1623,7 @@ onUnmounted(() => { if (gameMonitorInterval) clearInterval(gameMonitorInterval) 
   }
   
   .hero-title {
-    font-size: 42px;
+    font-size: 20px;
   }
 }
 
@@ -2073,7 +1634,7 @@ onUnmounted(() => { if (gameMonitorInterval) clearInterval(gameMonitorInterval) 
   }
   
   .hero-title {
-    font-size: 36px;
+    font-size: 20px;
   }
   
   .hero-overlay {

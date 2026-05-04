@@ -1,6 +1,6 @@
 [package]
 name = "steam-tool-plus"
-version = "1.11.0"
+version = "1.20.0"
 description = "Steam Tool Plus - 本地游戏管理系统"
 authors = ["Steam Tool Plus"]
 edition = "2021"
@@ -30,10 +30,6 @@ once_cell = "1.19"
 # 7z解压
 sevenz-rust = "0.6"
 
-# 错误处理
-anyhow = "1.0"
-thiserror = "1.0"
-
 # 日志
 log = "0.4"
 env_logger = "0.11"
@@ -44,14 +40,15 @@ uuid = { version = "1.0", features = ["v4", "serde"] }
 # 时间处理
 chrono = { version = "0.4", features = ["serde"] }
 
-# 文件系统监控
-notify = "6.0"
-
-# 路径处理
-path-absolutize = "3.0"
-
 # Base64编码
 base64 = "0.22"
+
+# HTTP客户端
+reqwest = { version = "0.12", features = ["json"] }
+bytes = "1.0"
+
+# 正则表达式
+regex = "1.10"
 
 [features]
 default = ["custom-protocol"]

@@ -135,6 +135,18 @@ export interface LaunchGameResult {
 export type GameViewType = 'grid' | 'list'
 
 /**
+ * 网盘下载链接配置
+ */
+export interface DownloadUrlConfig {
+  /** 网盘来源标识: baidu=百度网盘, thunder=迅雷网盘, lanzou=蓝奏云 */
+  source: string
+  /** 下载链接URL */
+  url: string
+  /** 提取码/密码（可选） */
+  pwd?: string | null
+}
+
+/**
  * 游戏标签配置（来自games_config.json）
  */
 export interface GameTagConfig {
@@ -142,8 +154,10 @@ export interface GameTagConfig {
   patch_type: number
   /** 补丁源路径（可选，如果不提供则自动生成） */
   patch_source_path?: string
-  /** 下载链接 */
+  /** 下载链接（兼容旧版单链接格式，新版请使用 download_urls） */
   download_url?: string
+  /** 多网盘下载链接列表（新版格式，优先使用） */
+  download_urls?: DownloadUrlConfig[]
 }
 
 /**

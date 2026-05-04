@@ -1,40 +1,41 @@
 <template>
-  <!-- 
+  <!--
     Browse.vue - 浏览页面
     程序主界面，显示游戏库浏览视图
-    使用分页加载，每页20张卡片，控制内存占用
+    使用分页加载，每页16张卡片，控制内存占用
   -->
   <div class="browse-page">
     <!-- 页面标题 -->
     <div class="page-header">
-      <h1 class="page-title">浏览</h1>
-      <p class="page-desc">这些是经过验证的游戏，更多游戏从【游戏】->【本体下载】用清单文件下载本体，去【游戏】->【免Steam补丁】打启动补丁</p>
-    </div>
-    
-    <!-- 搜索栏 -->
-    <div class="search-section">
-      <div class="search-box">
-        <svg class="search-icon" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
-        </svg>
-        <input 
-          v-model="searchKeyword"
-          type="text"
-          class="search-input"
-          placeholder="搜索游戏..."
-          @input="handleSearch"
-        />
-        <!-- 清除按钮 -->
-        <button 
-          v-if="searchKeyword"
-          class="clear-btn"
-          @click="clearSearch"
-          title="清除搜索"
-        >
-          <svg viewBox="0 0 24 24" fill="currentColor">
-            <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+      <div class="header-left">
+        <h1 class="page-title">浏览</h1>
+        <p class="page-desc">这些是经过验证的游戏，更多游戏从【游戏】->【本体下载】用清单文件下载本体，去【游戏】->【免Steam补丁】打启动补丁</p>
+      </div>
+      <!-- 搜索栏移到标题右侧 -->
+      <div class="search-section">
+        <div class="search-box">
+          <svg class="search-icon" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
           </svg>
-        </button>
+          <input 
+            v-model="searchKeyword"
+            type="text"
+            class="search-input"
+            placeholder="搜索游戏..."
+            @input="handleSearch"
+          />
+          <!-- 清除按钮 -->
+          <button 
+            v-if="searchKeyword"
+            class="clear-btn"
+            @click="clearSearch"
+            title="清除搜索"
+          >
+            <svg viewBox="0 0 24 24" fill="currentColor">
+              <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+            </svg>
+          </button>
+        </div>
       </div>
     </div>
     
@@ -99,15 +100,19 @@
             </button>
             
             <div class="page-numbers">
-              <button
-                v-for="page in visiblePageNumbers"
-                :key="page"
-                class="page-number"
-                :class="{ active: page === currentPage }"
-                @click="goToPage(page)"
-              >
-                {{ page }}
-              </button>
+              <template v-for="(page, index) in visiblePageNumbers" :key="index">
+                <!-- 省略号 -->
+                <span v-if="page === -1" class="page-ellipsis">...</span>
+                <!-- 页码按钮 -->
+                <button
+                  v-else
+                  class="page-number"
+                  :class="{ active: page === currentPage }"
+                  @click="goToPage(page)"
+                >
+                  {{ page }}
+                </button>
+              </template>
             </div>
             
             <!-- 下一页 -->
@@ -191,7 +196,7 @@ import GameDetailModal from '../../components/game/GameDetailModal.vue'
 const router = useRouter()
 
 // 分页配置
-const PAGE_SIZE = 20 // 每页20张卡片
+const PAGE_SIZE = 16 // 每页16张卡片
 
 // 状态
 const loading = ref(false)
@@ -236,20 +241,58 @@ const paginatedGames = computed(() => {
   return filteredGames.value.slice(start, end)
 })
 
-// 可见的页码（最多显示5个）
+// 可见的页码
+// 显示逻辑：最多5个页码 [1] [...] [current-1] [current] [current+1] [...] [total]
 const visiblePageNumbers = computed(() => {
   const pages: number[] = []
-  const maxVisible = 5
-  let start = Math.max(1, currentPage.value - Math.floor(maxVisible / 2))
-  let end = Math.min(totalPages.value, start + maxVisible - 1)
+  const total = totalPages.value
+  const current = currentPage.value
   
-  if (end - start < maxVisible - 1) {
-    start = Math.max(1, end - maxVisible + 1)
+  // 如果总页数较少，直接显示所有页码
+  if (total <= 5) {
+    for (let i = 1; i <= total; i++) {
+      pages.push(i)
+    }
+    return pages
   }
   
-  for (let i = start; i <= end; i++) {
-    pages.push(i)
+  // 始终显示第1页
+  pages.push(1)
+  
+  // 计算中间部分的起始和结束（以当前页为中心，最多3个页码）
+  let middleStart = Math.max(2, current - 1)
+  let middleEnd = Math.min(total - 1, current + 1)
+  
+  // 调整中间部分，确保最多显示3个页码
+  if (current <= 2) {
+    // 靠近开头，显示 2, 3
+    middleStart = 2
+    middleEnd = 3
+  } else if (current >= total - 1) {
+    // 靠近结尾，显示 倒数第2, 倒数第3
+    middleStart = total - 2
+    middleEnd = total - 1
   }
+  
+  // 添加省略号（如果中间部分与第1页不连续）
+  if (middleStart > 2) {
+    pages.push(-1) // -1 表示省略号
+  }
+  
+  // 添加中间页码
+  for (let i = middleStart; i <= middleEnd; i++) {
+    if (i > 1 && i < total) { // 避免重复添加第1页和最后1页
+      pages.push(i)
+    }
+  }
+  
+  // 添加省略号（如果中间部分与最后1页不连续）
+  if (middleEnd < total - 1) {
+    pages.push(-1) // -1 表示省略号
+  }
+  
+  // 始终显示最后1页
+  pages.push(total)
   
   return pages
 })
@@ -290,7 +333,7 @@ async function loadGames() {
     const config = await loadGamesConfigFromFile()
     gamesConfig.value = config
   } catch (err) {
-    console.error('加载游戏配置失败:', err)
+    // 加载游戏配置失败时静默处理
   } finally {
     loading.value = false
   }
@@ -303,10 +346,6 @@ function handleSearch() {
 function clearSearch() {
   searchKeyword.value = ''
   // 清空后会触发watch，自动重置到第一页
-}
-
-function getPatchTypeName(patchType: number): string {
-  return PATCH_TYPE_MAP[patchType]?.name || '未知补丁'
 }
 
 function handleGameClick(game: GameConfigData) {
@@ -335,15 +374,15 @@ function handleJumpToPage() {
 }
 
 function handleLaunchGame(gameId: string) {
-  console.log('启动游戏:', gameId)
+  // 启动游戏功能待实现
 }
 
 function handleApplyPatch(tag: any) {
-  console.log('应用补丁:', tag)
+  // 应用补丁功能待实现
 }
 
 function handleSelectGamePath(gameId: string) {
-  console.log('选择游戏路径:', gameId)
+  // 选择游戏路径功能待实现
 }
 </script>
 
@@ -353,31 +392,41 @@ function handleSelectGamePath(gameId: string) {
   display: flex;
   flex-direction: column;
   padding: 16px 24px;
-  background: var(--steam-bg-secondary);
   overflow: hidden;
 }
 
 .page-header {
-  margin-bottom: 12px;
+  margin-bottom: 4px;
   flex-shrink: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 24px;
+}
+
+.header-left {
+  flex: 1;
 }
 
 .page-title {
   font-size: 20px;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--steam-text-primary);
-  margin-bottom: 4px;
+  margin: 0;
 }
 
 .page-desc {
   font-size: 14px;
-  color: var(--steam-text-secondary);
+  font-weight: 500;
+  color: var(--steam-text-primary);
+  margin: 0;
 }
 
 /* 搜索栏 */
 .search-section {
-  margin-bottom: 12px;
   flex-shrink: 0;
+  width: 400px;
+  margin-top: 3px;
 }
 
 .search-box {
@@ -385,7 +434,8 @@ function handleSelectGamePath(gameId: string) {
   align-items: center;
   gap: 12px;
   padding: 10px 16px;
-  background: var(--steam-input-bg);
+  background: rgba(102, 192, 244, 0.1);
+  backdrop-filter: blur(10px);
   border-radius: 8px;
   border: 1px solid var(--steam-input-border);
   transition: border-color 0.2s ease;
@@ -393,7 +443,7 @@ function handleSelectGamePath(gameId: string) {
 
 .search-box:focus-within {
   border-color: var(--steam-accent-blue);
-  background: var(--steam-input-focus);
+  background: rgba(102, 192, 244, 0.15);
 }
 
 .search-icon {
@@ -449,22 +499,23 @@ function handleSelectGamePath(gameId: string) {
 }
 
 .browse-section {
-  background: var(--steam-panel-bg);
+  background: transparent;
   border-radius: 8px;
-  padding: 16px;
+  padding: 16px 16px 8px 16px;
   flex: 1;
   display: flex;
   flex-direction: column;
   overflow: hidden;
   min-height: 0;
-  border: 1px solid var(--steam-panel-border);
+  border: none;
+  margin-top: -8px;
 }
 
 .section-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 12px;
+  margin-bottom: 6px;
   flex-shrink: 0;
 }
 
@@ -524,7 +575,7 @@ function handleSelectGamePath(gameId: string) {
 /* 游戏网格 */
 .games-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(336px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
   gap: 19px;
   overflow-y: auto;
   flex: 1;
@@ -532,10 +583,7 @@ function handleSelectGamePath(gameId: string) {
   padding-right: 8px;
 }
 
-/* 限制卡片最大高度 */
-.games-grid :deep(.game-card) {
-  max-height: 150px;
-}
+
 
 /* 自定义滚动条 */
 .games-grid::-webkit-scrollbar {
@@ -560,30 +608,32 @@ function handleSelectGamePath(gameId: string) {
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 8px;
-  margin-top: 12px;
-  padding-top: 12px;
+  gap: 4px;
+  padding: 4px 0;
   border-top: 1px solid var(--steam-border);
   flex-shrink: 0;
+  margin-top: 8px;
 }
 
 .page-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   padding: 0;
-  background: var(--steam-card-bg);
+  background: rgba(102, 192, 244, 0.1);
+  backdrop-filter: blur(10px);
   border: 1px solid var(--steam-card-border);
   border-radius: 4px;
   color: var(--steam-text-secondary);
   cursor: pointer;
   transition: all 0.2s ease;
+  flex-shrink: 0;
 }
 
 .page-btn:hover:not(:disabled) {
-  background: var(--steam-bg-tertiary);
+  background: rgba(102, 192, 244, 0.2);
   border-color: var(--steam-accent-blue);
   color: var(--steam-text-primary);
 }
@@ -594,8 +644,8 @@ function handleSelectGamePath(gameId: string) {
 }
 
 .page-btn svg {
-  width: 14px;
-  height: 14px;
+  width: 12px;
+  height: 12px;
 }
 
 .page-numbers {
@@ -604,31 +654,46 @@ function handleSelectGamePath(gameId: string) {
 }
 
 .page-number {
-  min-width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0 8px;
-  background: var(--steam-card-bg);
+  padding: 0;
+  background: rgba(102, 192, 244, 0.1);
+  backdrop-filter: blur(10px);
   border: 1px solid var(--steam-card-border);
   border-radius: 4px;
   color: var(--steam-text-secondary);
   font-size: 13px;
   cursor: pointer;
   transition: all 0.2s ease;
+  flex-shrink: 0;
 }
 
 .page-number:hover {
-  background: var(--steam-bg-tertiary);
+  background: rgba(102, 192, 244, 0.2);
   border-color: var(--steam-accent-blue);
   color: var(--steam-text-primary);
 }
 
 .page-number.active {
-  background: var(--steam-accent-blue);
+  background: rgba(66, 133, 244, 0.8);
   border-color: var(--steam-accent-blue);
   color: white;
+}
+
+/* 省略号 */
+.page-ellipsis {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--steam-text-muted);
+  font-size: 13px;
+  user-select: none;
+  flex-shrink: 0;
 }
 
 /* 跳转到指定页 */
@@ -650,7 +715,8 @@ function handleSelectGamePath(gameId: string) {
   width: 50px;
   height: 32px;
   padding: 0 8px;
-  background: var(--steam-card-bg);
+  background: rgba(102, 192, 244, 0.1);
+  backdrop-filter: blur(10px);
   border: 1px solid var(--steam-card-border);
   border-radius: 4px;
   color: var(--steam-text-primary);
@@ -662,6 +728,7 @@ function handleSelectGamePath(gameId: string) {
 
 .jump-input:focus {
   border-color: var(--steam-accent-blue);
+  background: rgba(102, 192, 244, 0.15);
 }
 
 .jump-input::-webkit-inner-spin-button,

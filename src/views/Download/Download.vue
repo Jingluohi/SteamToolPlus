@@ -13,7 +13,18 @@
             <polyline points="7 10 12 15 17 10"/>
             <line x1="12" y1="15" x2="12" y2="3"/>
           </svg>
-          清单文件下载
+          百度网盘
+        </button>
+        <button
+          class="manifest-link-btn"
+          @click="openExternalLink('https://pan.xunlei.com/s/VOrkq4Tq0c0Sootmhpp4433yA1?pwd=2tmn#')"
+        >
+          <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          迅雷网盘
         </button>
       </div>
       <p class="page-desc">选择游戏清单文件夹并配置下载路径</p>
@@ -381,7 +392,7 @@ const openExternalLink = async (url: string) => {
     // 使用 Tauri shell 插件在默认浏览器中打开链接
     await openShell(url)
   } catch (error) {
-    console.error('打开链接失败:', error)
+    // 打开链接失败时静默处理
   }
 }
 
@@ -576,7 +587,6 @@ const selectManifestFolder = async () => {
       await parseManifestFolder(selected)
     }
   } catch (error) {
-    console.error('选择文件夹失败:', error)
     addLog(`选择文件夹失败: ${error}`, 'error')
   }
 }
@@ -718,7 +728,6 @@ const selectDownloadFolder = async () => {
       addLog(`已选择下载路径: ${selected}`, 'info')
     }
   } catch (error) {
-    console.error('选择文件夹失败:', error)
     addLog(`选择文件夹失败: ${error}`, 'error')
   }
 }
@@ -739,7 +748,6 @@ const selectBatchParentFolder = async () => {
       await scanBatchGames(selected)
     }
   } catch (error) {
-    console.error('选择文件夹失败:', error)
     addLog(`选择文件夹失败: ${error}`, 'error')
   }
 }
@@ -840,7 +848,6 @@ const selectBatchDownloadBasePath = async () => {
       addLog(`已选择批量下载基础路径: ${selected}`, 'info')
     }
   } catch (error) {
-    console.error('选择文件夹失败:', error)
     addLog(`选择文件夹失败: ${error}`, 'error')
   }
 }
@@ -903,7 +910,8 @@ const startSingleDownload = async () => {
       message: string
     }>('start_game_download', {
       manifestPath: manifestPath.value,
-      downloadPath: downloadPath.value
+      downloadPath: downloadPath.value,
+      gameId: gameId.value || 'unknown'
     })
 
     if (result.success) {
@@ -946,7 +954,8 @@ const startBatchDownload = async () => {
         message: string
       }>('start_game_download', {
         manifestPath: game.path,
-        downloadPath: gameDownloadPath
+        downloadPath: gameDownloadPath,
+        gameId: game.id || 'unknown'
       })
 
       if (result.success) {
@@ -1084,7 +1093,7 @@ const scanProgressFiles = async () => {
       await deleteProgressFiles(progressFiles)
     }
   } catch (error) {
-    console.error('扫描进度文件失败:', error)
+    // 扫描进度文件失败时静默处理
   }
 }
 
@@ -1178,7 +1187,6 @@ watch(manifestPath, () => {
   height: 100%;
   overflow-y: auto;
   padding: 24px 32px;
-  background-color: var(--steam-bg-secondary);
 }
 
 /* ============================================
@@ -1198,8 +1206,8 @@ watch(manifestPath, () => {
 }
 
 .page-title {
-  font-size: 24px;
-  font-weight: 600;
+  font-size: 20px;
+  font-weight: 700;
   color: var(--steam-text-primary);
   margin: 0;
 }
@@ -1295,7 +1303,8 @@ watch(manifestPath, () => {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  background-color: var(--steam-bg-primary);
+  background-color: rgba(102, 192, 244, 0.1);
+  backdrop-filter: blur(10px);
   padding: 20px;
   border-radius: 12px;
   border: 1px solid var(--steam-border);
@@ -1361,7 +1370,8 @@ watch(manifestPath, () => {
 }
 
 .info-card {
-  background-color: var(--steam-bg-primary);
+  background-color: rgba(102, 192, 244, 0.1);
+  backdrop-filter: blur(10px);
   padding: 20px;
   border-radius: 12px;
   border: 1px solid var(--steam-border);
@@ -1410,7 +1420,8 @@ watch(manifestPath, () => {
 }
 
 .validation-card {
-  background-color: var(--steam-bg-primary);
+  background-color: rgba(102, 192, 244, 0.1);
+  backdrop-filter: blur(10px);
   padding: 16px 20px;
   border-radius: 12px;
   border: 1px solid var(--steam-border);
@@ -1446,7 +1457,7 @@ watch(manifestPath, () => {
 }
 
 .validation-title {
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 500;
   color: var(--steam-text-primary);
 }
@@ -1475,13 +1486,13 @@ watch(manifestPath, () => {
 }
 
 .file-item {
-  font-size: 12px;
-  color: var(--steam-text-secondary);
+  font-size: 13px;
+  color: var(--steam-text-primary);
   padding: 2px 0;
 }
 
 .file-item.more {
-  color: var(--steam-text-muted);
+  color: var(--steam-text-secondary);
   font-style: italic;
 }
 
@@ -1603,7 +1614,8 @@ watch(manifestPath, () => {
    自动关机区域
    ============================================ */
 .auto-shutdown-section {
-  background-color: var(--steam-bg-primary);
+  background-color: rgba(102, 192, 244, 0.1);
+  backdrop-filter: blur(10px);
   padding: 16px 20px;
   border-radius: 12px;
   border: 1px solid var(--steam-border);
@@ -1791,7 +1803,8 @@ watch(manifestPath, () => {
 }
 
 .log-card {
-  background-color: var(--steam-bg-primary);
+  background-color: rgba(102, 192, 244, 0.1);
+  backdrop-filter: blur(10px);
   border-radius: 12px;
   border: 1px solid var(--steam-border);
   overflow: hidden;
