@@ -20,13 +20,22 @@ export const useWindowStore = defineStore('window', () => {
   // ==================== Actions ====================
 
   /**
+   * 初始化窗口状态
+   */
+  async function initWindow() {
+    // 窗口状态初始化完成
+    // 实际状态由后端事件驱动更新
+    return Promise.resolve()
+  }
+
+  /**
    * 最小化窗口
    */
   async function minimize() {
     try {
       await windowApi.minimizeWindow()
     } catch (err) {
-      console.error('最小化窗口失败:', err)
+      // 最小化窗口失败时静默处理
     }
   }
 
@@ -38,7 +47,7 @@ export const useWindowStore = defineStore('window', () => {
       await windowApi.maximizeWindow()
       isMaximized.value = !isMaximized.value
     } catch (err) {
-      console.error('最大化窗口失败:', err)
+      // 最大化窗口失败时静默处理
     }
   }
 
@@ -49,7 +58,7 @@ export const useWindowStore = defineStore('window', () => {
     try {
       await windowApi.closeWindow()
     } catch (err) {
-      console.error('关闭窗口失败:', err)
+      // 关闭窗口失败时静默处理
     }
   }
 
@@ -61,7 +70,7 @@ export const useWindowStore = defineStore('window', () => {
       await windowApi.toggleFullscreen()
       isFullscreen.value = !isFullscreen.value
     } catch (err) {
-      console.error('切换全屏失败:', err)
+      // 切换全屏失败时静默处理
     }
   }
 
@@ -72,7 +81,7 @@ export const useWindowStore = defineStore('window', () => {
     try {
       await windowApi.openHelpWindow()
     } catch (err) {
-      console.error('打开帮助窗口失败:', err)
+      // 打开帮助窗口失败时静默处理
     }
   }
 
@@ -83,7 +92,7 @@ export const useWindowStore = defineStore('window', () => {
     try {
       await windowApi.closeHelpWindow()
     } catch (err) {
-      console.error('关闭帮助窗口失败:', err)
+      // 关闭帮助窗口失败时静默处理
     }
   }
 
@@ -95,6 +104,7 @@ export const useWindowStore = defineStore('window', () => {
     width,
     height,
     // Actions
+    initWindow,
     minimize,
     maximize,
     close,

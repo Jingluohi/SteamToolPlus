@@ -78,10 +78,8 @@ if exist "resources" (
 
 REM Create necessary directories
 if not exist "PublicOut\config" mkdir "PublicOut\config"
-if not exist "PublicOut\extensions" mkdir "PublicOut\extensions"
-if not exist "PublicOut\logs" mkdir "PublicOut\logs"
 
-echo Created: config, extensions, logs directories
+echo Created: config directory
 echo.
 echo ==========================================
 echo Build completed successfully!
@@ -90,8 +88,6 @@ echo Output location: PublicOut\
 echo   - SteamToolPlus.exe
 echo   - resources\
 echo   - config\
-echo   - extensions\
-echo   - logs\
 echo ==========================================
 echo.
 pause

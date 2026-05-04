@@ -64,20 +64,36 @@
                 >
                   <div class="patch-header">
                     <span class="patch-type">{{ getPatchTypeName(tag.patch_type) }}</span>
-                    <span v-if="tag.download_url" class="has-download">有下载链接</span>
+                    <span v-if="tag.download_urls && tag.download_urls.length > 0" class="has-download">有下载链接</span>
                   </div>
                   <p class="patch-description">{{ getPatchTypeDescription(tag.patch_type) }}</p>
+                  
+                  <!-- 多网盘下载按钮组 -->
+                  <div v-if="tag.download_urls && tag.download_urls.length > 0" class="download-section">
+                    <p class="download-section-title">下载补丁：</p>
+                    <div class="download-buttons">
+                      <div
+                        v-for="(item, dlIndex) in tag.download_urls"
+                        :key="dlIndex"
+                        class="download-btn-wrapper"
+                      >
+                        <button
+                          class="action-btn download-btn"
+                          @click="openDownloadUrl(item.url)"
+                        >
+                          <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
+                          </svg>
+                          {{ getDownloadSourceName(item.source) }}
+                        </button>
+                        <p v-if="item.pwd || item.source === 'lanzou'" class="pwd-hint">
+                          提取码: {{ item.pwd || '1234' }}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  
                   <div class="patch-actions">
-                    <button 
-                      v-if="tag.download_url"
-                      class="action-btn download-btn"
-                      @click="openDownloadUrl(tag.download_url!)"
-                    >
-                      <svg viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
-                      </svg>
-                      下载补丁
-                    </button>
                     <button 
                       class="action-btn apply-btn"
                       @click="applyPatch(tag)"
@@ -86,6 +102,17 @@
                         <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
                       </svg>
                       应用补丁
+                    </button>
+                    <!-- D加密虚拟机类型显示虚拟化环境配置教程按钮 -->
+                    <button 
+                      v-if="tag.patch_type === 3"
+                      class="action-btn tutorial-btn"
+                      @click="openVirtualizationTutorial"
+                    >
+                      <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                      </svg>
+                      虚拟化环境配置教程
                     </button>
                   </div>
                 </div>
@@ -155,7 +182,7 @@
 import { ref, computed, watch } from 'vue'
 import { open as openShell } from '@tauri-apps/plugin-shell'
 import type { GameConfigData, GameTagConfig } from '../../types'
-import { getGameCoverImage } from '../../api/game.api'
+import { getCachedCoverImage } from '../../services/imageCache.service'
 import { PATCH_TYPE_MAP } from '../../types'
 
 /**
@@ -206,13 +233,13 @@ const headerBgStyle = computed(() => {
 
 /**
  * 监听游戏配置变化，加载封面图片
+ * 使用全局缓存服务，避免资源竞争
  */
 watch(() => props.gameConfig, async (newConfig) => {
   if (newConfig?.game_id) {
     try {
-      coverImage.value = await getGameCoverImage(newConfig.game_id)
+      coverImage.value = await getCachedCoverImage(newConfig.game_id)
     } catch (error) {
-      console.error('加载封面图片失败:', error)
       coverImage.value = ''
     }
   } else {
@@ -237,6 +264,20 @@ function getPatchTypeDescription(patchType: number): string {
 }
 
 /**
+ * 获取下载来源显示名称
+ * @param source 网盘来源标识
+ */
+function getDownloadSourceName(source: string): string {
+  const sourceMap: Record<string, string> = {
+    'baidu': '百度网盘',
+    'thunder': '迅雷网盘',
+    'lanzou': '蓝奏云',
+    'other': '其他网盘'
+  }
+  return sourceMap[source] || source || '未知网盘'
+}
+
+/**
  * 打开下载链接 - 使用系统默认浏览器
  */
 async function openDownloadUrl(url: string) {
@@ -245,7 +286,7 @@ async function openDownloadUrl(url: string) {
       // 使用 Tauri shell 插件在默认浏览器中打开链接
       await openShell(url)
     } catch (error) {
-      console.error('打开链接失败:', error)
+      // 打开链接失败时静默处理
     }
   }
 }
@@ -280,6 +321,20 @@ function handleSelectGamePath() {
  */
 function handleClose() {
   emit('close')
+}
+
+/**
+ * 打开虚拟化环境配置教程视频
+ * 使用系统默认应用打开 resources/D加密虚拟化（虚拟机）环境搭建教程.mp4
+ */
+async function openVirtualizationTutorial() {
+  try {
+    // 使用 Tauri 命令获取程序根目录并打开视频文件
+    const { invoke } = await import('@tauri-apps/api/core')
+    await invoke('open_virtualization_tutorial')
+  } catch (error) {
+    // 打开失败时静默处理
+  }
 }
 </script>
 
@@ -403,11 +458,10 @@ function handleClose() {
 }
 
 .game-title {
-  font-size: 32px;
+  font-size: 26px;
   font-weight: 700;
   color: white;
   margin-bottom: 8px;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
 }
 
 .game-subtitle {
@@ -506,7 +560,7 @@ function handleClose() {
   padding: 2px 8px;
   background: var(--steam-accent-blue);
   color: white;
-  font-size: 11px;
+  font-size: 12px;
   border-radius: 4px;
 }
 
@@ -514,6 +568,37 @@ function handleClose() {
   font-size: 13px;
   color: var(--steam-text-secondary);
   margin-bottom: 12px;
+}
+
+/* 下载区域样式 */
+.download-section {
+  margin-bottom: 12px;
+}
+
+.download-section-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--steam-text-primary);
+  margin: 0 0 8px 0;
+}
+
+.download-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.download-btn-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.pwd-hint {
+  font-size: 11px;
+  color: var(--steam-text-secondary);
+  margin: 0;
 }
 
 .patch-actions {
@@ -554,6 +639,18 @@ function handleClose() {
 
 .apply-btn:hover {
   background: var(--steam-bg-secondary);
+}
+
+/* 虚拟化环境配置教程按钮 */
+.tutorial-btn {
+  background: rgba(156, 39, 176, 0.2);
+  color: #ce93d8;
+  border: 1px solid rgba(156, 39, 176, 0.5);
+}
+
+.tutorial-btn:hover {
+  background: rgba(156, 39, 176, 0.3);
+  border-color: rgba(156, 39, 176, 0.7);
 }
 
 .no-patches {

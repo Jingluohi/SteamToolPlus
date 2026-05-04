@@ -2,7 +2,7 @@
   <!--
     TitleBar.vue - 顶部标题栏组件
     完全对标Steam官方客户端的标题栏设计
-    包含：Logo、导航菜单（游戏、设置、帮助）、窗口控制按钮
+    包含：Logo、导航菜单（游戏、设置、帮助、更多功能）、窗口控制按钮
   -->
   <header
     class="title-bar"
@@ -11,112 +11,21 @@
     <!-- 左侧区域：Logo、程序名称和导航菜单 -->
     <div class="title-bar-left">
       <div class="logo">
-        <svg class="logo-icon" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
-        </svg>
-        <span class="logo-text">Steam Tool Plus v1.11</span>
+        <img class="logo-icon" src="/icon.png" alt="Steam Tool Plus" />
       </div>
-      <!-- 导航菜单 -->
+      <!-- 导航菜单 - 使用 NavDropdown 组件复用重复结构 -->
       <nav class="title-bar-nav">
-      <!-- 游戏菜单 -->
-      <div
-        class="nav-menu"
-        @mouseenter="showGameMenu = true"
-        @mouseleave="showGameMenu = false"
-      >
-        <button class="nav-menu-btn">
-          <span>游戏</span>
-          <svg class="dropdown-icon" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M7 10l5 5 5-5z"/>
-          </svg>
-        </button>
-        <!-- 游戏下拉菜单 -->
-        <Transition name="dropdown">
-          <div v-show="showGameMenu" class="dropdown-menu">
-            <RouterLink
-              v-for="item in gameMenuItems"
-              :key="item.path"
-              :to="item.path"
-              class="dropdown-item"
-              @click="showGameMenu = false"
-            >
-              {{ item.name }}
-            </RouterLink>
-          </div>
-        </Transition>
-      </div>
-
-      <!-- 设置菜单 -->
-      <div
-        class="nav-menu"
-        @mouseenter="showSettingsMenu = true"
-        @mouseleave="showSettingsMenu = false"
-      >
-        <button class="nav-menu-btn">
-          <span>设置</span>
-          <svg class="dropdown-icon" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M7 10l5 5 5-5z"/>
-          </svg>
-        </button>
-        <!-- 设置下拉菜单 -->
-        <Transition name="dropdown">
-          <div v-show="showSettingsMenu" class="dropdown-menu">
-            <RouterLink
-              v-for="item in settingsMenuItems"
-              :key="item.path"
-              :to="item.path"
-              class="dropdown-item"
-              @click="showSettingsMenu = false"
-            >
-              {{ item.name }}
-            </RouterLink>
-          </div>
-        </Transition>
-      </div>
-
-      <!-- 帮助菜单 -->
-      <div
-        class="nav-menu"
-        @mouseenter="showHelpMenu = true"
-        @mouseleave="showHelpMenu = false"
-      >
-        <button class="nav-menu-btn">
-          <span>帮助</span>
-          <svg class="dropdown-icon" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M7 10l5 5 5-5z"/>
-          </svg>
-        </button>
-        <!-- 帮助下拉菜单 -->
-        <Transition name="dropdown">
-          <div v-show="showHelpMenu" class="dropdown-menu">
-            <RouterLink
-              v-for="item in helpMenuItems"
-              :key="item.name"
-              :to="item.path"
-              class="dropdown-item"
-              @click="handleMenuClick(item.path)"
-            >
-              {{ item.name }}
-            </RouterLink>
-          </div>
-        </Transition>
-      </div>
+        <NavDropdown
+          v-for="menu in navMenus"
+          :key="menu.title"
+          :title="menu.title"
+          :items="menu.items"
+        />
       </nav>
     </div>
 
     <!-- 右侧区域：窗口控制按钮 -->
     <div class="title-bar-controls">
-      <!-- 全屏按钮 -->
-      <button
-        class="control-btn"
-        title="全屏"
-        @click="handleFullscreen"
-      >
-        <svg viewBox="0 0 24 24" fill="currentColor">
-          <path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/>
-        </svg>
-      </button>
-
       <!-- 最小化按钮 -->
       <button
         class="control-btn"
@@ -161,42 +70,64 @@
 /**
  * TitleBar.vue - 顶部标题栏组件
  * 实现Steam风格的无边框窗口标题栏
+ * 使用 NavDropdown 组件减少重复代码
  */
 
 import { ref } from 'vue'
 import { useWindowStore } from '../../store/window.store'
-import { openHelpWindow } from '../../api/window.api'
+import NavDropdown from './NavDropdown.vue'
+import type { NavMenuItem } from './NavDropdown.vue'
 
 // 获取窗口store
 const windowStore = useWindowStore()
 
-// 菜单显示状态
-const showGameMenu = ref(false)
-const showSettingsMenu = ref(false)
-const showHelpMenu = ref(false)
-
 // 是否最大化
 const isMaximized = ref(false)
 
-// 游戏菜单项
-const gameMenuItems = [
-  { name: '浏览', path: '/' },
-  { name: '本体下载', path: '/download' },
-  { name: '免Steam补丁', path: '/patch' },
-  { name: '库', path: '/library' }
-]
-
-// 设置菜单项
-const settingsMenuItems = [
-  { name: '全局设置', path: '/settings' },
-  { name: '管理扩展', path: '/extensions' }
-]
-
-// 帮助菜单项
-const helpMenuItems = [
-  { name: '关于软件', path: '/about' },
-  { name: '使用说明', path: '/help' },
-  { name: '检查更新', path: '/update-check' }
+/**
+ * 导航菜单配置
+ * 使用动态数据驱动，避免硬编码重复模板
+ */
+const navMenus: { title: string; items: NavMenuItem[] }[] = [
+  {
+    title: '游戏',
+    items: [
+      { name: '浏览', path: '/' },
+      { name: '库', path: '/library' }
+    ]
+  },
+  {
+    title: '工具',
+    items: [
+      { name: '本体下载', path: '/download' },
+      { name: '免Steam补丁', path: '/patch' },
+      { name: '清单入库', path: '/manifest-import' }
+    ]
+  },
+  {
+    title: '更多',
+    items: [
+      { name: 'Lua转VDF', path: '/lua-to-vdf' },
+      { name: 'VDF转Lua', path: '/vdf-to-lua' },
+      { name: '游戏封面图下载', path: '/cover-downloader' }
+    ]
+  },
+  {
+    title: '设置',
+    items: [
+      { name: '全局设置', path: '/settings' },
+      { name: '个性化', path: '/personalization' }
+    ]
+  },
+  {
+    title: '帮助',
+    items: [
+      { name: '关于软件', path: '/about' },
+      { name: '使用说明', path: '/help' },
+      { name: '疑难解答', path: '/troubleshooting' },
+      { name: '检查更新', path: '/update-check' }
+    ]
+  }
 ]
 
 // 处理最小化
@@ -214,35 +145,16 @@ const handleMaximize = () => {
 const handleClose = () => {
   windowStore.close()
 }
-
-// 处理全屏
-const handleFullscreen = () => {
-  windowStore.toggleFullscreen()
-}
-
-// 打开帮助窗口（独立窗口）
-const handleOpenHelpWindow = async () => {
-  showHelpMenu.value = false
-  try {
-    await openHelpWindow()
-  } catch (error) {
-    console.error('打开帮助窗口失败:', error)
-  }
-}
-
-// 处理菜单点击
-const handleMenuClick = (path: string) => {
-  showHelpMenu.value = false
-}
 </script>
 
 <style scoped>
 .title-bar {
-  height: 48px;
+  height: 40px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: var(--steam-bg-primary);
+  background: rgba(var(--steam-bg-primary-rgb), 0.85);
+  backdrop-filter: blur(20px) saturate(180%);
   border-bottom: 1px solid var(--steam-border);
   padding: 0 16px;
   user-select: none;
@@ -264,15 +176,9 @@ const handleMenuClick = (path: string) => {
 }
 
 .logo-icon {
-  width: 16px;
-  height: 16px;
-  color: var(--steam-accent-blue);
-}
-
-.logo-text {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--steam-text-primary);
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
 }
 
 /* 导航菜单 */
@@ -281,68 +187,6 @@ const handleMenuClick = (path: string) => {
   align-items: center;
   gap: 4px;
   -webkit-app-region: no-drag;
-}
-
-.nav-menu {
-  position: relative;
-}
-
-.nav-menu-btn {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  padding: 0 6px;
-  height: 32px;
-  font-size: 16px;
-  font-weight: 400;
-  color: var(--steam-text-primary);
-  background: transparent;
-  border-radius: 4px;
-  transition: background var(--transition-fast);
-}
-
-.nav-menu-btn:hover {
-  background: var(--steam-accent-hover);
-}
-
-.dropdown-icon {
-  width: 16px;
-  height: 16px;
-  opacity: 0.7;
-}
-
-/* 下拉菜单 */
-.dropdown-menu {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  width: 120px;
-  min-width: 120px;
-  background: var(--steam-bg-secondary);
-  border: 1px solid var(--steam-border);
-  border-radius: 8px;
-  box-shadow: var(--shadow-steam);
-  padding: 8px 0;
-  z-index: 1000;
-  margin-top: 4px;
-}
-
-.dropdown-item {
-  display: block;
-  width: 100%;
-  padding: 10px 16px;
-  font-size: 14px;
-  color: var(--steam-text-primary);
-  background: transparent;
-  border: none;
-  text-align: left;
-  cursor: pointer;
-  transition: background var(--transition-fast);
-  text-decoration: none;
-}
-
-.dropdown-item:hover {
-  background: var(--steam-accent-hover);
 }
 
 /* 窗口控制按钮 */
@@ -377,17 +221,5 @@ const handleMenuClick = (path: string) => {
 .control-btn.close-btn:hover {
   background: #e81123;
   color: white;
-}
-
-/* 下拉动画 */
-.dropdown-enter-active,
-.dropdown-leave-active {
-  transition: all 0.2s ease-out;
-}
-
-.dropdown-enter-from,
-.dropdown-leave-to {
-  opacity: 0;
-  transform: translateY(-8px);
 }
 </style>

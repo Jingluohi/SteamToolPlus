@@ -183,7 +183,7 @@ async function selectExeFile() {
       }
     }
   } catch (err) {
-    console.error('选择文件失败:', err)
+    // 选择文件失败时静默处理
   }
 }
 
@@ -205,7 +205,7 @@ async function selectCoverFile() {
       form.value.coverPath = selected
     }
   } catch (err) {
-    console.error('选择文件失败:', err)
+    // 选择文件失败时静默处理
   }
 }
 

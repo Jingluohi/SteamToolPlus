@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Steam Tool Plus",
-  "version": "1.11.0",
+  "version": "1.20.0",
   "identifier": "com.steamtoolplus.app",
   "build": {
     "beforeDevCommand": "npm run dev",
@@ -14,9 +14,9 @@
       {
         "title": "Steam Tool Plus",
         "width": 1500,
-        "height": 1000,
+        "height": 900,
         "minWidth": 1500,
-        "minHeight": 1000,
+        "minHeight": 900,
         "center": true,
         "resizable": true,
         "maximizable": true,
@@ -27,7 +27,8 @@
         "shadow": true,
         "visible": true,
         "fullscreen": false,
-        "focus": true
+        "focus": true,
+        "dragDropEnabled": true
       }
     ],
     "security": {

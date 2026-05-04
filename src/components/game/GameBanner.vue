@@ -223,11 +223,10 @@ onUnmounted(() => {
 }
 
 .banner-title {
-  font-size: 32px;
+  font-size: 26px;
   font-weight: 600;
   color: white;
   margin-bottom: 8px;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
 }
 
 .banner-publisher {

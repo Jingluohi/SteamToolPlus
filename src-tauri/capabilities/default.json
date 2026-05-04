@@ -14,6 +14,7 @@
     "fs:allow-remove",
     "fs:allow-create",
     "fs:allow-exists",
+    "core:event:allow-emit",
     {
       "identifier": "fs:scope",
       "allow": [

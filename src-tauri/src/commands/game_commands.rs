@@ -3,12 +3,10 @@
 
 use crate::models::{
     AddGameRequest, Game, GameConfigData, GameFilter, GameListResponse, GameSortBy,
-    LaunchGameResult, ScanGamesRequest, UpdateGameRequest,
+    ScanGamesRequest, UpdateGameRequest,
 };
 use crate::utils::resource_utils::get_resource_dir;
 use crate::AppState;
-use std::path::Path;
-use tauri::Manager;
 
 /// 获取所有游戏
 #[tauri::command]
@@ -120,6 +118,31 @@ pub async fn get_game_cover_image(app: tauri::AppHandle, game_id: String) -> Res
     }
 }
 
+/// 从配置文件中读取额外的游戏安装路径
+/// 配置文件路径: resources/game_paths.json
+/// 格式: ["D:\\Games", "E:\\SteamGames"]
+fn get_extra_install_paths(app: &tauri::AppHandle) -> Vec<String> {
+    let resource_dir = match get_resource_dir(app) {
+        Ok(dir) => dir,
+        Err(_) => return Vec::new(),
+    };
+    
+    let config_path = resource_dir.join("game_paths.json");
+    if !config_path.exists() {
+        return Vec::new();
+    }
+    
+    match std::fs::read_to_string(&config_path) {
+        Ok(content) => {
+            match serde_json::from_str::<Vec<String>>(&content) {
+                Ok(paths) => paths,
+                Err(_) => Vec::new(),
+            }
+        }
+        Err(_) => Vec::new(),
+    }
+}
+
 /// 检查游戏是否已安装
 /// 通过检查游戏安装目录是否存在来判断
 #[tauri::command]
@@ -158,18 +181,12 @@ pub async fn check_game_installed(
         }
     }
     
-    // 也可以检查其他可能的安装位置
-    // 例如：检查默认下载路径
-    let default_install_paths = [
-        format!("D:\\SteamGame\\{}", game_id),
-        format!("C:\\SteamGame\\{}", game_id),
-    ];
-    
-    for path_str in &default_install_paths {
-        let path = std::path::Path::new(path_str);
+    // 从配置文件读取额外的安装路径并检查
+    let extra_paths = get_extra_install_paths(&app);
+    for base_path in &extra_paths {
+        let path = std::path::Path::new(base_path).join(&game_id);
         if path.exists() && path.is_dir() {
-            // 检查是否有exe文件
-            let entries = std::fs::read_dir(path)
+            let entries = std::fs::read_dir(&path)
                 .map_err(|e| format!("读取游戏目录失败: {}", e))?;
             
             for entry in entries {
@@ -230,17 +247,13 @@ pub async fn launch_game(game_id: String, app: tauri::AppHandle) -> Result<(), S
         }
     }
     
-    // 如果在resources/game/{game_id}中没找到，尝试默认路径
+    // 如果在resources/game/{game_id}中没找到，尝试配置文件中定义的额外路径
     if exe_path.is_none() {
-        let default_paths = [
-            format!("D:\\SteamGame\\{}", game_id),
-            format!("C:\\SteamGame\\{}", game_id),
-        ];
-        
-        for path_str in &default_paths {
-            let path = std::path::Path::new(path_str);
+        let extra_paths = get_extra_install_paths(&app);
+        for base_path in &extra_paths {
+            let path = std::path::Path::new(base_path).join(&game_id);
             if path.exists() && path.is_dir() {
-                let entries = std::fs::read_dir(path)
+                let entries = std::fs::read_dir(&path)
                     .map_err(|e| format!("读取游戏目录失败: {}", e))?;
                 
                 for entry in entries {

@@ -54,8 +54,8 @@
  */
 
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
-import { invoke, convertFileSrc } from '@tauri-apps/api/core'
 import type { GameConfigData } from '../../types'
+import { getCachedCoverImage } from '../../services/imageCache.service'
 
 /**
  * 组件属性定义
@@ -122,24 +122,21 @@ const placeholderStyle = computed(() => {
 
 
 // 加载封面图片
-// 使用 convertFileSrc 将本地文件路径转换为 asset URL，避免 base64 内存开销
+// 使用全局缓存服务获取图片 URL，避免与详情页资源竞争
 const loadCover = async () => {
   // 如果已经加载过且 URL 有效，直接返回
   if (coverUrl.value && imageLoaded.value) return
 
   try {
-    // 调用后端获取图片文件路径，使用 game_id（games_config.json 中的 ID）
-    const filePath = await invoke<string>('get_game_cover_image', {
-      gameId: props.game.game_id
-    })
-    if (filePath) {
-      // 使用 convertFileSrc 将本地文件路径转换为安全的 asset URL
-      // 这样浏览器可以直接从文件系统加载图片，不需要 base64 编码，大幅降低内存占用
-      coverUrl.value = convertFileSrc(filePath)
+    // 使用缓存服务获取图片 URL
+    // 如果图片已被其他组件加载过，会直接返回缓存的 URL
+    const cachedUrl = await getCachedCoverImage(props.game.game_id)
+    if (cachedUrl) {
+      coverUrl.value = cachedUrl
       imageLoaded.value = true
     }
   } catch (error) {
-    console.error(`加载封面失败 (${props.game.game_id}):`, error)
+    // 加载封面失败时静默处理
   }
 }
 
@@ -147,7 +144,7 @@ const loadCover = async () => {
 const releaseCover = () => {
   // 先标记为未加载，让 img 元素从 DOM 中移除
   imageLoaded.value = false
-  
+
   // 使用 nextTick 确保 DOM 更新后再清除 URL
   nextTick(() => {
     // 清除 URL 引用
@@ -155,7 +152,6 @@ const releaseCover = () => {
       coverUrl.value = ''
     }
     isVisible.value = false
-    console.log(`释放图片内存: ${props.game.game_id}`)
   })
 }
 
@@ -248,20 +244,21 @@ onUnmounted(() => {
   position: relative;
   width: 100%;
   /* 使用 padding-bottom 技巧保持比例，确保Grid能正确计算行高 */
-  padding-bottom: 47%; /* 约 2.13:1 比例 */
-  border-radius: 12px;
-  border: 2px solid var(--steam-border);
+  padding-bottom: 46.8%; /* 约 2.13:1 比例 */
+  border-radius: 10px;
+  border: none;
   overflow: hidden;
   cursor: pointer;
-  background-color: var(--steam-bg-secondary);
-  transition: transform 0.15s ease-out, border-color 0.15s ease;
+  background-color: transparent;
+  transition: transform 0.15s ease-out, box-shadow 0.15s ease;
   will-change: transform;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
-/* 悬浮效果 - 仅使用 transform */
+/* 悬浮效果 - 使用 transform 和阴影 */
 .game-card:hover {
   transform: scale(1.02);
-  border-color: var(--steam-accent-blue);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
 }
 
 /* 按压效果 */
@@ -337,7 +334,7 @@ onUnmounted(() => {
   padding: 4px 8px;
   background-color: var(--steam-accent-blue);
   color: white;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   border-radius: 4px;
   z-index: 2;
@@ -361,7 +358,6 @@ onUnmounted(() => {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
   line-height: 1.3;
 }
 
@@ -373,15 +369,13 @@ onUnmounted(() => {
   overflow: hidden;
   text-overflow: ellipsis;
   display: block;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
   line-height: 1.3;
 }
 
 .game-id {
-  font-size: 11px;
+  font-size: 12px;
   color: rgba(255, 255, 255, 0.7);
   font-family: 'Courier New', monospace;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
   line-height: 1.3;
 }
 

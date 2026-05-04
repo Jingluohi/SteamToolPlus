@@ -13,16 +13,24 @@ import type { ThemeConfig } from '../types'
 type ThemeMode = 'dark' | 'light' | 'auto'
 
 /**
+ * 检测系统主题是否为深色
+ */
+function detectSystemTheme(): boolean {
+  if (typeof window === 'undefined') return true
+  return window.matchMedia('(prefers-color-scheme: dark)').matches
+}
+
+/**
  * 主题Store
  */
 export const useThemeStore = defineStore('theme', () => {
   // ==================== State ====================
   /** 当前主题模式 */
-  const themeMode = ref<ThemeMode>('dark')
+  const themeMode = ref<ThemeMode>('auto')
   /** 是否跟随系统主题 */
   const followSystem = ref(true)
-  /** 系统主题是否为深色 */
-  const systemIsDark = ref(true)
+  /** 系统主题是否为深色 - 初始化时立即检测 */
+  const systemIsDark = ref(detectSystemTheme())
 
   // ==================== Getters ====================
   /** 当前是否为深色主题 */

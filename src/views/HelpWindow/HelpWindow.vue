@@ -89,7 +89,6 @@ async function initTheme() {
     applyTheme(isDark)
   } catch (e) {
     // 如果读取失败，默认使用深色主题
-    console.warn('读取主题配置失败，使用默认主题:', e)
     applyTheme(true)
   }
 }
@@ -124,7 +123,7 @@ marked.setOptions({
       try {
         return hljs.highlight(code, { language: lang }).value
       } catch (e) {
-        console.warn('代码高亮失败:', e)
+        // 代码高亮失败时使用自动高亮
       }
     }
     return hljs.highlightAuto(code).value
@@ -180,12 +179,11 @@ async function handleContentClick(e: MouseEvent) {
       // 使用 Tauri shell 插件在默认浏览器中打开链接
       await open(href)
     } catch (error) {
-      console.error('打开链接失败:', error)
       // 如果 shell 插件失败，尝试使用 invoke
       try {
         await invoke('open_external_link', { url: href })
       } catch (invokeError) {
-        console.error('使用 invoke 打开链接也失败:', invokeError)
+        // 打开链接失败时静默处理
       }
     }
   }

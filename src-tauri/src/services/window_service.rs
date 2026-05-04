@@ -2,7 +2,7 @@
 // 实现窗口管理的业务逻辑
 
 use crate::models::{SetWindowSizeRequest, WindowOperationResult, WindowState};
-use tauri::{Manager, Window};
+use tauri::Window;
 
 /// 窗口服务接口
 pub trait WindowServiceTrait: Send + Sync {
@@ -17,6 +17,7 @@ pub trait WindowServiceTrait: Send + Sync {
     /// 设置窗口大小
     fn set_size(&self, window: &Window, request: SetWindowSizeRequest) -> WindowOperationResult;
     /// 获取窗口状态
+    #[allow(dead_code)]
     fn get_state(&self, window: &Window) -> WindowState;
 }
 
@@ -129,6 +130,7 @@ impl WindowServiceTrait for WindowService {
     }
 
     /// 获取窗口状态
+    #[allow(dead_code)]
     fn get_state(&self, window: &Window) -> WindowState {
         let inner_size = window.inner_size().unwrap_or(tauri::PhysicalSize {
             width: 1600,

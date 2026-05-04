@@ -45,3 +45,24 @@ export async function closeHelpWindow(): Promise<void> {
 export async function toggleFullscreen(): Promise<void> {
   return invoke<void>('toggle_fullscreen')
 }
+
+/**
+ * 窗口状态接口
+ */
+export interface WindowState {
+  isMaximized: boolean
+  isFullscreen: boolean
+  width: number
+  height: number
+}
+
+/**
+ * 获取窗口状态
+ */
+export async function getWindowState(): Promise<WindowState | null> {
+  try {
+    return invoke<WindowState>('get_window_state')
+  } catch (err) {
+    return null
+  }
+}

@@ -15,10 +15,6 @@ pub struct AppConfig {
     pub game_dirs: GameDirConfig,
     /// 启动配置
     pub launch: LaunchConfig,
-    /// 扩展配置
-    pub extension: ExtensionConfig,
-    /// 安全配置
-    pub security: SecurityConfig,
 }
 
 impl Default for AppConfig {
@@ -28,8 +24,6 @@ impl Default for AppConfig {
             theme: ThemeConfig::default(),
             game_dirs: GameDirConfig::default(),
             launch: LaunchConfig::default(),
-            extension: ExtensionConfig::default(),
-            security: SecurityConfig::default(),
         }
     }
 }
@@ -80,8 +74,8 @@ pub struct ThemeConfig {
 impl Default for ThemeConfig {
     fn default() -> Self {
         Self {
-            mode: "auto".to_string(),
-            follow_system: true,
+            mode: "dark".to_string(),
+            follow_system: false,
             custom_vars: None,
         }
     }
@@ -128,56 +122,6 @@ impl Default for LaunchConfig {
     }
 }
 
-/// 扩展配置
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ExtensionConfig {
-    /// 扩展目录路径
-    pub extensions_path: String,
-    /// 是否启用扩展
-    pub enabled: bool,
-    /// 已启用扩展列表
-    pub enabled_extensions: Vec<String>,
-    /// 扩展权限配置
-    pub permissions: serde_json::Value,
-}
-
-impl Default for ExtensionConfig {
-    fn default() -> Self {
-        Self {
-            extensions_path: "extensions".to_string(),
-            enabled: true,
-            enabled_extensions: Vec::new(),
-            permissions: serde_json::json!({}),
-        }
-    }
-}
-
-/// 安全配置
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct SecurityConfig {
-    /// 是否启用沙箱
-    pub sandbox_enabled: bool,
-    /// 允许扩展访问的文件路径
-    pub allowed_paths: Vec<String>,
-    /// 禁止扩展访问的路径
-    pub blocked_paths: Vec<String>,
-}
-
-impl Default for SecurityConfig {
-    fn default() -> Self {
-        Self {
-            sandbox_enabled: true,
-            allowed_paths: vec!["data".to_string(), "config".to_string()],
-            blocked_paths: vec![
-                "C:\\Windows".to_string(),
-                "C:\\Program Files".to_string(),
-            ],
-        }
-    }
-}
-
 /// 更新配置请求
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -190,8 +134,4 @@ pub struct UpdateConfigRequest {
     pub game_dirs: Option<GameDirConfig>,
     /// 启动配置更新
     pub launch: Option<LaunchConfig>,
-    /// 扩展配置更新
-    pub extension: Option<ExtensionConfig>,
-    /// 安全配置更新
-    pub security: Option<SecurityConfig>,
 }

@@ -3,7 +3,7 @@
  */
 
 import { invoke } from '@tauri-apps/api/core'
-import type { AppConfig } from '../types/config.types'
+import type { AppConfig, ThemeConfig, WindowConfig, GameDirConfig, LaunchConfig } from '../types/config.types'
 
 /**
  * 获取应用配置
@@ -13,10 +13,25 @@ export async function getConfig(): Promise<AppConfig> {
 }
 
 /**
- * 保存应用配置
+ * 更新应用配置（部分更新）
+ */
+export async function updateConfig(request: {
+  window?: WindowConfig
+  theme?: ThemeConfig
+  gameDirs?: GameDirConfig
+  launch?: LaunchConfig
+}): Promise<AppConfig> {
+  // 后端使用 camelCase，直接发送
+  return invoke<AppConfig>('update_config', { request })
+}
+
+/**
+ * 保存完整应用配置
  */
 export async function saveConfig(config: AppConfig): Promise<void> {
-  return invoke<void>('save_config', { config })
+  // 使用 update_config 命令，将所有配置作为 request 发送
+  // 后端使用 camelCase，直接发送
+  await invoke<AppConfig>('update_config', { request: config })
 }
 
 /**

@@ -162,6 +162,23 @@
               {{ getDownloadButtonText() }}
             </button>
 
+            <!-- 入库Steam按钮 -->
+            <button
+              class="import-steam-btn"
+              :class="{ disabled: !canImportToSteam, loading: isImportingToSteam }"
+              :disabled="!canImportToSteam || isImportingToSteam"
+              @click="importToSteam"
+              :title="importSteamTooltip"
+            >
+              <svg v-if="isImportingToSteam" class="loading-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/>
+              </svg>
+              <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+              </svg>
+              {{ isImportingToSteam ? '入库中...' : '入库Steam' }}
+            </button>
+
             <!-- 暂停/停止下载按钮 -->
             <button
               v-if="isDownloading || existingGameData?.download_status === 'downloading'"
@@ -229,22 +246,35 @@
               </span>
             </div>
 
-            <!-- 下载补丁按钮（当本地不存在且有下载链接时显示） -->
-            <button
-              v-if="!isPatchLocalExists(tab.patchType) && tab.downloadUrl"
-              class="download-patch-btn"
-              @click="openDownloadUrl(tab.downloadUrl)"
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                <polyline points="7 10 12 15 17 10"/>
-                <line x1="12" y1="15" x2="12" y2="3"/>
-              </svg>
-              <span>下载补丁</span>
-            </button>
-            <p v-if="!isPatchLocalExists(tab.patchType) && tab.downloadUrl" class="download-hint">
-              （请先转存至您的网盘，避免和谐，也将给作者带来无限的更新动力）
-            </p>
+            <!-- 下载补丁区域（当本地不存在且有下载链接时显示） -->
+            <div v-if="!isPatchLocalExists(tab.patchType) && tab.downloadUrls && tab.downloadUrls.length > 0" class="download-section">
+              <p class="download-section-title">下载补丁：</p>
+              <div class="download-buttons">
+                <div
+                  v-for="(item, index) in tab.downloadUrls"
+                  :key="index"
+                  class="download-btn-wrapper"
+                >
+                  <button
+                    class="download-patch-btn"
+                    @click="openDownloadUrl(item.url)"
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                      <polyline points="7 10 12 15 17 10"/>
+                      <line x1="12" y1="15" x2="12" y2="3"/>
+                    </svg>
+                    <span>{{ getDownloadSourceName(item.source) }}</span>
+                  </button>
+                  <p v-if="item.pwd || item.source === 'lanzou'" class="pwd-hint">
+                    提取码: {{ item.pwd || '1234' }}
+                  </p>
+                </div>
+              </div>
+              <p class="download-hint">
+                （请先转存至您的网盘，避免和谐，也将给作者带来无限的更新动力）
+              </p>
+            </div>
 
             <!-- 选择补丁文件并应用按钮（当本地不存在时显示） -->
             <button
@@ -337,13 +367,14 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { invoke, convertFileSrc } from '@tauri-apps/api/core'
+import { invoke } from '@tauri-apps/api/core'
 import { open } from '@tauri-apps/plugin-dialog'
 import DownloadProgress from '../../components/download/DownloadProgress.vue'
 import type { DownloadProgress as DownloadProgressType, DepotProgress } from '../../types/download.types'
 import type { GameConfigData, GameTagConfig } from '../../types'
 import { getPatchSourcePath } from '../../types'
-import { loadGamesConfigFromFile, getGameCoverImage } from '../../api/game.api'
+import { loadGamesConfigFromFile } from '../../api/game.api'
+import { getCachedCoverImage } from '../../services/imageCache.service'
 import { 
   getGameData, 
   upsertGameData, 
@@ -425,6 +456,18 @@ const downloadProgress = ref<DownloadProgressType>({
 })
 let monitorInterval: number | null = null
 
+// 入库Steam状态
+const isImportingToSteam = ref(false)
+const manifestExists = ref(false)
+const canImportToSteam = computed(() => {
+  return manifestExists.value && !isImportingToSteam.value
+})
+const importSteamTooltip = computed(() => {
+  if (isImportingToSteam.value) return '正在入库...'
+  if (!manifestExists.value) return '未找到清单文件'
+  return '将游戏清单导入Steam'
+})
+
 // 可用的标签页
 const availableTabs = computed(() => {
   const tabs: { id: string; name: string }[] = []
@@ -452,9 +495,23 @@ const patchTabs = computed(() => {
     name: getCategoryName(tag.patch_type),
     patchType: tag.patch_type,
     patchPath: getPatchSourcePath(tag, game.value?.game_id || ''),
-    downloadUrl: tag.download_url
+    downloadUrls: tag.download_urls || []
   })) || []
 })
+
+/**
+ * 获取下载来源显示名称
+ * @param source 网盘来源标识
+ */
+const getDownloadSourceName = (source: string): string => {
+  const sourceMap: Record<string, string> = {
+    'baidu': '百度网盘',
+    'thunder': '迅雷网盘',
+    'lanzou': '蓝奏云',
+    'other': '其他网盘'
+  }
+  return sourceMap[source] || source || '未知网盘'
+}
 
 // 是否可以开始下载
 const canDownload = computed(() => {
@@ -499,7 +556,6 @@ const selectDownloadPath = async () => {
       downloadPath.value = selected
     }
   } catch (error) {
-    console.error('选择文件夹失败:', error)
     alert('选择文件夹失败: ' + error)
   }
 }
@@ -515,7 +571,6 @@ const selectGamePath = async () => {
       gamePath.value = selected
     }
   } catch (error) {
-    console.error('选择文件夹失败:', error)
     alert('选择文件夹失败: ' + error)
   }
 }
@@ -566,7 +621,8 @@ const startDownload = async () => {
       message: string
     }>('start_game_download', {
       manifestPath: manifestFolderPath.value,
-      downloadPath: downloadPath.value
+      downloadPath: downloadPath.value,
+      gameId: gameId.value || 'unknown'
     })
 
     if (result.success) {
@@ -588,20 +644,22 @@ const startDownload = async () => {
 
 /**
  * 停止下载
- * 终止 ddv20.exe 进程
+ * 终止 ddv20.exe 进程，并将游戏状态设置为未下载
  */
 const stopDownload = async () => {
   try {
     addDownloadLog('正在停止下载...', 'info')
-    await invoke('stop_download')
+    await invoke('stop_download', {
+      gameId: gameId.value
+    })
     addDownloadLog('下载已停止', 'success')
-    
-    // 更新游戏状态为暂停
-    await updateGameDownloadStatus(gameId.value, 'paused', downloadProgress.value)
-    
+
     // 停止进度监控
     stopProgressMonitoring()
-    
+
+    // 重新加载游戏数据以更新状态显示
+    existingGameData.value = await getGameData(gameId.value)
+
     isDownloading.value = false
   } catch (error) {
     addDownloadLog(`停止下载失败: ${error}`, 'error')
@@ -635,7 +693,6 @@ const getTotalDepots = async (): Promise<number> => {
     }>('read_manifest_folder', { folderPath: manifestFolderPath.value })
     return result.manifestFiles.length
   } catch (error) {
-    console.error('获取depot数量失败:', error)
     return 0
   }
 }
@@ -647,8 +704,6 @@ const scanProgressFiles = async () => {
   try {
     // 获取程序根目录下的进度文件
     const progressFiles = await invoke<Array<{ name: string; path: string }>>('get_download_progress_files')
-
-    console.log('扫描到进度文件:', progressFiles)
 
     // 更新每个depot的进度
     const updatedDepots = [...downloadProgress.value.depots]
@@ -715,7 +770,7 @@ const scanProgressFiles = async () => {
       existingGameData.value = await getGameData(gameId.value)
     }
   } catch (error) {
-    console.error('扫描进度文件失败:', error)
+    // 扫描进度文件失败时静默处理
   }
 }
 
@@ -744,8 +799,6 @@ const startProgressMonitoring = async () => {
       return match ? match[1] : null
     }).filter(id => id !== null) as string[]
 
-    console.log('检测到depot IDs:', depotIds)
-
     // 初始化所有depot的进度状态
     downloadProgress.value.totalDepots = depotIds.length
     downloadProgress.value.depots = depotIds.map(depotId => ({
@@ -758,7 +811,6 @@ const startProgressMonitoring = async () => {
 
     addDownloadLog(`检测到 ${depotIds.length} 个depot`, 'info')
   } catch (error) {
-    console.error('读取manifest文件夹失败:', error)
     addDownloadLog(`读取manifest文件夹失败: ${error}`, 'error')
   }
 
@@ -811,7 +863,6 @@ const applyPatch = async (tab: any) => {
       alert('补丁应用完成，但有一些错误，请查看详情')
     }
   } catch (error) {
-    console.error('应用补丁失败:', error)
     alert('应用补丁失败: ' + error)
     patchResult.value = {
       success: false,
@@ -836,7 +887,6 @@ const checkPatchLocalStatus = async () => {
       })
       patchLocalStatus.value.set(tag.patch_type, result !== '')
     } catch (error) {
-      console.error(`检查补丁文件失败 (patch_type=${tag.patch_type}):`, error)
       patchLocalStatus.value.set(tag.patch_type, false)
     }
   }
@@ -852,7 +902,6 @@ const openDownloadUrl = async (url: string) => {
   try {
     await invoke('open_external_link', { url })
   } catch (error) {
-    console.error('打开下载链接失败:', error)
     alert('打开下载链接失败: ' + error)
   }
 }
@@ -909,7 +958,6 @@ const selectAndApplyPatch = async (tab: any) => {
       alert('补丁应用完成，但有一些错误，请查看详情')
     }
   } catch (error) {
-    console.error('应用补丁失败:', error)
     alert('应用补丁失败: ' + error)
     patchResult.value = {
       success: false,
@@ -953,15 +1001,14 @@ onMounted(async () => {
     }
   }
   
-  // 加载封面图片 - 使用 convertFileSrc 转换为安全的 asset URL
-  if (game.value?.game_id) {
-    // 使用 game_id（games_config.json 中的 ID）查找图片
-    const filePath = await safeAsync(
-      () => getGameCoverImage(game.value!.game_id),
+  // 加载封面图片 - 使用全局缓存服务，避免与浏览页资源竞争
+  if (gameId.value) {
+    const cachedUrl = await safeAsync(
+      () => getCachedCoverImage(gameId.value),
       '加载封面图片失败'
     )
-    if (filePath) {
-      coverImage.value = convertFileSrc(filePath)
+    if (cachedUrl) {
+      coverImage.value = cachedUrl
     }
   }
   
@@ -973,6 +1020,8 @@ onMounted(async () => {
   await loadPatchReadmes()
   // 检查本地补丁文件状态
   await checkPatchLocalStatus()
+  // 检查游戏清单文件是否存在（用于入库Steam按钮）
+  await checkGameManifest()
 })
 
 // 组件卸载时清理定时器
@@ -994,7 +1043,6 @@ const loadPatchReadmes = async () => {
         patchReadmes.value.set(tag.patch_type, readme)
       }
     } catch (error) {
-      console.error(`加载补丁说明失败 (patch_type=${tag.patch_type}):`, error)
     }
   }
 }
@@ -1027,7 +1075,6 @@ const checkManifestFolder = async () => {
       manifestCheckStatus.value = 'not_found'
     }
   } catch (error) {
-    console.error('检查清单文件夹失败:', error)
     manifestCheckStatus.value = 'not_found'
   }
 }
@@ -1062,16 +1109,14 @@ const autoSetDownloadPath = async () => {
       // 使用用户设置的自定义路径 + 游戏文件夹名
       const path = `${customPath}\\${folderName}`
       downloadPath.value = path
-      console.log('已使用自定义下载路径:', path)
     } else {
       // 获取可用的游戏盘符（优先D盘，其次C盘）
       const drive = await invoke<string>('get_available_drive')
       const path = `${drive}\\SteamGame\\${folderName}`
       downloadPath.value = path
-      console.log('已使用默认下载路径:', path)
     }
   } catch (error) {
-    console.error('自动设置下载路径失败:', error)
+    // 自动设置下载路径失败时静默处理
   }
 }
 
@@ -1088,6 +1133,89 @@ const addDownloadLog = (message: string, type: 'info' | 'success' | 'error' | 'w
   // 限制日志数量
   if (downloadLogs.value.length > 100) {
     downloadLogs.value = downloadLogs.value.slice(-80)
+  }
+}
+
+/**
+ * 检查游戏清单文件是否存在
+ */
+const checkGameManifest = async () => {
+  try {
+    const result = await invoke<{
+      exists: boolean
+      hasLua: boolean
+      hasVdf: boolean
+      hasManifest: boolean
+      canImport: boolean
+    }>('check_game_manifest_exists', {
+      gameId: gameId.value
+    })
+    manifestExists.value = result.canImport
+  } catch (error) {
+    manifestExists.value = false
+  }
+}
+
+/**
+ * 导入游戏到Steam
+ */
+const importToSteam = async () => {
+  if (isImportingToSteam.value) return
+
+  isImportingToSteam.value = true
+
+  try {
+    // 调用后端命令导入游戏清单
+    const result = await invoke<{
+      success: boolean
+      message: string
+      importedLua: number
+      importedManifest: number
+      convertedVdf: number
+    }>('import_game_manifest_to_steam', {
+      gameId: gameId.value
+    })
+
+    if (result.success) {
+      // 显示成功弹窗，包含重启Steam按钮
+      const shouldRestart = confirm(
+        `入库成功！\n\n` +
+        `- Lua文件: ${result.importedLua}个\n` +
+        `- Manifest文件: ${result.importedManifest}个\n` +
+        `${result.convertedVdf > 0 ? `- VDF转换: ${result.convertedVdf}个\n` : ''}` +
+        `\n请重启Steam以查看导入的游戏。\n\n是否立即重启Steam？`
+      )
+
+      if (shouldRestart) {
+        await restartSteam()
+      }
+    } else {
+      alert(`入库失败: ${result.message}`)
+    }
+  } catch (error) {
+    alert(`入库失败: ${error}`)
+  } finally {
+    isImportingToSteam.value = false
+  }
+}
+
+/**
+ * 重启Steam
+ */
+const restartSteam = async () => {
+  try {
+    const result = await invoke<{
+      success: boolean
+      message: string
+    }>('restart_steam')
+
+    if (result.success) {
+      alert('Steam重启成功！')
+    } else {
+      alert(`重启Steam失败: ${result.message}`)
+    }
+  } catch (error) {
+    alert(`重启Steam失败: ${error}`)
   }
 }
 </script>
@@ -1388,7 +1516,7 @@ const addDownloadLog = (message: string, type: 'info' | 'success' | 'error' | 'w
 }
 
 .warning-icon {
-  font-size: 8px;
+  font-size: 12px;
 }
 
 .download-path-section {
@@ -1472,6 +1600,42 @@ const addDownloadLog = (message: string, type: 'info' | 'success' | 'error' | 'w
 
 .stop-download-btn:hover {
   background-color: #c82333;
+}
+
+/* 入库Steam按钮 */
+.import-steam-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 24px;
+  border: none;
+  border-radius: 8px;
+  background-color: #10b981;
+  color: white;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.import-steam-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
+.import-steam-btn:hover:not(.disabled) {
+  background-color: #059669;
+}
+
+.import-steam-btn.disabled {
+  background-color: var(--steam-text-secondary);
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.import-steam-btn.loading {
+  cursor: wait;
 }
 
 .loading-icon {
@@ -1609,7 +1773,32 @@ const addDownloadLog = (message: string, type: 'info' | 'success' | 'error' | 'w
   height: 18px;
 }
 
-/* 下载补丁按钮 */
+/* 下载区域样式 */
+.download-section {
+  margin-bottom: 16px;
+}
+
+.download-section-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--steam-text-primary);
+  margin: 0 0 12px 0;
+}
+
+.download-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.download-btn-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
 .download-patch-btn {
   display: flex;
   align-items: center;
@@ -1624,7 +1813,6 @@ const addDownloadLog = (message: string, type: 'info' | 'success' | 'error' | 'w
   font-weight: 500;
   cursor: pointer;
   transition: background-color 0.15s ease;
-  margin-bottom: 12px;
 }
 
 .download-patch-btn:hover {
@@ -1636,12 +1824,17 @@ const addDownloadLog = (message: string, type: 'info' | 'success' | 'error' | 'w
   height: 18px;
 }
 
+.pwd-hint {
+  font-size: 12px;
+  color: var(--steam-text-secondary);
+  margin: 0;
+}
+
 /* 下载提示文字 */
 .download-hint {
   font-size: 12px;
   color: var(--steam-text-secondary);
-  margin: -8px 0 12px 0;
-  text-align: center;
+  margin: 8px 0 12px 0;
   font-style: italic;
 }
 

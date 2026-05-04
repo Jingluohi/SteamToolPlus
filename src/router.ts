@@ -41,16 +41,40 @@ const routes: RouteRecordRaw[] = [
     meta: { title: '免Steam补丁' }
   },
   {
+    path: '/manifest-import',
+    name: 'ManifestImport',
+    component: () => import('./views/ManifestImport/ManifestImport.vue'),
+    meta: { title: '清单入库' }
+  },
+  {
     path: '/settings',
     name: 'GlobalSettings',
     component: () => import('./views/GlobalSettings/GlobalSettings.vue'),
     meta: { title: '全局设置' }
   },
   {
-    path: '/extensions',
-    name: 'ExtensionManager',
-    component: () => import('./views/ExtensionManager/ExtensionManager.vue'),
-    meta: { title: '管理扩展' }
+    path: '/personalization',
+    name: 'Personalization',
+    component: () => import('./views/Personalization/Personalization.vue'),
+    meta: { title: '个性化' }
+  },
+  {
+    path: '/lua-to-vdf',
+    name: 'LuaToVdf',
+    component: () => import('./views/Tools/LuaToVdf.vue'),
+    meta: { title: 'Lua转VDF' }
+  },
+  {
+    path: '/vdf-to-lua',
+    name: 'VdfToLua',
+    component: () => import('./views/Tools/VdfToLua.vue'),
+    meta: { title: 'VDF转Lua' }
+  },
+  {
+    path: '/cover-downloader',
+    name: 'CoverDownloader',
+    component: () => import('./views/Tools/CoverDownloader.vue'),
+    meta: { title: 'Steam封面下载' }
   },
   {
     path: '/about',
@@ -75,6 +99,12 @@ const routes: RouteRecordRaw[] = [
     name: 'UpdateCheck',
     component: () => import('./views/UpdateCheck/UpdateCheck.vue'),
     meta: { title: '检测更新' }
+  },
+  {
+    path: '/troubleshooting',
+    name: 'Troubleshooting',
+    component: () => import('./views/Troubleshooting/Troubleshooting.vue'),
+    meta: { title: '疑难解答' }
   }
 ]
 

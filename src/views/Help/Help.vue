@@ -70,7 +70,7 @@ marked.setOptions({
       try {
         return hljs.highlight(code, { language: lang }).value
       } catch (e) {
-        console.warn('代码高亮失败:', e)
+        // 代码高亮失败时使用自动高亮
       }
     }
     return hljs.highlightAuto(code).value
@@ -122,7 +122,7 @@ async function openInNewWindow() {
 
     await openHelpWindow()
   } catch (error) {
-    console.error('打开帮助窗口失败:', error)
+    // 打开帮助窗口失败时静默处理
   }
 }
 
@@ -145,11 +145,10 @@ async function handleContentClick(e: MouseEvent) {
     try {
       await open(href)
     } catch (error) {
-      console.error('打开链接失败:', error)
       try {
         await invoke('open_external_link', { url: href })
       } catch (invokeError) {
-        console.error('使用 invoke 打开链接也失败:', invokeError)
+        // 打开链接失败时静默处理
       }
     }
   }

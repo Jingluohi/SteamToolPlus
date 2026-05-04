@@ -48,7 +48,6 @@ export async function invokeApi<T>(
     return { success: true, data }
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error)
-    console.error(`[API.${command}] 调用失败:`, error)
     return { success: false, error: errorMessage }
   }
 }

@@ -10,9 +10,13 @@
       <!-- 按钮区域 -->
       <div class="button-section">
         <Button variant="primary" size="lg" @click="openDownloadLink">
-          查看最新版
+          查看百度网盘
         </Button>
         <p class="extract-code">提取码：v1xm</p>
+        <Button variant="primary" size="lg" @click="openXunleiLink">
+          查看迅雷网盘
+        </Button>
+        <p class="extract-code">提取码：2tmn</p>
       </div>
     </div>
   </div>
@@ -34,7 +38,18 @@ async function openDownloadLink() {
   try {
     await open('https://pan.baidu.com/s/1XbcZOLQcn4500z-SL1RDug?pwd=v1xm')
   } catch (error) {
-    console.error('打开链接失败:', error)
+    // 打开链接失败时静默处理
+  }
+}
+
+/**
+ * 打开迅雷网盘下载链接
+ */
+async function openXunleiLink() {
+  try {
+    await open('https://pan.xunlei.com/s/VOrkq4Tq0c0Sootmhpp4433yA1?pwd=2tmn#')
+  } catch (error) {
+    // 打开链接失败时静默处理
   }
 }
 </script>
@@ -46,7 +61,6 @@ async function openDownloadLink() {
   align-items: center;
   justify-content: center;
   padding: 24px;
-  background: var(--steam-bg-secondary);
 }
 
 .update-content {
@@ -57,7 +71,7 @@ async function openDownloadLink() {
 }
 
 .page-title {
-  font-size: 28px;
+  font-size: 20px;
   font-weight: 600;
   color: var(--steam-text-primary);
 }

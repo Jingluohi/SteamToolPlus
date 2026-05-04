@@ -147,6 +147,7 @@ const vClickOutside = {
 .dropdown {
   position: relative;
   display: inline-block;
+  z-index: 1;
 }
 
 .dropdown-trigger {
@@ -189,16 +190,15 @@ const vClickOutside = {
 /* 下拉菜单 */
 .dropdown-menu {
   position: absolute;
-  top: 100%;
+  top: calc(100% + 4px);
   left: 0;
-  min-width: 100%;
-  margin-top: 4px;
+  min-width: calc(100% + 2px);
   background: var(--steam-bg-secondary);
   border: 1px solid var(--steam-border);
   border-radius: 8px;
   box-shadow: var(--shadow-steam);
-  z-index: 1000;
-  overflow: hidden;
+  z-index: 9999;
+  overflow: visible;
 }
 
 .dropdown-header {

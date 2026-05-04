@@ -1,40 +1,33 @@
 {
   "window": {
-    "width": 1600,
-    "height": 900,
+    "width": 1500,
+    "height": 1000,
     "maximized": false,
     "fullscreen": false,
-    "pos_x": null,
-    "pos_y": null
+    "posX": null,
+    "posY": null
   },
   "theme": {
-    "mode": "dark",
-    "follow_system": true,
-    "custom_vars": null
+    "mode": "auto",
+    "followSystem": true,
+    "customVars": null
   },
-  "game_dirs": {
-    "library_paths": [],
-    "steam_path": null,
-    "covers_path": "data/covers"
+  "gameDirs": {
+    "steamPath": null,
+    "coversPath": "data/covers"
   },
   "launch": {
-    "minimize_on_launch": true,
-    "restore_on_exit": true,
-    "verify_before_launch": false
-  },
-  "extension": {
-    "extensions_path": "extensions",
-    "enabled": true,
-    "enabled_extensions": [],
-    "permissions": {}
+    "startMinimizedToTray": false,
+    "hideToTrayOnClose": true,
+    "verifyBeforeLaunch": false
   },
   "security": {
-    "sandbox_enabled": true,
-    "allowed_paths": [
+    "sandboxEnabled": true,
+    "allowedPaths": [
       "data",
       "config"
     ],
-    "blocked_paths": [
+    "blockedPaths": [
       "C:\\Windows",
       "C:\\Program Files"
     ]

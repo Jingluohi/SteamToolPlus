@@ -57,7 +57,6 @@ export function useDownloadProgress(manifestPath: string, appId: string) {
       const result = await readManifestFolder(manifestPath)
       return result.manifestFiles.length
     } catch (error) {
-      console.error('获取depot数量失败:', error)
       return 0
     }
   }
@@ -117,7 +116,7 @@ export function useDownloadProgress(manifestPath: string, appId: string) {
         }
       }
     } catch (error) {
-      console.error('扫描进度文件失败:', error)
+      // 扫描进度文件失败时静默处理
     }
   }
 

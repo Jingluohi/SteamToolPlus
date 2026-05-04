@@ -1,6 +1,6 @@
 {
   "name": "steam-tool-plus",
-  "version": "1.11.0",
+  "version": "1.20.0",
   "description": "Steam Tool Plus - 本地游戏管理系统",
   "type": "module",
   "scripts": {

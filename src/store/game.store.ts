@@ -35,7 +35,6 @@ export const useGameStore = defineStore('game', () => {
       games.value = await gameApi.getGames()
     } catch (err) {
       error.value = err instanceof Error ? err.message : '加载游戏列表失败'
-      console.error('加载游戏列表失败:', err)
     } finally {
       loading.value = false
     }

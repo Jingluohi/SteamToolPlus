@@ -41,11 +41,6 @@ export function handleError(
   // 提取错误消息
   const errorMessage = message || (error instanceof Error ? error.message : String(error))
 
-  // 记录日志
-  if (log) {
-    console.error(`[${context}] ${errorMessage}`, error)
-  }
-
   // 非静默模式下抛出错误
   if (!silent) {
     throw new Error(errorMessage)
@@ -97,7 +92,6 @@ export function createStoreActionWrapper(
       return await action()
     } catch (err) {
       errorRef.value = err instanceof Error ? err.message : `${context}失败`
-      console.error(`${context}失败:`, err)
       return undefined
     } finally {
       loadingRef.value = false

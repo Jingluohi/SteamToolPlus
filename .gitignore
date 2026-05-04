@@ -54,7 +54,7 @@ resources/
 lua_to_vdf_converter.py
 steam_cover_downloader.py
 
-# Extensions directory
+# Legacy local folder (ignored if present)
 extensions/
 
 # Compiled executables

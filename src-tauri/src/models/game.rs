@@ -169,31 +169,6 @@ pub struct GameTagConfig {
     pub download_url: Option<String>,
 }
 
-impl GameTagConfig {
-    /// 获取补丁源路径
-    /// 如果配置中提供了路径则使用，否则根据补丁类型和游戏ID自动生成
-    pub fn get_patch_source_path(&self, game_id: &str) -> String {
-        // 如果配置中提供了路径，直接使用
-        if let Some(ref path) = self.patch_source_path {
-            if !path.is_empty() {
-                return path.clone();
-            }
-        }
-        
-        // 根据补丁类型自动生成路径
-        let patch_type_folder = match self.patch_type {
-            0 => "免_steam",
-            1 => "局域网联机",
-            2 => "steam_联机",
-            3 => "D_加密虚拟机",
-            4 => "epic_联机",
-            _ => "其他",
-        };
-        
-        format!("Resources/crack/{}/{}", patch_type_folder, game_id)
-    }
-}
-
 /// 游戏配置数据（来自games_config.json）
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GameConfigData {
@@ -207,27 +182,4 @@ pub struct GameConfigData {
     pub downloadable: bool,
     /// 补丁标签列表
     pub tags: Vec<GameTagConfig>,
-}
-
-/// 补丁类型名称映射
-pub fn get_patch_type_name(patch_type: u8) -> &'static str {
-    match patch_type {
-        0 => "免Steam补丁",
-        1 => "局域网联机补丁",
-        2 => "Steam联机补丁",
-        3 => "D加密虚拟机补丁",
-        4 => "Epic联机补丁",
-        _ => "未知补丁类型",
-    }
-}
-
-/// 补丁类型描述映射
-pub fn get_patch_type_description(patch_type: u8) -> &'static str {
-    match patch_type {
-        0 => "无需Steam即可运行游戏",
-        1 => "支持局域网联机游玩",
-        2 => "支持Steam平台联机",
-        3 => "用于D加密游戏的虚拟机补丁",
-        _ => "未知补丁类型",
-    }
 }
