@@ -1,5 +1,7 @@
 # Steam Tool Plus 项目报告
 
+> **💬 工具、游戏交流群**：1095428733
+>
 > **📥 工具下载地址**：https://pan.baidu.com/s/1XbcZOLQcn4500z-SL1RDug?pwd=v1xm
 >
 > 提取码：**v1xm**
@@ -1066,6 +1068,7 @@ npm run tauri build
 ---
 
 **技术支持**：如有问题或建议，请通过以下方式联系：
+- **💬 QQ群**：1095428733
 - 百度网盘：https://pan.baidu.com/s/1XbcZOLQcn4500z-SL1RDug?pwd=v1xm
 - 迅雷网盘：https://pan.xunlei.com/s/VOrkq4Tq0c0Sootmhpp4433yA1?pwd=2tmn#
 
