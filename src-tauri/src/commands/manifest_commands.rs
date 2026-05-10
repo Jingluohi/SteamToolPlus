@@ -89,8 +89,16 @@ pub fn extract_archive(archive_path: String) -> Result<String, String> {
                 .map_err(|e| format!("解压7z文件失败: {:?}", e))?;
         }
         "zip" => {
-            // 使用PowerShell解压zip文件
-            let output = Command::new("powershell")
+            // 使用PowerShell解压zip文件（隐藏窗口）
+            #[cfg(target_os = "windows")]
+            use std::os::windows::process::CommandExt;
+            #[cfg(target_os = "windows")]
+            const CREATE_NO_WINDOW: u32 = 0x08000000;
+
+            let mut cmd = Command::new("powershell");
+            #[cfg(target_os = "windows")]
+            cmd.creation_flags(CREATE_NO_WINDOW);
+            let output = cmd
                 .args(&[
                     "-Command",
                     &format!("Expand-Archive -Path '{}' -DestinationPath '{}' -Force", archive_path.to_string_lossy(), temp_dir_str)
@@ -378,9 +386,20 @@ pub fn restart_steam() -> Result<serde_json::Value, String> {
     // 等待1秒确保进程完全结束
     thread::sleep(Duration::from_secs(1));
 
-    // 2. 启动Steam
+    // 2. 启动Steam（隐藏窗口）
     let steam_exe_str = steam_exe.to_string_lossy().to_string();
-    match Command::new(&steam_exe_str).spawn() {
+    #[cfg(target_os = "windows")]
+    let spawn_result = {
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x08000000;
+        Command::new(&steam_exe_str)
+            .creation_flags(CREATE_NO_WINDOW)
+            .spawn()
+    };
+    #[cfg(not(target_os = "windows"))]
+    let spawn_result = Command::new(&steam_exe_str).spawn();
+
+    match spawn_result {
         Ok(_) => {
             log::info!("Steam启动成功");
             Ok(json!({

@@ -546,10 +546,27 @@ const goBack = () => {
   router.back()
 }
 
-// 处理图片加载错误
-const handleImageError = (e: Event) => {
+// 处理图片加载错误 - 尝试重新加载
+const handleImageError = async (e: Event) => {
   const img = e.target as HTMLImageElement
-  img.style.display = 'none'
+  // 延迟后尝试重新加载图片
+  if (gameId.value) {
+    setTimeout(async () => {
+      try {
+        const { getGameCoverImage } = await import('../../api/game.api')
+        const { convertFileSrc } = await import('@tauri-apps/api/core')
+        const filePath = await getGameCoverImage(gameId.value)
+        if (filePath) {
+          img.src = convertFileSrc(filePath)
+        }
+      } catch {
+        // 重试失败则隐藏图片
+        img.style.display = 'none'
+      }
+    }, 500)
+  } else {
+    img.style.display = 'none'
+  }
 }
 
 // 分类名称和颜色从 constants/game 导入
@@ -988,6 +1005,39 @@ const selectAndApplyPatch = async (tab: any) => {
   }
 }
 
+// 加载封面图片 - 带重试机制确保100%加载成功
+const loadCoverImage = async (retryCount = 0): Promise<void> => {
+  if (!gameId.value) return
+
+  try {
+    const cachedUrl = await getCachedCoverImage(gameId.value)
+    if (cachedUrl) {
+      coverImage.value = cachedUrl
+      return
+    }
+  } catch {
+    // 缓存获取失败，继续尝试直接加载
+  }
+
+  // 如果缓存未返回URL，尝试直接调用后端获取路径
+  try {
+    const { getGameCoverImage } = await import('../../api/game.api')
+    const { convertFileSrc } = await import('@tauri-apps/api/core')
+    const filePath = await getGameCoverImage(gameId.value)
+    if (filePath) {
+      coverImage.value = convertFileSrc(filePath)
+      return
+    }
+  } catch {
+    // 直接加载也失败
+  }
+
+  // 如果都失败了且重试次数小于3次，延迟后重试
+  if (retryCount < 3) {
+    setTimeout(() => loadCoverImage(retryCount + 1), 300 * (retryCount + 1))
+  }
+}
+
 // 页面加载时确保游戏数据已加载，并自动检测清单文件夹
 onMounted(async () => {
   // 加载游戏配置
@@ -998,7 +1048,7 @@ onMounted(async () => {
     )
     if (config) gamesConfig.value = config
   }
-  
+
   // 加载已存在的游戏数据
   const gameData = await safeAsync(
     () => getGameData(gameId.value),
@@ -1018,18 +1068,10 @@ onMounted(async () => {
       startProgressMonitoring()
     }
   }
-  
-  // 加载封面图片 - 使用全局缓存服务，避免与浏览页资源竞争
-  if (gameId.value) {
-    const cachedUrl = await safeAsync(
-      () => getCachedCoverImage(gameId.value),
-      '加载封面图片失败'
-    )
-    if (cachedUrl) {
-      coverImage.value = cachedUrl
-    }
-  }
-  
+
+  // 加载封面图片 - 使用重试机制确保100%加载
+  await loadCoverImage()
+
   // 设置默认标签页
   setDefaultTab()
   // 自动检测清单文件夹

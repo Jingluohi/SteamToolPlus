@@ -612,8 +612,8 @@ const selectGameFolder = async () => {
     if (selected) {
       gamePath.value = selected
     }
-  } catch (error) {
-    console.error('选择文件夹失败:', error)
+  } catch {
+    // 用户取消选择
   }
 }
 
@@ -632,8 +632,8 @@ const selectGameExe = async () => {
     if (result) {
       gameExePath.value = result
     }
-  } catch (error) {
-    console.error('选择 exe 文件失败:', error)
+  } catch {
+    // 用户取消选择
   }
 }
 

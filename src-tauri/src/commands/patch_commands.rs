@@ -104,7 +104,16 @@ pub async fn unpack_game_exe(
 
     let target_exe_str = target_exe.to_string_lossy();
 
-    let output = Command::new(&steamless_path)
+    // 运行 Steamless（隐藏窗口）
+    #[cfg(target_os = "windows")]
+    use std::os::windows::process::CommandExt;
+    #[cfg(target_os = "windows")]
+    const CREATE_NO_WINDOW: u32 = 0x08000000;
+
+    let mut cmd = Command::new(&steamless_path);
+    #[cfg(target_os = "windows")]
+    cmd.creation_flags(CREATE_NO_WINDOW);
+    let output = cmd
         .arg("--quiet")
         .arg(&*target_exe_str)
         .output()
@@ -243,8 +252,15 @@ pub async fn apply_steam_patch_basic(
             let steam_settings_dir_clone = steam_settings_dir.clone();
             
             let result = tokio::task::spawn_blocking(move || {
-                Command::new(&tool_path_clone)
-                    .arg(&original_api_path_clone)
+                #[cfg(target_os = "windows")]
+                use std::os::windows::process::CommandExt;
+                #[cfg(target_os = "windows")]
+                const CREATE_NO_WINDOW: u32 = 0x08000000;
+
+                let mut cmd = Command::new(&tool_path_clone);
+                #[cfg(target_os = "windows")]
+                cmd.creation_flags(CREATE_NO_WINDOW);
+                cmd.arg(&original_api_path_clone)
                     .current_dir(&game_dir_clone)
                     .output()
             }).await.map_err(|e| format!("运行 generate_interfaces 失败: {}", e))?;
@@ -2949,15 +2965,32 @@ pub fn close_application() -> Result<(), String> {
 }
 
 /// 打开外部链接
+/// 使用 CREATE_NO_WINDOW 标志防止闪烁终端窗口
 #[tauri::command]
 pub fn open_external_link(url: String) -> Result<(), String> {
-    use std::process::Command;
-    
-    Command::new("cmd")
-        .args(["/c", "start", "", &url])
-        .spawn()
-        .map_err(|e| format!("打开链接失败: {}", e))?;
-    
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt;
+        use std::process::Command;
+
+        const CREATE_NO_WINDOW: u32 = 0x08000000;
+
+        Command::new("cmd")
+            .args(["/c", "start", "", &url])
+            .creation_flags(CREATE_NO_WINDOW)
+            .spawn()
+            .map_err(|e| format!("打开链接失败: {}", e))?;
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        use std::process::Command;
+        Command::new("xdg-open")
+            .arg(&url)
+            .spawn()
+            .map_err(|e| format!("打开链接失败: {}", e))?;
+    }
+
     Ok(())
 }
 
@@ -2988,7 +3021,7 @@ pub async fn write_text_file(path: String, content: String) -> Result<(), String
 /// 打开虚拟化环境配置教程视频
 /// 使用系统默认应用打开 resources/D_加密虚拟化（虚拟机）环境搭建教程.mp4
 #[tauri::command]
-pub async fn open_virtualization_tutorial(app: AppHandle) -> Result<(), String> {
+pub async fn open_virtualization_tutorial(_app: AppHandle) -> Result<(), String> {
     use std::process::Command;
     
     // 获取程序根目录

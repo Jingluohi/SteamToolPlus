@@ -1,7 +1,7 @@
 <template>
   <!--
     About.vue - 关于软件页面
-    显示软件信息、版本号、作者信息、GitHub链接等
+    显示软件信息、版本号、作者信息、GitHub链接、测试成功的游戏列表等
   -->
   <div class="about-page">
     <div class="about-content">
@@ -30,6 +30,33 @@
         <p class="app-license">本软件为免费开源软件，严禁任何形式的售卖行为</p>
         <p class="app-copyright">© 2026 Steam Tool Plus</p>
       </div>
+
+      <!-- 测试成功的游戏列表区域 -->
+      <div class="tested-games-section" v-if="testedGamesData">
+        <div class="tested-games-divider"></div>
+        <h2 class="tested-games-title">{{ testedGamesData.description }}</h2>
+        <div class="tested-games-categories">
+          <div 
+            v-for="(category, categoryIndex) in testedGamesData.categories" 
+            :key="categoryIndex"
+            class="tested-games-category"
+          >
+            <h3 class="category-name">【{{ category.name }}】</h3>
+            <ul class="games-list">
+              <li 
+                v-for="(game, gameIndex) in category.games" 
+                :key="gameIndex"
+                class="game-item"
+              >
+                <span class="game-index">{{ gameIndex + 1 }}.</span>
+                <span class="game-name">{{ game.name }}</span>
+                <span class="game-name-zh">{{ game.name_zh }}</span>
+                <span class="game-patch-type">（{{ game.patch_type }}）</span>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -37,10 +64,65 @@
 <script setup lang="ts">
 /**
  * About.vue - 关于软件页面
- * 显示软件信息、版本号、作者信息、GitHub链接等
+ * 显示软件信息、版本号、作者信息、GitHub链接、测试成功的游戏列表等
  */
 
+import { ref, onMounted } from 'vue'
 import { open } from '@tauri-apps/plugin-shell'
+import { invoke } from '@tauri-apps/api/core'
+
+/**
+ * 游戏信息接口
+ */
+interface GameInfo {
+  name: string
+  name_zh: string
+  patch_type: string
+}
+
+/**
+ * 分类信息接口
+ */
+interface CategoryInfo {
+  name: string
+  games: GameInfo[]
+}
+
+/**
+ * 测试成功游戏数据接口
+ */
+interface TestedGamesData {
+  description: string
+  categories: CategoryInfo[]
+}
+
+/**
+ * 测试成功的游戏数据
+ */
+const testedGamesData = ref<TestedGamesData | null>(null)
+
+/**
+ * 加载测试成功的游戏列表数据
+ * 从 resources/successfully-tested.json 文件读取
+ */
+async function loadTestedGamesData() {
+  try {
+    const config = await invoke<{
+      description: string
+      categories: CategoryInfo[]
+    }>('load_tested_games_config')
+    testedGamesData.value = config
+  } catch (error) {
+    // 读取失败时静默处理，不显示测试列表
+  }
+}
+
+/**
+ * 组件挂载时加载数据
+ */
+onMounted(() => {
+  loadTestedGamesData()
+})
 
 /**
  * 打开B站作者主页 - 使用系统默认浏览器
@@ -71,7 +153,27 @@ async function openGithub() {
 .about-page {
   height: 100%;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 24px;
+  scroll-behavior: smooth;
+}
+
+/* 自定义滚动条样式 - Steam风格 */
+.about-page::-webkit-scrollbar {
+  width: 8px;
+}
+
+.about-page::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.about-page::-webkit-scrollbar-thumb {
+  background: var(--steam-border);
+  border-radius: 4px;
+}
+
+.about-page::-webkit-scrollbar-thumb:hover {
+  background: var(--steam-text-secondary);
 }
 
 .about-content {
@@ -187,5 +289,79 @@ async function openGithub() {
 .github-icon {
   width: 16px;
   height: 16px;
+}
+
+/* 测试成功的游戏列表区域 */
+.tested-games-section {
+  margin-top: 24px;
+  padding-top: 24px;
+}
+
+.tested-games-divider {
+  height: 1px;
+  background: var(--steam-border);
+  margin-bottom: 24px;
+}
+
+.tested-games-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--steam-text-primary);
+  margin: 0 0 20px 0;
+  text-align: center;
+}
+
+.tested-games-categories {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.tested-games-category {
+  text-align: left;
+}
+
+.category-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--steam-accent-blue);
+  margin: 0 0 10px 0;
+}
+
+.games-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.game-item {
+  font-size: 13px;
+  color: var(--steam-text-secondary);
+  line-height: 1.5;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.game-index {
+  color: var(--steam-text-secondary);
+  min-width: 20px;
+}
+
+.game-name {
+  color: var(--steam-text-primary);
+}
+
+.game-name-zh {
+  color: var(--steam-text-secondary);
+}
+
+.game-patch-type {
+  color: var(--steam-text-tertiary);
+  font-size: 12px;
 }
 </style>

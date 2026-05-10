@@ -52,7 +52,6 @@ fn show_main_window(app_handle: &tauri::AppHandle) {
 async fn restart_app(app_handle: tauri::AppHandle) -> Result<(), String> {
     // 使用 tauri-plugin-process 的 restart 功能
     app_handle.restart();
-    Ok(())
 }
 
 /// 检查 ddv20.exe 进程是否正在运行（不显示终端窗口）
@@ -112,10 +111,29 @@ fn main() {
             let config = app_state.config_service.get_config();
             let start_minimized = config.launch.start_minimized_to_tray;
 
-            // 创建托盘菜单
-            let open_item = MenuItem::with_id(app, "open", "打开", true, None::<&str>)?;
+            // 创建托盘菜单 - 包含常用功能快捷入口
+            let open_item = MenuItem::with_id(app, "open", "打开主窗口", true, None::<&str>)?;
+            let browse_item = MenuItem::with_id(app, "browse", "浏览游戏", true, None::<&str>)?;
+            let library_item = MenuItem::with_id(app, "library", "游戏库", true, None::<&str>)?;
+            let download_item = MenuItem::with_id(app, "download", "游戏本体下载", true, None::<&str>)?;
+            let patch_item = MenuItem::with_id(app, "patch", "免Steam补丁", true, None::<&str>)?;
+            let manifest_item = MenuItem::with_id(app, "manifest", "清单入库", true, None::<&str>)?;
+            let restart_steam_item = MenuItem::with_id(app, "restart_steam", "重启Steam", true, None::<&str>)?;
             let exit_item = MenuItem::with_id(app, "exit", "退出", true, None::<&str>)?;
-            let menu = Menu::with_items(app, &[&open_item, &exit_item])?;
+
+            let menu = Menu::with_items(
+                app,
+                &[
+                    &open_item,
+                    &browse_item,
+                    &library_item,
+                    &download_item,
+                    &patch_item,
+                    &manifest_item,
+                    &restart_steam_item,
+                    &exit_item,
+                ],
+            )?;
 
             // 创建托盘图标
             let tray_icon = TrayIconBuilder::new()
@@ -147,18 +165,90 @@ fn main() {
             // 处理托盘菜单事件
             let _app_handle = app.handle().clone();
             tray_icon.on_menu_event(move |tray, event| {
+                let app_handle = tray.app_handle();
                 match event.id().as_ref() {
                     "open" => {
-                        // 点击"打开"菜单项，显示窗口
-                        if let Some(window) = tray.app_handle().get_webview_window("main") {
+                        // 点击"打开主窗口"，显示窗口
+                        if let Some(window) = app_handle.get_webview_window("main") {
                             let _ = window.show();
                             let _ = window.set_focus();
+                        }
+                    }
+                    "browse" => {
+                        // 跳转到浏览页面
+                        if let Some(window) = app_handle.get_webview_window("main") {
+                            let _ = window.show();
+                            let _ = window.set_focus();
+                            let _ = window.eval("window.location.href = '/';");
+                        }
+                    }
+                    "library" => {
+                        // 跳转到游戏库页面
+                        if let Some(window) = app_handle.get_webview_window("main") {
+                            let _ = window.show();
+                            let _ = window.set_focus();
+                            let _ = window.eval("window.location.href = '/library';");
+                        }
+                    }
+                    "download" => {
+                        // 跳转到下载页面
+                        if let Some(window) = app_handle.get_webview_window("main") {
+                            let _ = window.show();
+                            let _ = window.set_focus();
+                            let _ = window.eval("window.location.href = '/download';");
+                        }
+                    }
+                    "patch" => {
+                        // 跳转到免Steam补丁页面
+                        if let Some(window) = app_handle.get_webview_window("main") {
+                            let _ = window.show();
+                            let _ = window.set_focus();
+                            let _ = window.eval("window.location.href = '/patch';");
+                        }
+                    }
+                    "manifest" => {
+                        // 跳转到清单入库页面
+                        if let Some(window) = app_handle.get_webview_window("main") {
+                            let _ = window.show();
+                            let _ = window.set_focus();
+                            let _ = window.eval("window.location.href = '/manifest-import';");
+                        }
+                    }
+                    "restart_steam" => {
+                        // 重启Steam客户端
+                        #[cfg(target_os = "windows")]
+                        {
+                            use std::os::windows::process::CommandExt;
+                            use std::process::Command;
+                            const CREATE_NO_WINDOW: u32 = 0x08000000;
+
+                            // 先关闭Steam
+                            let _ = Command::new("taskkill")
+                                .args(["/F", "/IM", "steam.exe"])
+                                .creation_flags(CREATE_NO_WINDOW)
+                                .output();
+
+                            std::thread::sleep(std::time::Duration::from_secs(2));
+
+                            // 启动Steam
+                            let steam_paths = [
+                                "C:\\Program Files (x86)\\Steam\\steam.exe",
+                                "C:\\Program Files\\Steam\\steam.exe",
+                            ];
+                            for path in &steam_paths {
+                                if std::path::Path::new(path).exists() {
+                                    let _ = Command::new(path)
+                                        .creation_flags(CREATE_NO_WINDOW)
+                                        .spawn();
+                                    break;
+                                }
+                            }
                         }
                     }
                     "exit" => {
                         // 点击"退出"菜单项，彻底关闭程序
                         log::info!("用户通过托盘菜单退出程序");
-                        tray.app_handle().exit(0);
+                        app_handle.exit(0);
                     }
                     _ => {}
                 }
@@ -266,6 +356,7 @@ fn main() {
             game_commands::import_steam_games,
             // 游戏配置加载命令（从JSON文件）
             game_commands::load_games_config_from_file,
+            game_commands::load_tested_games_config,
             game_commands::get_game_cover_image,
             game_commands::check_game_installed,
             game_commands::check_patch_file_exists,

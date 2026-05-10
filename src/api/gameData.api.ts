@@ -188,27 +188,26 @@ export async function toggleGameFavorite(gameId: string): Promise<GameData> {
 }
 
 /**
- * 格式化游戏时长
+ * 格式化游戏时长（分钟 → 中文可读格式）
  */
 export function formatPlayTime(minutes: number): string {
-  if (minutes === 0) return '0 分钟'
+  if (minutes <= 0) return '0 分钟'
   const hours = Math.floor(minutes / 60)
   const mins = minutes % 60
   if (hours > 0) {
-    return `${hours} 小时 ${mins} 分钟`
+    return mins > 0 ? `${hours} 小时 ${mins} 分钟` : `${hours} 小时`
   }
   return `${mins} 分钟`
 }
 
 /**
- * 格式化日期
+ * 格式化日期为中文本地日期字符串
  */
 export function formatDate(dateString?: string): string {
   if (!dateString) return '从未'
   const date = new Date(dateString)
-  return date.toLocaleDateString('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit'
-  })
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
 }

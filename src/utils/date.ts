@@ -55,15 +55,32 @@ export function formatRelativeTime(date: Date | string): string {
 /**
  * 格式化时长
  * @param seconds 秒数
- * @returns 格式化后的时长字符串
+ * @returns 格式化后的时长字符串 (MM:SS 或 HH:MM:SS)
  */
 export function formatDuration(seconds: number): string {
   const hours = Math.floor(seconds / 3600)
   const minutes = Math.floor((seconds % 3600) / 60)
   const secs = seconds % 60
-  
+
   if (hours > 0) {
     return `${hours}:${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`
   }
   return `${minutes}:${String(secs).padStart(2, '0')}`
+}
+
+/**
+ * 格式化时长为中文可读格式
+ * @param seconds 秒数
+ * @returns 中文时长字符串（如：1小时30分）
+ */
+export function formatDurationCN(seconds: number): string {
+  if (seconds < 60) return `${seconds}秒`
+  const hours = Math.floor(seconds / 3600)
+  const mins = Math.floor((seconds % 3600) / 60)
+  const secs = seconds % 60
+
+  if (hours > 0) {
+    return mins > 0 ? `${hours}小时${mins}分` : `${hours}小时`
+  }
+  return secs > 0 ? `${mins}分${secs}秒` : `${mins}分`
 }

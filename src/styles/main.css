@@ -13,29 +13,29 @@
  * Steam风格灰黑色调 - 多层次配色
  */
 :root {
-  /* 深色主题 - 适中灰色调 */
-  --steam-bg-primary: #4f4f4f;
-  --steam-bg-primary-rgb: 79, 79, 79;
-  --steam-bg-secondary: #595959;
-  --steam-bg-secondary-rgb: 89, 89, 89;
-  --steam-bg-tertiary: #636363;
-  --steam-bg-tertiary-rgb: 99, 99, 99;
-  --steam-bg-quaternary: #6d6d6d;
-  --steam-bg-quaternary-rgb: 109, 109, 109;
-  --steam-bg-card: #777777;
-  --steam-bg-hover: #818181;
+  /* 深色主题 - 深灰色调 */
+  --steam-bg-primary: #363636;
+  --steam-bg-primary-rgb: 54, 54, 54;
+  --steam-bg-secondary: #404040;
+  --steam-bg-secondary-rgb: 64, 64, 64;
+  --steam-bg-tertiary: #4a4a4a;
+  --steam-bg-tertiary-rgb: 74, 74, 74;
+  --steam-bg-quaternary: #545454;
+  --steam-bg-quaternary-rgb: 84, 84, 84;
+  --steam-bg-card: #5e5e5e;
+  --steam-bg-hover: #686868;
   --steam-accent-hover: rgba(255, 255, 255, 0.12);
 
-  /* 输入框和表单元素 - 适中灰色 */
-  --steam-input-bg: #636363;
-  --steam-input-border: #757575;
-  --steam-input-focus: #858585;
+  /* 输入框和表单元素 - 深灰色 */
+  --steam-input-bg: #4a4a4a;
+  --steam-input-border: #5c5c5c;
+  --steam-input-focus: #6c6c6c;
 
-  /* 卡片和容器 - 适中灰色 */
-  --steam-card-bg: #5c5c5c;
-  --steam-card-border: #6d6d6d;
-  --steam-panel-bg: #555555;
-  --steam-panel-border: #666666;
+  /* 卡片和容器 - 深灰色 */
+  --steam-card-bg: #434343;
+  --steam-card-border: #545454;
+  --steam-panel-bg: #3d3d3d;
+  --steam-panel-border: #4e4e4e;
   
   --steam-text-primary: #ffffff;
   --steam-text-secondary: #d0d4da;
@@ -73,10 +73,10 @@
   --steam-border-subtle: rgba(255, 255, 255, 0.08);
   
   /* 玻璃态效果 - 深色主题使用深色系 */
-  --glass-bg: rgba(23, 26, 33, 0.75);
-  --glass-bg-hover: rgba(27, 40, 56, 0.85);
-  --glass-border: rgba(255, 255, 255, 0.1);
-  --glass-backdrop: blur(20px) saturate(180%);
+  --glass-bg: rgba(18, 20, 26, 0.82);
+  --glass-bg-hover: rgba(22, 32, 46, 0.9);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-backdrop: blur(20px) saturate(160%);
   
   /* 圆角 */
   --radius-sm: 6px;

@@ -161,9 +161,16 @@ pub async fn open_game_directory(path: String) -> Result<(), String> {
         return Err("路径不是目录".to_string());
     }
     
-    // 使用 explorer.exe 打开目录
-    Command::new("explorer.exe")
-        .arg(&path)
+    // 使用 explorer.exe 打开目录（隐藏窗口）
+    #[cfg(target_os = "windows")]
+    use std::os::windows::process::CommandExt;
+    #[cfg(target_os = "windows")]
+    const CREATE_NO_WINDOW: u32 = 0x08000000;
+
+    let mut cmd = Command::new("explorer.exe");
+    #[cfg(target_os = "windows")]
+    cmd.creation_flags(CREATE_NO_WINDOW);
+    cmd.arg(&path)
         .spawn()
         .map_err(|e| format!("打开游戏目录失败: {}", e))?;
     

@@ -278,17 +278,28 @@ pub async fn launch_game(game_id: String, app: tauri::AppHandle) -> Result<(), S
         }
     }
     
-    // 启动游戏
+    // 启动游戏（隐藏窗口）
     if let Some(exe) = exe_path {
         #[cfg(target_os = "windows")]
         {
             use std::process::Command;
-            
+            use std::os::windows::process::CommandExt;
+            const CREATE_NO_WINDOW: u32 = 0x08000000;
+
+            Command::new(&exe)
+                .creation_flags(CREATE_NO_WINDOW)
+                .spawn()
+                .map_err(|e| format!("启动游戏失败: {}", e))?;
+        }
+
+        #[cfg(not(target_os = "windows"))]
+        {
+            use std::process::Command;
             Command::new(&exe)
                 .spawn()
                 .map_err(|e| format!("启动游戏失败: {}", e))?;
         }
-        
+
         Ok(())
     } else {
         Err("未找到游戏可执行文件".to_string())
@@ -389,4 +400,30 @@ pub async fn get_game_library_image(app: tauri::AppHandle, game_id: String) -> R
     }
 
     Ok(String::new()) // 图片不存在，返回空字符串
+}
+
+/// 从resources/successfully-tested.json加载测试成功的游戏列表
+#[tauri::command]
+pub async fn load_tested_games_config(app: tauri::AppHandle) -> Result<serde_json::Value, String> {
+    // 获取资源目录路径
+    let resource_dir = get_resource_dir(&app)
+        .map_err(|e| format!("获取资源目录失败: {}", e))?;
+    
+    let config_path = resource_dir.join("successfully-tested.json");
+    
+    // 检查文件是否存在
+    if !config_path.exists() {
+        return Err(format!("测试游戏配置文件不存在: {}", config_path.display()));
+    }
+    
+    // 读取文件内容
+    let content = tokio::fs::read_to_string(&config_path)
+        .await
+        .map_err(|e| format!("读取测试游戏配置文件失败: {}", e))?;
+    
+    // 解析JSON
+    let config: serde_json::Value = serde_json::from_str(&content)
+        .map_err(|e| format!("解析测试游戏配置文件失败: {}", e))?;
+    
+    Ok(config)
 }

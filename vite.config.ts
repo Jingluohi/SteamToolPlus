@@ -28,10 +28,17 @@ export default defineConfig({
       compress: {
         drop_console: true,
         drop_debugger: true,
-        pure_funcs: ['console.log', 'console.info', 'console.debug']
+        pure_funcs: ['console.log', 'console.info', 'console.debug', 'console.warn', 'console.error'],
+        passes: 2,
+        hoist_funs: true,
+        if_return: true,
+        join_vars: true
       },
       mangle: {
         safari10: true
+      },
+      format: {
+        comments: false
       }
     },
     rollupOptions: {
@@ -39,12 +46,14 @@ export default defineConfig({
         manualChunks: {
           'vendor': ['vue', 'vue-router', 'pinia'],
           'tauri': ['@tauri-apps/api', '@tauri-apps/plugin-shell', '@tauri-apps/plugin-dialog', '@tauri-apps/plugin-fs']
-        }
+        },
+        compact: true
       }
     },
     assetsInlineLimit: 4096,
     chunkSizeWarningLimit: 500,
-    sourcemap: false
+    sourcemap: false,
+    reportCompressedSize: false
   },
   css: {
     devSourcemap: false
@@ -54,5 +63,9 @@ export default defineConfig({
     strictPort: true,
     host: 'localhost'
   },
-  clearScreen: false
+  clearScreen: false,
+  esbuild: {
+    drop: ['console', 'debugger'],
+    legalComments: 'none'
+  }
 })

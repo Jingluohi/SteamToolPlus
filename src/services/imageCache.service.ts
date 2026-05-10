@@ -1,16 +1,98 @@
 /**
  * imageCache.service.ts - 全局图片缓存服务
- * 
+ *
  * 解决多个页面/组件同时加载同一张图片时的资源竞争问题
  * 通过缓存 convertFileSrc 生成的 URL，避免重复转换和内存浪费
+ * 采用 LRU 淘汰策略，限制最大缓存数量防止内存无限增长
  */
 
 import { convertFileSrc } from '@tauri-apps/api/core'
 import { getGameCoverImage, getGameLibraryImage } from '../api/game.api'
 
-// 图片缓存映射表：key = gameId, value = 转换后的 asset URL
-const coverImageCache = new Map<string, string>()
-const libraryImageCache = new Map<string, string>()
+/** 最大缓存条目数 */
+const MAX_CACHE_SIZE = 100
+
+/** 缓存条目结构 */
+interface CacheEntry {
+  url: string
+  lastAccessed: number
+}
+
+// 图片缓存映射表：key = gameId, value = 缓存条目
+const coverImageCache = new Map<string, CacheEntry>()
+const libraryImageCache = new Map<string, CacheEntry>()
+
+/**
+ * LRU 淘汰：当缓存超过最大限制时，移除最久未访问的条目
+ */
+function evictLRU(cache: Map<string, CacheEntry>): void {
+  if (cache.size <= MAX_CACHE_SIZE) return
+
+  let oldestKey: string | null = null
+  let oldestTime = Infinity
+
+  for (const [key, entry] of cache.entries()) {
+    if (entry.lastAccessed < oldestTime) {
+      oldestTime = entry.lastAccessed
+      oldestKey = key
+    }
+  }
+
+  if (oldestKey) {
+    cache.delete(oldestKey)
+  }
+}
+
+/**
+ * 获取缓存条目（自动更新访问时间）
+ */
+function getCachedEntry(cache: Map<string, CacheEntry>, key: string): string | null {
+  const entry = cache.get(key)
+  if (!entry) return null
+
+  // 更新访问时间
+  entry.lastAccessed = Date.now()
+  return entry.url
+}
+
+/**
+ * 设置缓存条目（带 LRU 淘汰）
+ */
+function setCacheEntry(cache: Map<string, CacheEntry>, key: string, url: string): void {
+  evictLRU(cache)
+  cache.set(key, {
+    url,
+    lastAccessed: Date.now()
+  })
+}
+
+/**
+ * 通用图片缓存获取函数
+ */
+async function getCachedImage(
+  cache: Map<string, CacheEntry>,
+  fetchPath: (id: string) => Promise<string>,
+  gameId: string
+): Promise<string> {
+  // 先检查缓存
+  const cached = getCachedEntry(cache, gameId)
+  if (cached) {
+    return cached
+  }
+
+  // 缓存未命中，调用后端获取文件路径
+  const filePath = await fetchPath(gameId)
+
+  if (!filePath) {
+    return ''
+  }
+
+  // 转换为 asset URL 并缓存
+  const assetUrl = convertFileSrc(filePath)
+  setCacheEntry(cache, gameId, assetUrl)
+
+  return assetUrl
+}
 
 /**
  * 获取游戏封面图片 URL（带缓存）
@@ -18,23 +100,7 @@ const libraryImageCache = new Map<string, string>()
  * @returns 转换后的 asset URL，如果图片不存在返回空字符串
  */
 export async function getCachedCoverImage(gameId: string): Promise<string> {
-  // 先检查缓存
-  if (coverImageCache.has(gameId)) {
-    return coverImageCache.get(gameId)!
-  }
-
-  // 缓存未命中，调用后端获取文件路径
-  const filePath = await getGameCoverImage(gameId)
-  
-  if (!filePath) {
-    return ''
-  }
-
-  // 转换为 asset URL 并缓存
-  const assetUrl = convertFileSrc(filePath)
-  coverImageCache.set(gameId, assetUrl)
-  
-  return assetUrl
+  return getCachedImage(coverImageCache, getGameCoverImage, gameId)
 }
 
 /**
@@ -43,23 +109,7 @@ export async function getCachedCoverImage(gameId: string): Promise<string> {
  * @returns 转换后的 asset URL，如果图片不存在返回空字符串
  */
 export async function getCachedLibraryImage(gameId: string): Promise<string> {
-  // 先检查缓存
-  if (libraryImageCache.has(gameId)) {
-    return libraryImageCache.get(gameId)!
-  }
-
-  // 缓存未命中，调用后端获取文件路径
-  const filePath = await getGameLibraryImage(gameId)
-  
-  if (!filePath) {
-    return ''
-  }
-
-  // 转换为 asset URL 并缓存
-  const assetUrl = convertFileSrc(filePath)
-  libraryImageCache.set(gameId, assetUrl)
-  
-  return assetUrl
+  return getCachedImage(libraryImageCache, getGameLibraryImage, gameId)
 }
 
 /**
@@ -67,8 +117,7 @@ export async function getCachedLibraryImage(gameId: string): Promise<string> {
  * @param gameIds 游戏ID数组
  */
 export async function preloadCoverImages(gameIds: string[]): Promise<void> {
-  const promises = gameIds.map(id => getCachedCoverImage(id))
-  await Promise.all(promises)
+  await Promise.all(gameIds.map(id => getCachedCoverImage(id)))
 }
 
 /**
@@ -76,8 +125,7 @@ export async function preloadCoverImages(gameIds: string[]): Promise<void> {
  * @param gameIds 游戏ID数组
  */
 export async function preloadLibraryImages(gameIds: string[]): Promise<void> {
-  const promises = gameIds.map(id => getCachedLibraryImage(id))
-  await Promise.all(promises)
+  await Promise.all(gameIds.map(id => getCachedLibraryImage(id)))
 }
 
 /**
@@ -95,7 +143,15 @@ export function clearLibraryImageCache(): void {
 }
 
 /**
- * 获取缓存统计信息（用于调试）
+ * 清空所有图片缓存
+ */
+export function clearAllImageCaches(): void {
+  coverImageCache.clear()
+  libraryImageCache.clear()
+}
+
+/**
+ * 获取缓存统计信息
  */
 export function getCacheStats(): { cover: number; library: number } {
   return {

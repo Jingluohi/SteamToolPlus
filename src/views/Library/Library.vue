@@ -1,5 +1,12 @@
 <template>
   <div class="library-page">
+    <!-- 全页面背景层 - 使用当前选中游戏的横幅图片模糊版 -->
+    <div
+      v-if="selectedGame && gameCovers[selectedGame.game_id]"
+      class="library-page-bg"
+      :style="{ backgroundImage: `url(${gameCovers[selectedGame.game_id]})` }"
+    />
+
     <!-- 左侧游戏列表 - 玻璃态侧边栏 -->
     <div class="library-sidebar">
       <!-- 搜索框 - 毛玻璃效果 -->
@@ -145,9 +152,9 @@
     <!-- 右侧游戏详情 -->
     <div class="library-content" v-if="selectedGame">
       <!-- 游戏封面大图区域 -->
-      <div class="game-hero" :class="{ 'no-image': !selectedGame?.cover_path }">
+      <div class="game-hero" :class="{ 'no-image': !gameCovers[selectedGame.game_id] && !selectedGame?.cover_path }">
         <img
-          v-if="selectedGame?.cover_path"
+          v-if="gameCovers[selectedGame.game_id] || selectedGame?.cover_path"
           :src="gameCovers[selectedGame.game_id] || selectedGame.cover_path"
           class="hero-image"
           alt=""
@@ -275,7 +282,7 @@
               <span class="info-value">
                 {{ formatPlayTime(selectedGame.play_time) }}
                 <span v-if="isGameRunning && runningGameId === selectedGame.game_id" class="current-session">
-                  +{{ formatDuration(currentPlayTime) }}
+                  +{{ formatDurationCN(currentPlayTime) }}
                 </span>
               </span>
             </div>
@@ -322,26 +329,30 @@
       </div>
     </div>
 
-    <!-- 导入游戏对话框 - 使用 GameFormDialog 复用组件 -->
-    <GameFormDialog
-      v-model="importForm"
-      :visible="showImportDialog"
-      title="导入本地游戏"
-      confirm-text="导入"
-      :auto-fill-name="true"
-      @close="showImportDialog = false"
-      @confirm="confirmImport"
-    />
+    <!-- 导入游戏对话框 - 使用 Teleport 传送到 body 避免被父容器遮挡 -->
+    <Teleport to="body">
+      <GameFormDialog
+        v-model="importForm"
+        :visible="showImportDialog"
+        title="导入本地游戏"
+        confirm-text="导入"
+        :auto-fill-name="true"
+        @close="showImportDialog = false"
+        @confirm="confirmImport"
+      />
+    </Teleport>
 
-    <!-- 编辑游戏对话框 - 使用 GameFormDialog 复用组件 -->
-    <GameFormDialog
-      v-model="editForm"
-      :visible="showEditDialog"
-      title="编辑游戏信息"
-      confirm-text="保存"
-      @close="showEditDialog = false"
-      @confirm="confirmEdit"
-    />
+    <!-- 编辑游戏对话框 - 使用 Teleport 传送到 body 避免被父容器遮挡 -->
+    <Teleport to="body">
+      <GameFormDialog
+        v-model="editForm"
+        :visible="showEditDialog"
+        title="编辑游戏信息"
+        confirm-text="保存"
+        @close="showEditDialog = false"
+        @confirm="confirmEdit"
+      />
+    </Teleport>
   </div>
 </template>
 
@@ -362,6 +373,7 @@ import {
   formatDate,
   type GameData
 } from '../../api/gameData.api'
+import { formatDurationCN } from '../../utils/date'
 import { getCachedCoverImage, getCachedLibraryImage } from '../../services/imageCache.service'
 import GameFormDialog from '../../components/game/GameFormDialog.vue'
 import type { GameFormData } from '../../components/game/GameFormDialog.vue'
@@ -405,7 +417,7 @@ const importForm = ref({
 })
 
 // 编辑表单
-const editForm = ref({
+const editForm = ref<GameFormData>({
   game_name: '',
   chinese_name: '',
   install_path: '',
@@ -676,41 +688,26 @@ const startGameMonitoring = () => {
   }, 10000) // 每10秒检查一次
 }
 
-const stopGameMonitoring = async (savePlayTime: boolean = true) => {
+const stopGameMonitoring = async () => {
   if (gameMonitorInterval) {
     clearInterval(gameMonitorInterval)
     gameMonitorInterval = null
   }
-  
+
   // 取消动画帧
   if (displayFrameId) {
     cancelAnimationFrame(displayFrameId)
     displayFrameId = null
   }
-  
-  // 如果需要保存游玩时长
-    if (savePlayTime && runningGameId.value && gameStartTime.value) {
-      const elapsedSecs = Math.floor((Date.now() - gameStartTime.value.getTime()) / 1000)
-      const minutes = Math.floor(elapsedSecs / 60)
 
-      if (minutes > 0) {
-        try {
-          // 调用后端保存游玩时长
-          await invoke('update_game_play_time', {
-            game_id: runningGameId.value,
-            additional_minutes: minutes
-          })
-        } catch (error) {
-          // 保存失败时静默处理
-        }
-      }
-    }
-  
+  // 重置状态
   gameProcessPid.value = null
   isGameRunning.value = false
   runningGameId.value = null
   gameStartTime.value = null
   currentPlayTime.value = 0
+
+  // 重新加载游戏数据以显示更新后的时长
   await loadGames()
   if (selectedGame.value) {
     const updated = games.value.find(g => g.game_id === selectedGame.value!.game_id)
@@ -725,8 +722,8 @@ const closeGame = async () => {
   if (!confirmed) return
   try {
     await closeGameProcess(gameProcessPid.value)
-    // 停止监控并保存时长
-    await stopGameMonitoring(true)
+    // 停止监控（时长由后端线程保存）
+    await stopGameMonitoring()
   } catch (error) {
     alert('关闭游戏失败: ' + error)
   }
@@ -807,19 +804,6 @@ const handleImageError = (e: Event) => {
   img.style.display = 'none'
 }
 
-const formatDuration = (seconds: number): string => {
-  if (seconds < 60) return `${seconds}秒`
-  else if (seconds < 3600) {
-    const mins = Math.floor(seconds / 60)
-    const secs = seconds % 60
-    return secs > 0 ? `${mins}分${secs}秒` : `${mins}分`
-  } else {
-    const hours = Math.floor(seconds / 3600)
-    const mins = Math.floor((seconds % 3600) / 60)
-    return mins > 0 ? `${hours}小时${mins}分` : `${hours}小时`
-  }
-}
-
 onMounted(() => loadGames())
 onUnmounted(() => { if (gameMonitorInterval) clearInterval(gameMonitorInterval) })
 </script>
@@ -839,14 +823,14 @@ onUnmounted(() => { if (gameMonitorInterval) clearInterval(gameMonitorInterval) 
 }
 
 /* ============================================
-   左侧边栏 - 玻璃态效果
+   左侧边栏 - 玻璃态效果（透出背景图片）
    ============================================ */
 .library-sidebar {
   width: 280px;
   min-width: 280px;
-  background: rgba(79, 79, 79, 0.65);
-  backdrop-filter: blur(25px) saturate(180%);
-  border-right: 1px solid var(--steam-border);
+  background: rgba(23, 26, 33, 0.55);
+  backdrop-filter: blur(40px) saturate(140%);
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
   display: flex;
   flex-direction: column;
   z-index: 10;
@@ -859,8 +843,8 @@ onUnmounted(() => { if (gameMonitorInterval) clearInterval(gameMonitorInterval) 
   align-items: center;
   gap: 8px;
   padding: 12px;
-  border-bottom: 1px solid var(--steam-border);
-  background: var(--steam-bg-secondary);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(23, 26, 33, 0.4);
 }
 
 .search-box {
@@ -869,16 +853,16 @@ onUnmounted(() => { if (gameMonitorInterval) clearInterval(gameMonitorInterval) 
   align-items: center;
   gap: 8px;
   padding: 8px 10px;
-  background: var(--steam-bg-tertiary);
-  border: 1px solid var(--steam-border);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 8px;
   transition: all 0.2s ease;
 }
 
 .search-box:focus-within {
-  background: var(--steam-bg-hover);
-  border-color: var(--steam-accent-blue);
-  box-shadow: 0 0 0 2px rgba(var(--steam-accent-blue-rgb), 0.1);
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(102, 192, 244, 0.5);
+  box-shadow: 0 0 0 2px rgba(102, 192, 244, 0.1);
 }
 
 .search-box .search-icon {
@@ -973,19 +957,19 @@ onUnmounted(() => { if (gameMonitorInterval) clearInterval(gameMonitorInterval) 
   cursor: pointer;
   transition: all 0.15s ease;
   position: relative;
-  background: var(--steam-bg-secondary);
+  background: rgba(255, 255, 255, 0.03);
   border: 1px solid transparent;
   height: 28px; /* 固定高度，约为原来的1/3 */
 }
 
 .game-list-item:hover {
-  background: var(--steam-bg-hover);
-  border-color: var(--steam-border);
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.12);
 }
 
 .game-list-item.active {
-  background: var(--steam-bg-tertiary);
-  border-color: var(--steam-accent-blue);
+  background: rgba(102, 192, 244, 0.15);
+  border-color: rgba(102, 192, 244, 0.4);
 }
 
 .game-list-item.active::before {
@@ -1166,6 +1150,24 @@ onUnmounted(() => { if (gameMonitorInterval) clearInterval(gameMonitorInterval) 
 }
 
 /* ============================================
+   全页面背景层 - 使用横幅图片模糊版
+   ============================================ */
+.library-page-bg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 0;
+  background-size: cover;
+  background-position: center center;
+  background-repeat: no-repeat;
+  filter: blur(60px) brightness(0.4) saturate(1.2);
+  transform: scale(1.2);
+  pointer-events: none;
+}
+
+/* ============================================
    右侧内容区
    ============================================ */
 .library-content {
@@ -1184,30 +1186,39 @@ onUnmounted(() => { if (gameMonitorInterval) clearInterval(gameMonitorInterval) 
 
 /* ============================================
    游戏封面大图 - 沉浸式Hero区域
+   图片宽度100%填充容器，高度自适应，最小高度限制
    ============================================ */
 .game-hero {
   position: relative;
-  height: 420px;
+  width: 100%;
+  min-height: 280px;
+  max-height: 45vh;
   flex-shrink: 0;
   overflow: hidden;
-  background: rgba(89, 89, 89, 0.7);
+  background: var(--steam-bg-secondary);
 }
 
 .hero-image {
   width: 100%;
   height: 100%;
-  object-fit: contain;
-  object-position: center top;
+  object-fit: cover;
+  object-position: center center;
+  display: block;
 }
-
-
 
 .hero-overlay {
   position: absolute;
   bottom: 0;
   left: 0;
   right: 0;
-  padding: 40px 48px 50px;
+  padding: 60px 48px 32px;
+  background: linear-gradient(
+    to top,
+    rgba(0, 0, 0, 0.85) 0%,
+    rgba(0, 0, 0, 0.5) 40%,
+    rgba(0, 0, 0, 0.2) 70%,
+    transparent 100%
+  );
 }
 
 .hero-content {
@@ -1227,12 +1238,12 @@ onUnmounted(() => { if (gameMonitorInterval) clearInterval(gameMonitorInterval) 
   align-items: center;
   gap: 6px;
   padding: 6px 12px;
-  background: rgba(99, 99, 99, 0.6);
-  backdrop-filter: blur(10px) saturate(180%);
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(10px) saturate(140%);
   border-radius: 20px;
   font-size: 12px;
   font-weight: 500;
-  border: 1px solid var(--steam-border);
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .platform-tag.pc {
@@ -1241,7 +1252,7 @@ onUnmounted(() => { if (gameMonitorInterval) clearInterval(gameMonitorInterval) 
 
 .platform-tag.date {
   color: var(--steam-text-muted);
-  background: rgba(89, 89, 89, 0.6);
+  background: rgba(0, 0, 0, 0.35);
 }
 
 .platform-tag svg {
@@ -1337,9 +1348,9 @@ onUnmounted(() => { if (gameMonitorInterval) clearInterval(gameMonitorInterval) 
   justify-content: center;
   width: 48px;
   height: 48px;
-  background: rgba(99, 99, 99, 0.6);
-  backdrop-filter: blur(10px) saturate(180%);
-  border: 1px solid var(--steam-border);
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(10px) saturate(140%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 12px;
   color: var(--steam-text-secondary);
   cursor: pointer;
@@ -1347,8 +1358,8 @@ onUnmounted(() => { if (gameMonitorInterval) clearInterval(gameMonitorInterval) 
 }
 
 .action-btn:hover {
-  background: var(--steam-bg-hover);
-  border-color: var(--steam-border-light);
+  background: rgba(0, 0, 0, 0.55);
+  border-color: rgba(255, 255, 255, 0.2);
   transform: translateY(-2px);
 }
 
@@ -1364,13 +1375,13 @@ onUnmounted(() => { if (gameMonitorInterval) clearInterval(gameMonitorInterval) 
 }
 
 /* ============================================
-   游戏信息区 - 玻璃态卡片
+   游戏信息区 - 玻璃态卡片（更透明）
    ============================================ */
 .game-info-section {
   flex: 1;
   padding: 32px 48px;
   overflow-y: auto;
-  background: rgba(89, 89, 89, 0.6);
+  background: rgba(23, 26, 33, 0.45);
 }
 
 .info-grid {
@@ -1380,17 +1391,17 @@ onUnmounted(() => { if (gameMonitorInterval) clearInterval(gameMonitorInterval) 
   margin-bottom: 32px;
 }
 
-/* 信息卡片 - 玻璃态效果 */
+/* 信息卡片 - 玻璃态效果（更透明） */
 .info-card {
   position: relative;
   display: flex;
   align-items: flex-start;
   gap: 14px;
   padding: 20px;
-  background: rgba(99, 99, 99, 0.65);
-  backdrop-filter: blur(18px) saturate(180%);
+  background: rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(18px) saturate(140%);
   border-radius: 14px;
-  border: 1px solid var(--steam-border);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   transition: all 0.25s ease;
   overflow: hidden;
 }
@@ -1402,12 +1413,12 @@ onUnmounted(() => { if (gameMonitorInterval) clearInterval(gameMonitorInterval) 
   left: 0;
   right: 0;
   height: 1px;
-  background: linear-gradient(90deg, transparent, var(--steam-border-light), transparent);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent);
 }
 
 .info-card:hover {
-  background: var(--steam-bg-hover);
-  border-color: var(--steam-border-light);
+  background: rgba(0, 0, 0, 0.5);
+  border-color: rgba(255, 255, 255, 0.15);
   transform: translateY(-2px);
 }
 
@@ -1498,11 +1509,11 @@ onUnmounted(() => { if (gameMonitorInterval) clearInterval(gameMonitorInterval) 
 
 /* 额外信息区域 */
 .extra-info {
-  background: rgba(99, 99, 99, 0.6);
+  background: rgba(0, 0, 0, 0.3);
   border-radius: 14px;
   padding: 24px;
-  border: 1px solid var(--steam-border);
-  backdrop-filter: blur(12px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(12px) saturate(140%);
 }
 
 .info-block h4 {
@@ -1518,7 +1529,7 @@ onUnmounted(() => { if (gameMonitorInterval) clearInterval(gameMonitorInterval) 
   display: flex;
   align-items: center;
   padding: 10px 0;
-  border-bottom: 1px solid var(--steam-border);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .info-row:last-child {

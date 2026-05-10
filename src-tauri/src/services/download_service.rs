@@ -360,14 +360,17 @@ impl DownloadServiceTrait for DownloadService {
         Ok(())
     }
 
-    /// 关闭系统
+    /// 关闭系统（隐藏窗口）
     fn shutdown_system(&self) -> Result<(), String> {
         #[cfg(target_os = "windows")]
         {
             use std::process::Command;
+            use std::os::windows::process::CommandExt;
+            const CREATE_NO_WINDOW: u32 = 0x08000000;
 
             Command::new("shutdown")
                 .args(&["/s", "/t", "0"])
+                .creation_flags(CREATE_NO_WINDOW)
                 .spawn()
                 .map_err(|e| format!("执行关机命令失败: {}", e))?;
 
