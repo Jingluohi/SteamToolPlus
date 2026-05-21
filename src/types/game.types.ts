@@ -138,7 +138,7 @@ export type GameViewType = 'grid' | 'list'
  * 网盘下载链接配置
  */
 export interface DownloadUrlConfig {
-  /** 网盘来源标识: baidu=百度网盘, thunder=迅雷网盘, lanzou=蓝奏云 */
+  /** 网盘来源标识: baidu=百度网盘, thunder=迅雷网盘, lanzou=蓝奏云, quark=夸克网盘 */
   source: string
   /** 下载链接URL */
   url: string
@@ -184,6 +184,16 @@ export function getPatchSourcePath(tag: GameTagConfig, gameId: string): string {
 }
 
 /**
+ * 修改器配置
+ */
+export interface TrainerConfig {
+  /** 修改器下载链接列表 */
+  download_urls?: DownloadUrlConfig[]
+  /** 本地修改器文件路径（相对于程序根目录） */
+  local_path?: string
+}
+
+/**
  * 游戏配置数据（来自games_config.json）
  */
 export interface GameConfigData {
@@ -195,6 +205,12 @@ export interface GameConfigData {
   chinese_name: string
   /** 是否可下载 */
   downloadable: boolean
+  /** 是否有解压即玩版本 */
+  has_extract_play?: boolean
+  /** 解压即玩下载链接 */
+  extract_play_urls?: DownloadUrlConfig[]
+  /** 修改器配置 */
+  trainer?: TrainerConfig
   /** 补丁标签列表 */
   tags: GameTagConfig[]
   /** 是否已安装（运行时检测） */

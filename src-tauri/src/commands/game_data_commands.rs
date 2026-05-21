@@ -60,11 +60,13 @@ pub async fn delete_game_directory(
 
     let path_obj = std::path::Path::new(&path);
 
-    // 安全检查：确保路径存在且是目录
+    // 如果路径不存在，直接返回成功（用户可能已经手动删除了文件）
+    // 这样前端可以继续更新游戏状态为未安装
     if !path_obj.exists() {
-        return Err("游戏目录不存在".to_string());
+        return Ok(());
     }
 
+    // 安全检查：确保路径是目录
     if !path_obj.is_dir() {
         return Err("路径不是目录".to_string());
     }
@@ -74,7 +76,7 @@ pub async fn delete_game_directory(
         let save_obj = std::path::Path::new(save);
         if save_obj.exists() && save_obj.is_dir() {
             // 创建临时备份目录
-            let temp_dir = std::env::temp_dir().join(format!("steamtool_save_backup_{}", 
+            let temp_dir = std::env::temp_dir().join(format!("steamtool_save_backup_{}",
                 std::time::SystemTime::now()
                     .duration_since(std::time::UNIX_EPOCH)
                     .unwrap_or_default()

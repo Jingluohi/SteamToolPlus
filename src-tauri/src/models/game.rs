@@ -183,6 +183,17 @@ pub struct GameTagConfig {
     pub download_urls: Option<Vec<DownloadUrlConfig>>,
 }
 
+/// 修改器配置
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TrainerConfig {
+    /// 修改器下载链接列表
+    #[serde(default)]
+    pub download_urls: Option<Vec<DownloadUrlConfig>>,
+    /// 本地修改器路径
+    #[serde(default)]
+    pub local_path: Option<String>,
+}
+
 /// 游戏配置数据（来自games_config.json）
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GameConfigData {
@@ -194,6 +205,15 @@ pub struct GameConfigData {
     pub chinese_name: String,
     /// 是否可下载
     pub downloadable: bool,
+    /// 是否有解压即玩版本
+    #[serde(default)]
+    pub has_extract_play: Option<bool>,
+    /// 解压即玩下载链接
+    #[serde(default)]
+    pub extract_play_urls: Option<Vec<DownloadUrlConfig>>,
+    /// 修改器配置
+    #[serde(default)]
+    pub trainer: Option<TrainerConfig>,
     /// 补丁标签列表
     pub tags: Vec<GameTagConfig>,
 }

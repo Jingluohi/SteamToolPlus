@@ -142,6 +142,18 @@
             </div>
           </div>
 
+          <!-- 下载说明 -->
+          <div class="download-description">
+            <div class="download-option">
+              <h4>方法一【开始下载】</h4>
+              <p>下载Steam正版分流文件，下载完成后需要注入补丁才能游玩</p>
+            </div>
+            <div class="download-option">
+              <h4>方法二【解压即玩】（请用手机转存至网盘，感谢支持）</h4>
+              <p>直接从网盘下载完整游戏文件，下载完成后解压即可游玩，无需额外操作（都是无法联机版，除非网盘文件特别标注或者手动注入联机补丁）</p>
+            </div>
+          </div>
+
           <!-- 下载按钮组 -->
           <div v-if="existingGameData?.download_status !== 'completed'" class="download-btn-group">
             <!-- 开始下载按钮 -->
@@ -150,6 +162,7 @@
               :class="{ disabled: !canDownload, loading: isDownloading || existingGameData?.download_status === 'downloading' }"
               :disabled="!canDownload || isDownloading || existingGameData?.download_status === 'downloading'"
               @click="startDownload"
+              :title="!canDownload ? '未找到清单文件，无法下载' : ''"
             >
               <svg v-if="isDownloading || existingGameData?.download_status === 'downloading'" class="loading-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/>
@@ -162,22 +175,39 @@
               {{ getDownloadButtonText() }}
             </button>
 
-            <!-- 入库Steam按钮 -->
-            <button
-              class="import-steam-btn"
-              :class="{ disabled: !canImportToSteam, loading: isImportingToSteam }"
-              :disabled="!canImportToSteam || isImportingToSteam"
-              @click="importToSteam"
-              :title="importSteamTooltip"
-            >
-              <svg v-if="isImportingToSteam" class="loading-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/>
-              </svg>
-              <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
-              </svg>
-              {{ isImportingToSteam ? '入库中...' : '入库Steam' }}
-            </button>
+            <!-- 解压即玩按钮容器 -->
+            <div class="extract-play-wrapper">
+              <button
+                class="extract-play-btn"
+                :class="{ disabled: !game?.has_extract_play || !game?.extract_play_urls || game.extract_play_urls.length === 0 }"
+                :disabled="!game?.has_extract_play || !game?.extract_play_urls || game.extract_play_urls.length === 0"
+                @click="showExtractPlayMenu = !showExtractPlayMenu"
+                :title="!game?.has_extract_play ? '暂无可用的解压即玩版本' : ''"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                  <polyline points="7 10 12 15 17 10"/>
+                  <line x1="12" y1="15" x2="12" y2="3"/>
+                </svg>
+                解压即玩
+                <svg class="dropdown-arrow" :class="{ open: showExtractPlayMenu }" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="6 9 12 15 18 9"/>
+                </svg>
+              </button>
+
+              <!-- 解压即玩下拉菜单 -->
+              <div v-if="showExtractPlayMenu && game?.extract_play_urls && game.extract_play_urls.length > 0" class="extract-play-dropdown">
+                <div
+                  v-for="(item, index) in game.extract_play_urls"
+                  :key="index"
+                  class="extract-play-item"
+                  @click="openDownloadUrl(item.url)"
+                >
+                  <span class="source-name">{{ getDownloadSourceName(item.source) }}</span>
+                  <span v-if="item.pwd" class="pwd-hint">提取码: {{ item.pwd }}</span>
+                </div>
+              </div>
+            </div>
 
             <!-- 暂停/停止下载按钮 -->
             <button
@@ -368,6 +398,83 @@
             </div>
           </div>
         </div>
+
+        <!-- 入库Steam标签页 -->
+        <div v-if="currentTab === 'import'" class="tab-panel">
+          <h3 class="panel-title">入库Steam</h3>
+          <div class="import-steam-content">
+            <div class="import-description">
+              <p>将游戏清单导入Steam客户端，导入后可在Steam库中查看和启动游戏。</p>
+              <p class="import-note">注意：部分游戏入库下载后需要配合补丁才能正常游玩。</p>
+            </div>
+
+            <!-- 入库Steam按钮 -->
+            <button
+              class="import-steam-btn-large"
+              :class="{ disabled: !canImportToSteam, loading: isImportingToSteam }"
+              :disabled="!canImportToSteam || isImportingToSteam"
+              @click="importToSteam"
+            >
+              <svg v-if="isImportingToSteam" class="loading-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/>
+              </svg>
+              <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+              </svg>
+              {{ isImportingToSteam ? '入库中...' : '入库Steam' }}
+            </button>
+
+            <p v-if="!manifestExists" class="import-error">
+              未找到清单文件，无法入库
+            </p>
+          </div>
+        </div>
+
+        <!-- 修改器标签页 -->
+        <div v-if="currentTab === 'trainer'" class="tab-panel">
+          <h3 class="panel-title">游戏修改器</h3>
+          <div class="trainer-content">
+            <!-- 修改器下载区域 -->
+            <div v-if="game?.trainer?.download_urls && game.trainer.download_urls.length > 0" class="download-section">
+              <p class="download-section-title">修改器下载：</p>
+              <div class="download-buttons">
+                <div
+                  v-for="(item, index) in game.trainer.download_urls"
+                  :key="index"
+                  class="download-btn-wrapper"
+                >
+                  <button
+                    class="download-patch-btn"
+                    @click="openDownloadUrl(item.url)"
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                      <polyline points="7 10 12 15 17 10"/>
+                      <line x1="12" y1="15" x2="12" y2="3"/>
+                    </svg>
+                    <span>{{ getDownloadSourceName(item.source) }}</span>
+                  </button>
+                  <p v-if="item.pwd" class="pwd-hint">
+                    提取码: {{ item.pwd }}
+                  </p>
+                </div>
+              </div>
+              <p class="download-hint">
+                （请先转存至您的网盘，避免和谐，也将给作者带来无限的更新动力）
+              </p>
+            </div>
+
+            <!-- 本地修改器内容 -->
+            <div v-if="trainerContent" class="trainer-local-content">
+              <h4 class="trainer-content-title">修改器说明</h4>
+              <pre class="trainer-content-text">{{ trainerContent }}</pre>
+            </div>
+            <div v-else-if="game?.trainer?.local_path" class="trainer-no-content">
+              <p>本地修改器文件不存在或无法读取</p>
+              <p class="trainer-path">路径: {{ game.trainer.local_path }}</p>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -424,6 +531,12 @@ const manifestCheckStatus = ref<'checking' | 'found' | 'not_found'>('checking')
 
 // 当前选中的标签页
 const currentTab = ref('')
+
+// 解压即玩下拉菜单显示状态
+const showExtractPlayMenu = ref(false)
+
+// 修改器本地文件内容
+const trainerContent = ref<string>('')
 
 // 根据游戏数据设置默认标签页
 const setDefaultTab = () => {
@@ -482,12 +595,17 @@ const importSteamTooltip = computed(() => {
 // 可用的标签页
 const availableTabs = computed(() => {
   const tabs: { id: string; name: string }[] = []
-  
+
   // 如果有downloadable，添加游戏下载标签
   if (game.value?.downloadable) {
     tabs.push({ id: 'download', name: '游戏下载' })
   }
-  
+
+  // 如果有清单文件，添加入库Steam标签
+  if (manifestExists.value) {
+    tabs.push({ id: 'import', name: '入库Steam' })
+  }
+
   // 添加游戏分类标签
   game.value?.tags.forEach(tag => {
     tabs.push({
@@ -495,7 +613,12 @@ const availableTabs = computed(() => {
       name: getCategoryName(tag.patch_type)
     })
   })
-  
+
+  // 如果有修改器配置且包含下载链接，添加修改器标签
+  if (game.value?.trainer?.download_urls && game.value.trainer.download_urls.length > 0) {
+    tabs.push({ id: 'trainer', name: '修改器' })
+  }
+
   return tabs
 })
 
@@ -519,6 +642,7 @@ const getDownloadSourceName = (source: string): string => {
     'baidu': '百度网盘',
     'thunder': '迅雷网盘',
     'lanzou': '蓝奏云',
+    'quark': '夸克网盘',
     'other': '其他网盘'
   }
   return sourceMap[source] || source || '未知网盘'
@@ -1040,6 +1164,25 @@ const loadCoverImage = async (retryCount = 0): Promise<void> => {
   }
 }
 
+/**
+ * 加载修改器本地文件内容
+ */
+const loadTrainerContent = async () => {
+  if (!game.value?.trainer?.local_path) {
+    return
+  }
+
+  try {
+    const content = await invoke<string>('read_text_file', {
+      filePath: game.value.trainer.local_path
+    })
+    trainerContent.value = content
+  } catch {
+    // 读取失败时保持为空字符串
+    trainerContent.value = ''
+  }
+}
+
 // 页面加载时确保游戏数据已加载，并自动检测清单文件夹
 onMounted(async () => {
   // 加载游戏配置
@@ -1084,6 +1227,8 @@ onMounted(async () => {
   await checkPatchLocalStatus()
   // 检查游戏清单文件是否存在（用于入库Steam按钮）
   await checkGameManifest()
+  // 加载修改器本地文件内容
+  await loadTrainerContent()
 })
 
 // 组件卸载时清理定时器
@@ -1683,6 +1828,8 @@ const restartSteam = async () => {
   display: flex;
   gap: 12px;
   align-items: center;
+  position: relative;
+  flex-wrap: wrap;
 }
 
 /* 暂停下载按钮 */
@@ -1745,6 +1892,128 @@ const restartSteam = async () => {
 
 .import-steam-btn.loading {
   cursor: wait;
+}
+
+/* 下载说明样式 */
+.download-description {
+  margin: 20px 0;
+  padding: 16px;
+  background-color: var(--steam-bg-secondary);
+  border-radius: 8px;
+  border-left: 4px solid #3b82f6;
+}
+
+.download-option {
+  margin-bottom: 16px;
+}
+
+.download-option:last-child {
+  margin-bottom: 0;
+}
+
+.download-option h4 {
+  margin: 0 0 8px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--steam-text-primary);
+}
+
+.download-option p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--steam-text-secondary);
+  line-height: 1.5;
+}
+
+/* 解压即玩按钮容器 */
+.extract-play-wrapper {
+  position: relative;
+  display: inline-flex;
+}
+
+/* 解压即玩按钮 */
+.extract-play-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 24px;
+  border: none;
+  border-radius: 8px;
+  background-color: #8b5cf6;
+  color: white;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.extract-play-btn:hover:not(.disabled) {
+  background-color: #7c3aed;
+}
+
+.extract-play-btn.disabled {
+  background-color: var(--steam-text-secondary);
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.extract-play-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
+.extract-play-btn .dropdown-arrow {
+  width: 16px;
+  height: 16px;
+  transition: transform 0.2s ease;
+}
+
+.extract-play-btn .dropdown-arrow.open {
+  transform: rotate(180deg);
+}
+
+/* 解压即玩下拉菜单 */
+.extract-play-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  background-color: var(--steam-bg-primary);
+  border: 1px solid var(--steam-border);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  z-index: 100;
+  min-width: 200px;
+  overflow: hidden;
+}
+
+.extract-play-item {
+  display: flex;
+  flex-direction: column;
+  padding: 12px 16px;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+  border-bottom: 1px solid var(--steam-border);
+}
+
+.extract-play-item:last-child {
+  border-bottom: none;
+}
+
+.extract-play-item:hover {
+  background-color: var(--steam-bg-hover);
+}
+
+.extract-play-item .source-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--steam-text-primary);
+}
+
+.extract-play-item .pwd-hint {
+  font-size: 12px;
+  color: var(--steam-text-secondary);
+  margin-top: 4px;
 }
 
 .loading-icon {
@@ -2103,5 +2372,132 @@ const restartSteam = async () => {
 
 .error-list {
   color: #ef4444;
+}
+
+/* 修改器标签页样式 */
+.trainer-content {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.trainer-local-content {
+  background-color: var(--steam-bg-secondary);
+  border-radius: 8px;
+  padding: 16px;
+  border-left: 4px solid #f59e0b;
+}
+
+.trainer-content-title {
+  margin: 0 0 12px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--steam-text-primary);
+}
+
+.trainer-content-text {
+  margin: 0;
+  padding: 0;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--steam-text-secondary);
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  font-family: inherit;
+  background: none;
+  border: none;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.trainer-no-content {
+  padding: 20px;
+  background-color: var(--steam-bg-secondary);
+  border-radius: 8px;
+  text-align: center;
+  color: var(--steam-text-secondary);
+}
+
+.trainer-no-content p {
+  margin: 0 0 8px 0;
+}
+
+.trainer-path {
+  font-size: 12px;
+  font-family: 'Courier New', monospace;
+  color: var(--steam-text-muted);
+}
+
+/* 入库Steam标签页样式 */
+.import-steam-content {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  align-items: flex-start;
+}
+
+.import-description {
+  padding: 16px;
+  background-color: var(--steam-bg-secondary);
+  border-radius: 8px;
+  border-left: 4px solid #10b981;
+}
+
+.import-description p {
+  margin: 0 0 8px 0;
+  font-size: 14px;
+  color: var(--steam-text-primary);
+  line-height: 1.5;
+}
+
+.import-description p:last-child {
+  margin-bottom: 0;
+}
+
+.import-note {
+  font-size: 13px;
+  color: var(--steam-text-secondary);
+  font-style: italic;
+}
+
+.import-steam-btn-large {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 16px 32px;
+  border: none;
+  border-radius: 8px;
+  background-color: #10b981;
+  color: white;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.import-steam-btn-large:hover:not(.disabled) {
+  background-color: #059669;
+}
+
+.import-steam-btn-large.disabled {
+  background-color: var(--steam-text-secondary);
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.import-steam-btn-large.loading {
+  cursor: wait;
+}
+
+.import-steam-btn-large svg {
+  width: 20px;
+  height: 20px;
+}
+
+.import-error {
+  color: #ef4444;
+  font-size: 14px;
+  margin: 0;
 }
 </style>

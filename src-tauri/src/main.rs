@@ -80,6 +80,67 @@ pub fn check_ddv20_running() -> bool {
     false
 }
 
+/// 重置所有正在下载的游戏状态
+/// 在程序关闭时调用，将 download_status 从 "downloading" 重置为 "idle"
+fn reset_downloading_games() -> Result<(), String> {
+    use crate::services::game_data_service::GameDataCollection;
+    use crate::utils::config_path_utils;
+    use std::fs;
+    
+    // 游戏数据文件名
+    const GAME_DATA_FILENAME: &str = "game.json";
+    
+    // 获取游戏数据文件路径
+    let data_path = config_path_utils::get_runtime_config_path(GAME_DATA_FILENAME)?;
+    
+    // 如果文件不存在，直接返回
+    if !data_path.exists() {
+        return Ok(());
+    }
+    
+    // 读取文件内容
+    let content = fs::read_to_string(&data_path)
+        .map_err(|e| format!("读取游戏数据文件失败: {}", e))?;
+    
+    // 解析JSON
+    let mut collection: GameDataCollection = serde_json::from_str(&content)
+        .map_err(|e| format!("解析游戏数据失败: {}", e))?;
+    
+    // 找到所有正在下载的游戏并重置状态
+    let mut has_changes = false;
+    for (game_id, game) in collection.games.iter_mut() {
+        if game.download_status == "downloading" {
+            log::info!("重置游戏 {} 的下载状态", game_id);
+            game.download_status = "idle".to_string();
+            game.download_progress = 0;
+            game.last_played = Some(chrono::Local::now().to_rfc3339());
+            has_changes = true;
+        }
+    }
+    
+    // 如果有修改，保存文件
+    if has_changes {
+        collection.last_updated = chrono::Local::now().to_rfc3339();
+        
+        // 确保目录存在
+        if let Some(parent) = data_path.parent() {
+            fs::create_dir_all(parent).map_err(|e| format!("创建目录失败: {}", e))?;
+        }
+        
+        // 序列化为JSON
+        let content = serde_json::to_string_pretty(&collection)
+            .map_err(|e| format!("序列化游戏数据失败: {}", e))?;
+        
+        // 写入文件
+        fs::write(&data_path, content)
+            .map_err(|e| format!("写入游戏数据文件失败: {}", e))?;
+        
+        log::info!("已重置所有正在下载的游戏状态");
+    }
+    
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 fn main() {
     // 初始化日志
@@ -248,6 +309,12 @@ fn main() {
                     "exit" => {
                         // 点击"退出"菜单项，彻底关闭程序
                         log::info!("用户通过托盘菜单退出程序");
+                        
+                        // 重置所有正在下载的游戏状态
+                        if let Err(e) = reset_downloading_games() {
+                            log::error!("重置下载状态失败: {}", e);
+                        }
+                        
                         app_handle.exit(0);
                     }
                     _ => {}

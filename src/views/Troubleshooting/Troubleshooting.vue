@@ -211,6 +211,14 @@ const troubleshootingItems = ref<TroubleshootingItem[]>([
       '1234'
     ],
     isExpanded: false
+  },
+  {
+    id: 12,
+    question: '打开游戏时显示 Steam is not launched',
+    answer: [
+      '这是 steam 联机游戏，需要打开 steam 进行游玩'
+    ],
+    isExpanded: false
   }
 ])
 

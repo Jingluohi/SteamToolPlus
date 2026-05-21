@@ -16,43 +16,43 @@
       <div class="dialog-body">
         <div class="form-group">
           <label>游戏名称（英文）</label>
-          <input v-model="form.game_name" type="text" placeholder="例如: Elden Ring" />
+          <input :value="modelValue.game_name" @input="updateForm('game_name', ($event.target as HTMLInputElement).value)" type="text" placeholder="例如: Elden Ring" />
         </div>
         <div class="form-group">
           <label>游戏中文名</label>
-          <input v-model="form.chinese_name" type="text" placeholder="例如: 艾尔登法环" />
+          <input :value="modelValue.chinese_name" @input="updateForm('chinese_name', ($event.target as HTMLInputElement).value)" type="text" placeholder="例如: 艾尔登法环" />
         </div>
         <div class="form-group">
           <label>游戏安装目录</label>
           <div class="path-input-group">
-            <input v-model="form.install_path" type="text" readonly placeholder="请选择游戏安装目录..." />
+            <input :value="modelValue.install_path" type="text" readonly placeholder="请选择游戏安装目录..." />
             <button @click="selectPath('install_path', true)">浏览</button>
           </div>
         </div>
         <div class="form-group">
           <label>游戏主程序 (exe)</label>
           <div class="path-input-group">
-            <input v-model="form.exe_path" type="text" readonly placeholder="请选择游戏主程序..." />
+            <input :value="modelValue.exe_path" type="text" readonly placeholder="请选择游戏主程序..." />
             <button @click="selectExePath">浏览</button>
           </div>
         </div>
         <div class="form-group">
           <label>游戏存档目录（可选）</label>
           <div class="path-input-group">
-            <input v-model="form.save_path" type="text" readonly placeholder="请选择存档目录..." />
+            <input :value="modelValue.save_path" type="text" readonly placeholder="请选择存档目录..." />
             <button @click="selectPath('save_path', true)">浏览</button>
           </div>
         </div>
         <div class="form-group">
           <label>游戏封面（可选）</label>
           <div class="path-input-group">
-            <input v-model="form.cover_path" type="text" readonly placeholder="请选择封面图片..." />
+            <input :value="modelValue.cover_path" type="text" readonly placeholder="请选择封面图片..." />
             <button @click="selectPath('cover_path', false, [{ name: '图片文件', extensions: ['jpg', 'jpeg', 'png', 'webp'] }])">浏览</button>
           </div>
         </div>
         <div class="form-group">
           <label>Steam游戏ID（可选）</label>
-          <input v-model="form.steam_game_id" type="text" placeholder="例如: 1245620" />
+          <input :value="modelValue.steam_game_id" @input="updateForm('steam_game_id', ($event.target as HTMLInputElement).value)" type="text" placeholder="例如: 1245620" />
         </div>
       </div>
       <div class="dialog-footer">

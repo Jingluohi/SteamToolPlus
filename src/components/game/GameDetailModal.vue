@@ -272,6 +272,7 @@ function getDownloadSourceName(source: string): string {
     'baidu': '百度网盘',
     'thunder': '迅雷网盘',
     'lanzou': '蓝奏云',
+    'quark': '夸克网盘',
     'other': '其他网盘'
   }
   return sourceMap[source] || source || '未知网盘'
