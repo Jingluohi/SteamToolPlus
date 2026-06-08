@@ -75,8 +75,9 @@ echo Build completed successfully!
 echo ==========================================
 echo Output location: PublicOut\
 echo   - SteamToolPlus.exe
-echo   - resources\
 echo   - config\
 echo ==========================================
+echo.
+echo Note: weixin.jpg is embedded in the executable.
 echo.
 pause

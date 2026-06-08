@@ -6,17 +6,6 @@
         <h1 class="page-title">游戏本体下载</h1>
         <button
           class="manifest-link-btn"
-          @click="openExternalLink('https://pan.baidu.com/s/1EMDn8l2d198Q6Lp3pVTzMQ?pwd=vtbe')"
-        >
-          <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-            <polyline points="7 10 12 15 17 10"/>
-            <line x1="12" y1="15" x2="12" y2="3"/>
-          </svg>
-          百度网盘
-        </button>
-        <button
-          class="manifest-link-btn"
           @click="openExternalLink('https://pan.xunlei.com/s/VOrmjucdcpCilK1xnElvCI9vA1?pwd=z2gb#')"
         >
           <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -24,7 +13,7 @@
             <polyline points="7 10 12 15 17 10"/>
             <line x1="12" y1="15" x2="12" y2="3"/>
           </svg>
-          迅雷网盘
+          清单下载
         </button>
       </div>
       <p class="page-desc">选择游戏清单文件夹并配置下载路径</p>

@@ -144,6 +144,7 @@ pub struct UpdateConfigRequest {
 /// 部分更新游戏目录配置
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[allow(dead_code)]
 pub struct PartialGameDirConfig {
     /// Steam安装路径
     pub steam_path: Option<String>,
@@ -154,6 +155,7 @@ pub struct PartialGameDirConfig {
 /// 部分更新启动配置
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[allow(dead_code)]
 pub struct PartialLaunchConfig {
     /// 程序启动后最小化到托盘
     pub start_minimized_to_tray: Option<bool>,

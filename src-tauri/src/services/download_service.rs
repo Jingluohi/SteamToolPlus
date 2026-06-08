@@ -122,16 +122,15 @@ impl DownloadService {
     }
 
     /// 获取游戏的 log 目录路径
-    /// 格式: 程序根目录/log/{game_id}/
+    /// 格式: %APPDATA%/SteamToolPlus/log/{game_id}/
+    /// 使用用户级目录，无需管理员权限
     fn get_game_log_dir(&self, game_id: &str) -> Result<std::path::PathBuf, String> {
-        let exe_dir = std::env::current_exe()
-            .map_err(|e| format!("无法获取程序路径: {}", e))?
-            .parent()
-            .ok_or("无法获取程序所在目录")?
-            .to_path_buf();
+        // 使用 config_path_utils 获取 %APPDATA%/SteamToolPlus 目录
+        let app_data_dir = crate::utils::config_path_utils::get_appdata_dir()?
+            .join("log")
+            .join(game_id);
         
-        let log_dir = exe_dir.join("log").join(game_id);
-        Ok(log_dir)
+        Ok(app_data_dir)
     }
 
     /// 创建游戏的 log 目录
@@ -348,20 +347,17 @@ impl DownloadServiceTrait for DownloadService {
         {
             use std::process::Command;
 
-            let ddv20_path_str = ddv20_path.to_string_lossy().replace('\\', "/");
-            let download_path_str = download_path.replace('\\', "/");
-            let manifest_path_str = manifest_path.replace('\\', "/");
-            let work_dir_str = game_log_dir.to_string_lossy().replace('\\', "/");
+            // 使用原始路径（反斜杠），通过参数方式传递避免转义问题
+            let ddv20_path_str = ddv20_path.to_string_lossy().to_string();
+            let download_path_str = download_path.to_string();
+            let manifest_path_str = manifest_path.to_string();
 
             // 使用 start 命令在新窗口中运行 ddv20
-            // 工作目录设置为 log/{game_id}/
-            // start "" /D "工作目录" "ddv20.exe路径" -lu China --use-http -o "下载路径" app -p "清单路径"
+            // 通过参数数组方式传递，避免 cmd /c 字符串的转义问题
             let child = Command::new("cmd")
                 .arg("/c")
                 .arg("start")
                 .arg("")
-                .arg("/D")
-                .arg(&work_dir_str)
                 .arg(&ddv20_path_str)
                 .arg("-lu")
                 .arg("China")
@@ -371,6 +367,7 @@ impl DownloadServiceTrait for DownloadService {
                 .arg("app")
                 .arg("-p")
                 .arg(&manifest_path_str)
+                .current_dir(&game_log_dir)
                 .spawn()
                 .map_err(|e| format!("启动下载进程失败: {}", e))?;
 
@@ -400,13 +397,10 @@ impl DownloadServiceTrait for DownloadService {
             }
         } else {
             // 扫描所有游戏的 log 目录
-            let exe_dir = std::env::current_exe()
-                .map_err(|e| format!("无法获取程序路径: {}", e))?
-                .parent()
-                .ok_or("无法获取程序所在目录")?
-                .to_path_buf();
+            // 从 %APPDATA%/SteamToolPlus/log/ 扫描
+            let log_dir = crate::utils::config_path_utils::get_appdata_dir()?
+                .join("log");
             
-            let log_dir = exe_dir.join("log");
             if log_dir.exists() {
                 let entries = std::fs::read_dir(&log_dir)
                     .map_err(|e| format!("读取 log 目录失败: {}", e))?;

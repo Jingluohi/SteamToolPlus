@@ -8,9 +8,13 @@
 
 import { convertFileSrc } from '@tauri-apps/api/core'
 import { getGameCoverImage, getGameLibraryImage } from '../api/game.api'
+import { ref } from 'vue'
 
 /** 最大缓存条目数 */
 const MAX_CACHE_SIZE = 100
+
+/** 刷新信号 - 当窗口从隐藏恢复时触发所有图片组件重新加载 */
+export const imageRefreshSignal = ref(0)
 
 /** 缓存条目结构 */
 interface CacheEntry {
@@ -158,4 +162,12 @@ export function getCacheStats(): { cover: number; library: number } {
     cover: coverImageCache.size,
     library: libraryImageCache.size
   }
+}
+
+/**
+ * 触发图片刷新信号
+ * 通知所有使用图片缓存的组件重新加载图片
+ */
+export function triggerImageRefresh(): void {
+  imageRefreshSignal.value++
 }

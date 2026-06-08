@@ -217,11 +217,55 @@ onUnmounted(() => {
   }
 })
 
+/**
+ * 释放图片资源
+ * 在窗口隐藏到托盘时调用，清空背景图片 URL 以释放内存
+ */
+function releaseImages() {
+  // 停止轮播定时器
+  if (intervalId) {
+    clearInterval(intervalId)
+    intervalId = null
+  }
+
+  // 清空背景图片列表，让浏览器 GC 回收图片内存
+  displayItems.value = []
+  currentIndex.value = 0
+}
+
+/**
+ * 刷新图片（带防抖）
+ * 在窗口从隐藏恢复时调用，确保所有 asset:// URL 被重新获取
+ */
+let refreshTimer: ReturnType<typeof setTimeout> | null = null
+async function refreshItems() {
+  // 防抖：如果正在刷新中，取消之前的定时器
+  if (refreshTimer) {
+    clearTimeout(refreshTimer)
+  }
+
+  refreshTimer = setTimeout(async () => {
+    refreshTimer = null
+
+    // 先清空旧 URL，确保浏览器不会缓存失效的 asset:// URL
+    const oldItems = [...displayItems.value]
+    displayItems.value = []
+    currentIndex.value = 0
+
+    // 等待 DOM 更新，让浏览器释放旧图片引用
+    await new Promise(resolve => setTimeout(resolve, 50))
+
+    // 重新加载图片
+    await loadBackgroundConfig()
+  }, 150)
+}
+
 // 暴露方法供外部调用
 defineExpose({
   refresh: loadBackgroundConfig,
-  refreshItems: loadBackgroundItems,
-  next: switchToNext
+  refreshItems: refreshItems,
+  next: switchToNext,
+  releaseImages
 })
 </script>
 

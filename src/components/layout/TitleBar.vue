@@ -125,7 +125,8 @@ const navMenus: { title: string; items: NavMenuItem[] }[] = [
       { name: '关于软件', path: '/about' },
       { name: '使用说明', path: '/help' },
       { name: '疑难解答', path: '/troubleshooting' },
-      { name: '检查更新', path: '/update-check' }
+      { name: '检查更新', path: '/update-check' },
+      { name: '赞助程序', path: '/sponsor' }
     ]
   }
 ]

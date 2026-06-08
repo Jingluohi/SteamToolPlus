@@ -2,22 +2,21 @@
   <div class="steam-patch-inject-view">
     <!-- 页面标题 -->
     <div class="page-header">
-      <h1 class="page-title">
-        免 Steam 补丁注入
+      <div class="page-title-row">
+        <h1 class="page-title">免 Steam 补丁注入</h1>
         <a
           href="https://steamdb.info/"
           target="_blank"
           class="steamdb-link"
           title="打开 SteamDB"
         >
+          SteamDB
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
             <polyline points="15 3 21 3 21 9"/>
             <line x1="10" y1="14" x2="21" y2="3"/>
           </svg>
-          SteamDB
         </a>
-      </h1>
+      </div>
       <p class="page-desc">该功能可以实现游戏免Steam启动，还有局域网联机、成就系统、overlay显示等功能，将在基础配置之后显示</p>
     </div>
 
@@ -25,14 +24,7 @@
     <div class="basic-config-section">
       <div class="config-card">
         <div class="config-header">
-          <h3 class="config-title">
-            <svg class="config-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M12 2L2 7l10 5 10-5-10-5z"/>
-              <path d="M2 17l10 5 10-5"/>
-              <path d="M2 12l10 5 10-5"/>
-            </svg>
-            基础配置
-          </h3>
+          <h3 class="config-title">基础配置</h3>
           <!-- 右侧配置区域 -->
           <div class="config-options-wrapper">
             <!-- 模拟器模式选择 -->
@@ -232,12 +224,16 @@
         <!-- 操作按钮 -->
         <div class="config-actions">
           <button class="btn-primary" :disabled="!canApplyBasicConfig" @click="applyBasicConfig">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <svg v-if="!basicConfigApplied" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
               <polyline points="17 21 17 13 7 13 7 21"/>
               <polyline points="7 3 7 8 15 8"/>
             </svg>
-            应用基础配置
+            <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+              <polyline points="22 4 12 14.01 9 11.01"/>
+            </svg>
+            {{ basicConfigApplied ? '已配置' : '应用基础配置' }}
           </button>
           <button class="btn-secondary" @click="resetBasicConfig">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -681,6 +677,33 @@ const unpackGameExe = async () => {
 const applyBasicConfig = async () => {
   if (!canApplyBasicConfig.value) return
 
+  // 标准模式下检查 DLL 文件是否存在
+  if (emulatorMode.value === 0) {
+    try {
+      const dllCheck = await invoke<{
+        found: boolean
+        dllPath?: string
+      }>('check_steam_dll_exists', {
+        gamePath: gamePath.value
+      })
+      
+      if (!dllCheck.found) {
+        alert(
+          '您所选择的文件夹不含 steam_api.dll 或 steam_api64.dll，请你选择正确的文件夹。\n\n' +
+          '2015年之后的steam游戏100%有这个文件，请你在游戏文件夹里仔细寻找。\n\n' +
+          '（一般就在游戏的第一层目录中；如果没有，在包含 bin、win64、x86 等字眼的文件夹里存在的概率很高）'
+        )
+        return
+      }
+    } catch (error) {
+      alert(
+        '检查DLL文件时出错，请确认选择了正确的游戏文件夹。\n\n' +
+        '错误信息: ' + error
+      )
+      return
+    }
+  }
+
   try {
     const result = await invoke<{
       success: boolean
@@ -837,11 +860,18 @@ const hideTooltip = () => {
   border-bottom: 1px solid var(--steam-border);
 }
 
+.page-title-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
 .page-title {
   font-size: 22px;
   font-weight: 600;
   color: var(--steam-text-primary);
-  margin: 0 0 8px 0;
+  margin: 0;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -1339,6 +1369,11 @@ const hideTooltip = () => {
   background-color: var(--steam-text-secondary);
   cursor: not-allowed;
   opacity: 0.5;
+}
+
+.btn-primary.configured {
+  background-color: #10b981;
+  pointer-events: none;
 }
 
 .btn-secondary {

@@ -572,8 +572,11 @@ const trainerContent = ref<string>('')
 const setDefaultTab = () => {
   if (game.value?.downloadable) {
     currentTab.value = 'download'
+  } else if (game.value?.has_extract_play === true) {
+    // 如果没有下载功能但有解压即玩，默认选中解压即玩标签
+    currentTab.value = 'extract-play'
   } else if (game.value?.tags && game.value.tags.length > 0) {
-    // 如果没有下载功能，默认选中第一个补丁标签
+    // 如果没有下载功能和解压即玩，默认选中第一个补丁标签
     currentTab.value = `patch-${game.value.tags[0].patch_type}`
   } else {
     currentTab.value = ''

@@ -18,9 +18,50 @@
       </div>
 
       <div class="modal-body">
+        <!-- 使用说明 -->
+        <div class="usage-guide">
+          <div class="guide-header">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="12" y1="16" x2="12" y2="12"/>
+              <line x1="12" y1="8" x2="12.01" y2="8"/>
+            </svg>
+            <span>格式说明</span>
+          </div>
+          <div class="guide-content">
+            <div class="guide-item">
+              <span class="guide-label">主配置文件</span>
+              <span class="guide-value">configs.main.ini</span>
+            </div>
+            <div class="guide-item">
+              <span class="guide-label">文件格式</span>
+              <span class="guide-value">INI 格式（键=值）</span>
+            </div>
+            <div class="guide-item">
+              <span class="guide-label">布尔值</span>
+              <span class="guide-value">1=启用，0=禁用</span>
+            </div>
+            <div class="guide-item">
+              <span class="guide-label">数值</span>
+              <span class="guide-value">直接填写数字，如 300、32</span>
+            </div>
+          </div>
+          <div class="guide-example">
+            <div class="example-title">INI 格式示例：</div>
+            <pre class="example-code">[main]
+# 强制局域网模式
+force_lan_only = 1
+# 启用局域网广播
+enable_lan_broadcast = 1
+# 最大联机人数
+max_lobby_players = 32</pre>
+          </div>
+          <p class="guide-tip">提示：下方已提供推荐配置模板，可直接使用或按需修改</p>
+        </div>
+
         <div class="config-group">
           <label class="config-label">核心配置</label>
-          <p class="config-desc">编辑 configs.main.ini 文件内容</p>
+          <p class="config-desc">编辑 configs.main.ini 文件内容（下方已预填推荐配置）</p>
           <textarea
             v-model="config.mainIni"
             class="config-textarea"
@@ -295,5 +336,83 @@ onMounted(() => {
 
 .btn-secondary:hover {
   background-color: var(--steam-border);
+}
+
+/* 使用说明 */
+.usage-guide {
+  background-color: var(--steam-bg-secondary);
+  border: 1px solid var(--steam-border);
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-bottom: 20px;
+}
+
+.guide-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--steam-accent-blue);
+}
+
+.guide-header svg {
+  width: 16px;
+  height: 16px;
+}
+
+.guide-content {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.guide-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.guide-label {
+  color: var(--steam-text-secondary);
+  white-space: nowrap;
+}
+
+.guide-value {
+  color: var(--steam-text-primary);
+  font-family: 'Courier New', monospace;
+}
+
+.guide-example {
+  background-color: var(--steam-bg-primary);
+  border-radius: 6px;
+  padding: 10px 12px;
+}
+
+.example-title {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--steam-text-secondary);
+  margin-bottom: 6px;
+}
+
+.example-code {
+  font-size: 12px;
+  color: #e2e8f0;
+  background-color: #1e293b;
+  padding: 8px 12px;
+  border-radius: 4px;
+  overflow-x: auto;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.guide-tip {
+  font-size: 12px;
+  color: var(--steam-accent-blue);
+  margin: 10px 0 0 0;
 }
 </style>

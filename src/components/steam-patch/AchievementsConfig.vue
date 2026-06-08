@@ -18,6 +18,49 @@
       </div>
 
       <div class="modal-body">
+        <!-- 使用说明 -->
+        <div class="usage-guide">
+          <div class="guide-header">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="12" y1="16" x2="12" y2="12"/>
+              <line x1="12" y1="8" x2="12.01" y2="8"/>
+            </svg>
+            <span>格式说明</span>
+          </div>
+          <div class="guide-content">
+            <div class="guide-item">
+              <span class="guide-label">成就数据文件</span>
+              <span class="guide-value">achievements.json</span>
+            </div>
+            <div class="guide-item">
+              <span class="guide-label">成就图标</span>
+              <span class="guide-value">PNG/JPG/BMP 格式，推荐尺寸 64x64 或 128x128</span>
+            </div>
+            <div class="guide-item">
+              <span class="guide-label">成就ID</span>
+              <span class="guide-value">英文字母+下划线，如 achievement_first_blood</span>
+            </div>
+            <div class="guide-item">
+              <span class="guide-label">导入格式</span>
+              <span class="guide-value">JSON 数组，每个成就包含 name、displayName、description 字段</span>
+            </div>
+          </div>
+          <div class="guide-example">
+            <div class="example-title">JSON 示例：</div>
+            <pre class="example-code">[
+  {
+    "name": "achievement_first_blood",
+    "displayName": "第一滴血",
+    "description": "完成首次击杀",
+    "hidden": false,
+    "icon": "icons/achievement_1.png",
+    "iconGray": "icons/achievement_1_gray.png"
+  }
+]</pre>
+          </div>
+        </div>
+
         <!-- 启用开关 -->
         <div class="config-section">
           <label class="toggle-label">
@@ -131,6 +174,7 @@
                         <button class="btn-browse" @click="selectIcon(index, 'icon')">浏览</button>
                         <button v-if="achievement.icon" class="btn-clear" @click="achievement.icon = ''">清除</button>
                       </div>
+                      <p class="field-hint">PNG/JPG/BMP 格式，推荐 64x64 或 128x128</p>
                     </div>
                     <div class="form-group">
                       <label>未解锁图标</label>
@@ -144,6 +188,7 @@
                         <button class="btn-browse" @click="selectIcon(index, 'iconGray')">浏览</button>
                         <button v-if="achievement.iconGray" class="btn-clear" @click="achievement.iconGray = ''">清除</button>
                       </div>
+                      <p class="field-hint">与解锁图标同尺寸，灰色版本</p>
                     </div>
                   </div>
                 </div>
@@ -870,6 +915,134 @@ onMounted(() => {
 .empty-state p {
   margin: 0;
   font-size: 14px;
+}
+
+/* 使用说明 */
+.usage-guide {
+  background-color: var(--steam-bg-secondary);
+  border: 1px solid var(--steam-border);
+  border-radius: 10px;
+  padding: 16px 20px;
+  margin-bottom: 20px;
+}
+
+.guide-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--steam-accent-blue);
+}
+
+.guide-header svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.guide-content {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.guide-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.guide-item::before {
+  content: '';
+  display: block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--steam-accent-blue);
+  flex-shrink: 0;
+  margin-top: 7px;
+}
+
+.guide-label {
+  color: var(--steam-text-secondary);
+  white-space: nowrap;
+  min-width: 100px;
+  flex-shrink: 0;
+}
+
+.guide-value {
+  color: var(--steam-text-primary);
+  font-family: 'Consolas', 'Courier New', monospace;
+  font-size: 12px;
+  word-break: break-all;
+}
+
+.guide-example {
+  background-color: var(--steam-bg-primary);
+  border: 1px solid var(--steam-border);
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin-bottom: 10px;
+}
+
+.guide-example:last-of-type {
+  margin-bottom: 0;
+}
+
+.example-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--steam-text-primary);
+  margin-bottom: 8px;
+}
+
+.example-code {
+  font-size: 12px;
+  color: var(--steam-text-primary);
+  background-color: rgba(0, 0, 0, 0.2);
+  padding: 10px 14px;
+  border-radius: 6px;
+  overflow-x: auto;
+  line-height: 1.6;
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.guide-tip {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--steam-accent-blue);
+  margin-top: 14px;
+  line-height: 1.5;
+  padding: 8px 12px;
+  background-color: rgba(59, 130, 246, 0.08);
+  border-radius: 6px;
+}
+
+.guide-tip::before {
+  content: '';
+  display: block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--steam-accent-blue);
+  flex-shrink: 0;
+  margin-top: 6px;
+}
+
+/* 字段提示 */
+.field-hint {
+  font-size: 11px;
+  color: var(--steam-text-secondary);
+  margin: 4px 0 0 0;
 }
 
 /* 导入/导出 */

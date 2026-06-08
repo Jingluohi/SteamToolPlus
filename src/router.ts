@@ -105,6 +105,12 @@ const routes: RouteRecordRaw[] = [
     name: 'Troubleshooting',
     component: () => import('./views/Troubleshooting/Troubleshooting.vue'),
     meta: { title: '疑难解答' }
+  },
+  {
+    path: '/sponsor',
+    name: 'Sponsor',
+    component: () => import('./views/Sponsor/Sponsor.vue'),
+    meta: { title: '赞助程序' }
   }
 ]
 

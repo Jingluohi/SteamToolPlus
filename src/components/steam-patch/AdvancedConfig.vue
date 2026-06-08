@@ -32,6 +32,158 @@
           </button>
         </div>
 
+        <!-- 格式说明 -->
+        <div class="usage-guide">
+          <div class="guide-header">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="12" y1="16" x2="12" y2="12"/>
+              <line x1="12" y1="8" x2="12.01" y2="8"/>
+            </svg>
+            <span>格式说明</span>
+          </div>
+          <div v-if="activeTab === 'items'" class="guide-content">
+            <div class="guide-item">
+              <span class="guide-label">物品定义文件</span>
+              <span class="guide-value">items.json（所有物品定义）</span>
+            </div>
+            <div class="guide-item">
+              <span class="guide-label">初始库存文件</span>
+              <span class="guide-value">default_items.json（物品ID=数量）</span>
+            </div>
+            <div class="guide-item">
+              <span class="guide-label">物品ID</span>
+              <span class="guide-value">数字，注意部分游戏有ID范围限制</span>
+            </div>
+            <div class="guide-item">
+              <span class="guide-label">最大堆叠</span>
+              <span class="guide-value">数字，表示该物品可堆叠的最大数量</span>
+            </div>
+          </div>
+          <div v-if="activeTab === 'mods'" class="guide-content">
+            <div class="guide-item">
+              <span class="guide-label">模组目录结构</span>
+              <span class="guide-value">steam_settings/mods/&lt;MOD编号&gt;/</span>
+            </div>
+            <div class="guide-item">
+              <span class="guide-label">模组配置文件</span>
+              <span class="guide-value">mods.json（可选）</span>
+            </div>
+            <div class="guide-item">
+              <span class="guide-label">模组预览图</span>
+              <span class="guide-value">steam_settings/mod_images/&lt;MOD编号&gt;/</span>
+            </div>
+            <div class="guide-item">
+              <span class="guide-label">MOD编号</span>
+              <span class="guide-value">对应创意工坊文件ID（纯数字）</span>
+            </div>
+          </div>
+          <div v-if="activeTab === 'leaderboards'" class="guide-content">
+            <div class="guide-item">
+              <span class="guide-label">排行榜定义文件</span>
+              <span class="guide-value">leaderboards.txt</span>
+            </div>
+            <div class="guide-item">
+              <span class="guide-label">文件格式</span>
+              <span class="guide-value">名称=排序方式=显示类型</span>
+            </div>
+            <div class="guide-item">
+              <span class="guide-label">排序方式</span>
+              <span class="guide-value">0=无 1=升序 2=降序</span>
+            </div>
+            <div class="guide-item">
+              <span class="guide-label">显示类型</span>
+              <span class="guide-value">0=无 1=数字 2=时间秒 3=毫秒</span>
+            </div>
+          </div>
+          <div v-if="activeTab === 'controller'" class="guide-content">
+            <div class="guide-item">
+              <span class="guide-label">控制器定义</span>
+              <span class="guide-value">steam_settings/controller/ACTION_SET.txt</span>
+            </div>
+            <div class="guide-item">
+              <span class="guide-label">数字按键</span>
+              <span class="guide-value">ACTION_NAME=BUTTON_NAME</span>
+            </div>
+            <div class="guide-item">
+              <span class="guide-label">模拟按键</span>
+              <span class="guide-value">ACTION_NAME=ANALOG_NAME=模式</span>
+            </div>
+            <div class="guide-item">
+              <span class="guide-label">多按键绑定</span>
+              <span class="guide-value">ACTION_NAME=A,B（逗号分隔）</span>
+            </div>
+          </div>
+          <div v-if="activeTab === 'other'" class="guide-content">
+            <div class="guide-item">
+              <span class="guide-label">已安装应用</span>
+              <span class="guide-value">installed_app_ids.txt（每行一个AppID）</span>
+            </div>
+            <div class="guide-item">
+              <span class="guide-label">订阅群组</span>
+              <span class="guide-value">subscribed_groups.txt（每行一个群组ID）</span>
+            </div>
+            <div class="guide-item">
+              <span class="guide-label">购买密钥</span>
+              <span class="guide-value">purchased_keys.txt（appid=KEY）</span>
+            </div>
+            <div class="guide-item">
+              <span class="guide-label">支持语言</span>
+              <span class="guide-value">supported_languages.txt（每行一个语言代码）</span>
+            </div>
+          </div>
+          <div v-if="activeTab === 'coldclient'" class="guide-content">
+            <div class="guide-item">
+              <span class="guide-label">注入模式</span>
+              <span class="guide-value">direct=直接注入，loader=使用加载器</span>
+            </div>
+            <div class="guide-item">
+              <span class="guide-label">额外DLL</span>
+              <span class="guide-value">在游戏启动前注入的额外DLL列表</span>
+            </div>
+          </div>
+          <div v-if="activeTab === 'lobby'" class="guide-content">
+            <div class="guide-item">
+              <span class="guide-label">大厅ID</span>
+              <span class="guide-value">Steam 大厅的唯一标识符</span>
+            </div>
+            <div class="guide-item">
+              <span class="guide-label">连接密码</span>
+              <span class="guide-value">部分游戏大厅可能需要密码</span>
+            </div>
+          </div>
+          <div v-if="activeTab === 'items'" class="guide-example">
+            <div class="example-title">items.json 示例：</div>
+            <pre class="example-code">[
+  {
+    "itemId": 1001,
+    "name": "Health Potion",
+    "stackable": true,
+    "maxStackSize": 99
+  },
+  {
+    "itemId": 1002,
+    "name": "Sword",
+    "stackable": false,
+    "maxStackSize": 1
+  }
+]</pre>
+          </div>
+          <div v-if="activeTab === 'leaderboards'" class="guide-example">
+            <div class="example-title">leaderboards.txt 示例：</div>
+            <pre class="example-code">high_score=2=1
+best_time=1=2
+kill_count=2=1</pre>
+          </div>
+          <div v-if="activeTab === 'other'" class="guide-example">
+            <div class="example-title">purchased_keys.txt 示例：</div>
+            <pre class="example-code"># appid=KEY
+123456=ABCDE-FGHIJ-KLMNO
+789012=PQRST-UVWXY-Z1234</pre>
+          </div>
+          <p class="guide-tip">提示：详细格式说明请参考 gbe_fork 官方文档或 steam_settings.EXAMPLE 目录</p>
+        </div>
+
         <!-- 配置内容区 -->
         <div class="config-content">
           <!-- 物品配置 -->
@@ -1020,6 +1172,133 @@ onMounted(() => {
   .list-item {
     flex-direction: column;
     align-items: stretch;
+  }
+}
+
+/* 使用说明 */
+.usage-guide {
+  background-color: var(--steam-bg-secondary);
+  border: 1px solid var(--steam-border);
+  border-radius: 10px;
+  padding: 16px 20px;
+  margin: 0 16px 16px 16px;
+}
+
+.guide-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--steam-accent-blue);
+}
+
+.guide-header svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.guide-content {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.guide-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.guide-item::before {
+  content: '';
+  display: block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--steam-accent-blue);
+  flex-shrink: 0;
+  margin-top: 7px;
+}
+
+.guide-label {
+  color: var(--steam-text-secondary);
+  white-space: nowrap;
+  min-width: 100px;
+  flex-shrink: 0;
+}
+
+.guide-value {
+  color: var(--steam-text-primary);
+  font-family: 'Consolas', 'Courier New', monospace;
+  font-size: 12px;
+  word-break: break-all;
+}
+
+.guide-example {
+  background-color: var(--steam-bg-primary);
+  border: 1px solid var(--steam-border);
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin-bottom: 10px;
+}
+
+.guide-example:last-of-type {
+  margin-bottom: 0;
+}
+
+.example-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--steam-text-primary);
+  margin-bottom: 8px;
+}
+
+.example-code {
+  font-size: 12px;
+  color: var(--steam-text-primary);
+  background-color: rgba(0, 0, 0, 0.2);
+  padding: 10px 14px;
+  border-radius: 6px;
+  overflow-x: auto;
+  line-height: 1.6;
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.guide-tip {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--steam-accent-blue);
+  margin-top: 14px;
+  line-height: 1.5;
+  padding: 8px 12px;
+  background-color: rgba(59, 130, 246, 0.08);
+  border-radius: 6px;
+}
+
+.guide-tip::before {
+  content: '';
+  display: block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--steam-accent-blue);
+  flex-shrink: 0;
+  margin-top: 6px;
+}
+
+@media (max-width: 600px) {
+  .guide-content {
+    grid-template-columns: 1fr;
   }
 }
 </style>

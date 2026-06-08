@@ -52,11 +52,13 @@
  * 实现无边框窗口布局、主题注入、路由、全局背景轮播
  */
 
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { RouterView, useRoute } from 'vue-router'
+import { listen, type EventCallback } from '@tauri-apps/api/event'
 import { useWindowStore } from './store/window.store'
 import { useThemeStore } from './store/theme.store'
 import { useConfigStore } from './store/config.store'
+import { clearAllImageCaches, triggerImageRefresh } from './services/imageCache.service'
 import TitleBar from './components/layout/TitleBar.vue'
 import BackgroundSlideshow from './components/background/BackgroundSlideshow.vue'
 import type { PageType } from './types/background.types'
@@ -69,6 +71,10 @@ const route = useRoute()
 
 // 背景组件引用
 const backgroundRef = ref<InstanceType<typeof BackgroundSlideshow> | null>(null)
+
+// 事件监听器句柄，用于卸载时清理
+let unlistenFocused: EventCallback<void> | null = null
+let unlistenBlurred: EventCallback<void> | null = null
 
 // 计算属性：是否全屏
 const isFullscreen = computed(() => windowStore.isFullscreen)
@@ -127,6 +133,28 @@ onMounted(async () => {
 
   // 初始化窗口状态
   await windowStore.initWindow()
+
+  // 监听窗口获得焦点事件：从托盘恢复时刷新背景图片
+  unlistenFocused = await listen('window-focused', () => {
+    backgroundRef.value?.refreshItems()
+    // 触发所有游戏封面和库背景图片重新加载
+    triggerImageRefresh()
+  })
+
+  // 监听窗口隐藏事件（仅在隐藏到托盘时由 Rust 端触发）
+  // 清空图片缓存，确保窗口显示时重新加载
+  unlistenBlurred = await listen('window-blurred', () => {
+    // 清空图片缓存，释放内存
+    clearAllImageCaches()
+    // 清空游戏封面的 coverUrl，强制重新获取 asset:// URL
+    triggerImageRefresh()
+  })
+})
+
+// 组件卸载时清理事件监听器
+onUnmounted(() => {
+  unlistenFocused?.()
+  unlistenBlurred?.()
 })
 </script>
 

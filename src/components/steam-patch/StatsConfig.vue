@@ -19,6 +19,59 @@
       </div>
 
       <div class="modal-body">
+        <!-- 使用说明 -->
+        <div class="usage-guide">
+          <div class="guide-header">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="12" y1="16" x2="12" y2="12"/>
+              <line x1="12" y1="8" x2="12.01" y2="8"/>
+            </svg>
+            <span>格式说明</span>
+          </div>
+          <div class="guide-content">
+            <div class="guide-item">
+              <span class="guide-label">统计数据文件</span>
+              <span class="guide-value">stats.json</span>
+            </div>
+            <div class="guide-item">
+              <span class="guide-label">统计类型</span>
+              <span class="guide-value">int / float / avgrate</span>
+            </div>
+            <div class="guide-item">
+              <span class="guide-label">统计名称</span>
+              <span class="guide-value">英文字母+下划线，如 kills、deaths</span>
+            </div>
+            <div class="guide-item">
+              <span class="guide-label">默认值</span>
+              <span class="guide-value">整数填 0，浮点数填 0.0</span>
+            </div>
+          </div>
+          <div class="guide-example">
+            <div class="example-title">JSON 示例：</div>
+            <pre class="example-code">[
+  {
+    "name": "kills",
+    "type": "int",
+    "defaultValue": 0
+  },
+  {
+    "name": "playtime",
+    "type": "float",
+    "defaultValue": 0.0,
+    "minValue": 0.0,
+    "maxValue": 99999.0
+  },
+  {
+    "name": "accuracy",
+    "type": "avgrate",
+    "defaultValue": 0.0,
+    "windowSize": 100
+  }
+]</pre>
+          </div>
+        </div>
+
         <!-- 启用开关 -->
         <div class="config-section">
           <label class="toggle-label">
@@ -84,11 +137,11 @@
                     <div class="form-group">
                       <label>统计类型</label>
                       <select v-model="stat.type">
-                        <option value="int">整数</option>
-                        <option value="float">浮点数</option>
-                        <option value="avgrate">平均值</option>
-                        <option value="achievements">成就进度</option>
+                        <option value="int">整数 (int)</option>
+                        <option value="float">浮点数 (float)</option>
+                        <option value="avgrate">平均值 (avgrate)</option>
                       </select>
+                      <p class="field-hint">int=计数, float=小数, avgrate=速率平均</p>
                     </div>
                   </div>
 
@@ -99,6 +152,7 @@
                         v-model.number="stat.defaultValue" 
                         type="number" 
                         step="0.01"
+                        placeholder="0"
                       />
                     </div>
                   </div>
@@ -106,12 +160,14 @@
                   <template v-if="stat.type === 'float'">
                     <div class="form-row">
                       <div class="form-group">
-                        <label>最小值</label>
-                        <input v-model.number="stat.minValue" type="number" step="0.01" />
+                        <label>最小值（可选）</label>
+                        <input v-model.number="stat.minValue" type="number" step="0.01" placeholder="无限制" />
+                        <p class="field-hint">不填则无最小值限制</p>
                       </div>
                       <div class="form-group">
-                        <label>最大值</label>
-                        <input v-model.number="stat.maxValue" type="number" step="0.01" />
+                        <label>最大值（可选）</label>
+                        <input v-model.number="stat.maxValue" type="number" step="0.01" placeholder="无限制" />
+                        <p class="field-hint">不填则无最大值限制</p>
                       </div>
                     </div>
                   </template>
@@ -120,7 +176,8 @@
                     <div class="form-row">
                       <div class="form-group">
                         <label>窗口大小</label>
-                        <input v-model.number="stat.windowSize" type="number" />
+                        <input v-model.number="stat.windowSize" type="number" placeholder="100" />
+                        <p class="field-hint">计算平均值的样本窗口大小</p>
                       </div>
                     </div>
                   </template>
@@ -646,6 +703,84 @@ onMounted(() => {
 .empty-state p {
   margin: 0;
   font-size: 14px;
+}
+
+/* 使用说明 */
+.usage-guide {
+  background-color: var(--steam-bg-secondary);
+  border: 1px solid var(--steam-border);
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-bottom: 20px;
+}
+
+.guide-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--steam-accent-blue);
+}
+
+.guide-header svg {
+  width: 16px;
+  height: 16px;
+}
+
+.guide-content {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.guide-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.guide-label {
+  color: var(--steam-text-secondary);
+  white-space: nowrap;
+}
+
+.guide-value {
+  color: var(--steam-text-primary);
+  font-family: 'Courier New', monospace;
+}
+
+.guide-example {
+  background-color: var(--steam-bg-primary);
+  border-radius: 6px;
+  padding: 10px 12px;
+}
+
+.example-title {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--steam-text-secondary);
+  margin-bottom: 6px;
+}
+
+.example-code {
+  font-size: 12px;
+  color: #e2e8f0;
+  background-color: #1e293b;
+  padding: 8px 12px;
+  border-radius: 4px;
+  overflow-x: auto;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.field-hint {
+  font-size: 11px;
+  color: var(--steam-text-secondary);
+  margin: 4px 0 0 0;
 }
 
 @media (max-width: 600px) {

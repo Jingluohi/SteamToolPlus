@@ -18,9 +18,53 @@
       </div>
 
       <div class="modal-body">
+        <!-- 使用说明 -->
+        <div class="usage-guide">
+          <div class="guide-header">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="12" y1="16" x2="12" y2="12"/>
+              <line x1="12" y1="8" x2="12.01" y2="8"/>
+            </svg>
+            <span>格式说明</span>
+          </div>
+          <div class="guide-content">
+            <div class="guide-item">
+              <span class="guide-label">用户配置文件</span>
+              <span class="guide-value">configs.user.ini</span>
+            </div>
+            <div class="guide-item">
+              <span class="guide-label">头像文件</span>
+              <span class="guide-value">account_avatar.png/jpg/jpeg（放在 GSE Saves/settings/）</span>
+            </div>
+            <div class="guide-item">
+              <span class="guide-label">语言代码</span>
+              <span class="guide-value">schinese/tchinese/english/japanese 等</span>
+            </div>
+            <div class="guide-item">
+              <span class="guide-label">便携存档</span>
+              <span class="guide-value">在 configs.user.ini 中设置 local_save_path=相对路径</span>
+            </div>
+          </div>
+          <div class="guide-example">
+            <div class="example-title">configs.user.ini 示例：</div>
+            <pre class="example-code">[user]
+# 用户名（游戏中显示的名称）
+user_name = Player
+# 语言（使用 Steam API 语言代码）
+language = schinese
+# 便携存档路径（留空则使用系统默认路径）
+local_save_path = 
+# 自定义存档文件夹名称
+saves_folder_name = </pre>
+          </div>
+          <p class="guide-tip">提示：头像文件放在 GSE Saves/settings/ 目录下，命名为 account_avatar</p>
+        </div>
+
         <div class="config-group">
           <label class="config-label">用户名</label>
           <input v-model="config.username" type="text" class="config-input" placeholder="输入用户名..." />
+          <p class="field-hint">游戏中显示的名称，可自定义</p>
         </div>
 
         <div class="config-group">
@@ -31,7 +75,21 @@
             <option value="english">English</option>
             <option value="japanese">日本語</option>
             <option value="korean">한국어</option>
+            <option value="russian">русский</option>
+            <option value="french">français</option>
+            <option value="german">Deutsch</option>
+            <option value="spanish">español</option>
+            <option value="brazilian">português-Brasil</option>
+            <option value="polish">polski</option>
+            <option value="turkish">Türkçe</option>
           </select>
+          <p class="field-hint">游戏界面语言，部分游戏可能不支持所有语言</p>
+        </div>
+
+        <div class="config-group">
+          <label class="config-label">便携存档路径（可选）</label>
+          <input v-model="config.localSavePath" type="text" class="config-input" placeholder="留空使用系统默认路径，例如：./saves" />
+          <p class="field-hint">设置后，存档将保存在此相对路径下，实现便携存档</p>
         </div>
       </div>
 
@@ -64,7 +122,8 @@ const emit = defineEmits<{
 
 const config = ref({
   username: 'Player',
-  language: 'schinese'
+  language: 'schinese',
+  localSavePath: ''
 })
 
 async function saveConfig() {
@@ -253,5 +312,144 @@ async function saveConfig() {
 
 .btn-secondary:hover {
   background-color: var(--steam-border);
+}
+.field-hint {
+  font-size: 12px;
+  color: var(--steam-text-secondary);
+  margin: 6px 0 0 0;
+}
+
+/* 使用说明 */
+.usage-guide {
+  background-color: var(--steam-bg-secondary);
+  border: 1px solid var(--steam-border);
+  border-radius: 10px;
+  padding: 16px 20px;
+  margin-bottom: 20px;
+}
+
+.guide-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--steam-accent-blue);
+}
+
+.guide-header svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.guide-content {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.guide-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.guide-item::before {
+  content: '';
+  display: block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--steam-accent-blue);
+  flex-shrink: 0;
+  margin-top: 7px;
+}
+
+.guide-label {
+  color: var(--steam-text-secondary);
+  white-space: nowrap;
+  min-width: 100px;
+  flex-shrink: 0;
+}
+
+.guide-value {
+  color: var(--steam-text-primary);
+  font-family: 'Consolas', 'Courier New', monospace;
+  font-size: 12px;
+  word-break: break-all;
+}
+
+.guide-example {
+  background-color: var(--steam-bg-primary);
+  border: 1px solid var(--steam-border);
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin-bottom: 10px;
+}
+
+.guide-example:last-of-type {
+  margin-bottom: 0;
+}
+
+.example-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--steam-text-primary);
+  margin-bottom: 8px;
+}
+
+.example-code {
+  font-size: 12px;
+  color: var(--steam-text-primary);
+  background-color: rgba(0, 0, 0, 0.2);
+  padding: 10px 14px;
+  border-radius: 6px;
+  overflow-x: auto;
+  line-height: 1.6;
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.guide-tip {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--steam-accent-blue);
+  margin-top: 14px;
+  line-height: 1.5;
+  padding: 8px 12px;
+  background-color: rgba(59, 130, 246, 0.08);
+  border-radius: 6px;
+}
+
+.guide-tip::before {
+  content: '';
+  display: block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--steam-accent-blue);
+  flex-shrink: 0;
+  margin-top: 6px;
+}
+
+@media (max-width: 600px) {
+  .guide-content {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* 响应式 */
+@media (max-width: 600px) {
+  .guide-content {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

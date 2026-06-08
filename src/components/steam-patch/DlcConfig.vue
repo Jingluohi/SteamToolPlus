@@ -19,6 +19,42 @@
       </div>
 
       <div class="modal-body">
+        <!-- 使用说明 -->
+        <div class="usage-guide">
+          <div class="guide-header">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="12" y1="16" x2="12" y2="12"/>
+              <line x1="12" y1="8" x2="12.01" y2="8"/>
+            </svg>
+            <span>格式说明</span>
+          </div>
+          <div class="guide-content">
+            <div class="guide-item">
+              <span class="guide-label">DLC 配置文件</span>
+              <span class="guide-value">dlc.json / dlcs.txt</span>
+            </div>
+            <div class="guide-item">
+              <span class="guide-label">DLC ID</span>
+              <span class="guide-value">纯数字，如 123456</span>
+            </div>
+            <div class="guide-item">
+              <span class="guide-label">获取方式</span>
+              <span class="guide-value">在 SteamDB 上搜索游戏查看 DLC 列表</span>
+            </div>
+            <div class="guide-item">
+              <span class="guide-label">输入格式</span>
+              <span class="guide-value">每行一个 DLC ID，或勾选"解锁所有"</span>
+            </div>
+          </div>
+          <div class="guide-example">
+            <div class="example-title">DLC 列表示例：</div>
+            <pre class="example-code">123456
+789012
+345678</pre>
+          </div>
+        </div>
+
         <div class="config-group">
           <label class="toggle-label">
             <input v-model="config.unlockAll" type="checkbox" class="toggle-input" />
@@ -29,13 +65,14 @@
 
         <div class="config-group">
           <label class="config-label">DLC 列表</label>
-          <p class="config-desc">输入要解锁的 DLC ID（每行一个）</p>
+          <p class="config-desc">输入要解锁的 DLC ID（每行一个纯数字）</p>
           <textarea
             v-model="config.dlcList"
             class="config-textarea"
             rows="6"
             placeholder="例如:&#10;123456&#10;789012"
           ></textarea>
+          <p class="field-hint">每行填写一个 DLC ID，可在 SteamDB 上查找</p>
         </div>
       </div>
 
@@ -311,5 +348,83 @@ async function saveConfig() {
 
 .btn-secondary:hover {
   background-color: var(--steam-border);
+}
+
+/* 使用说明 */
+.usage-guide {
+  background-color: var(--steam-bg-secondary);
+  border: 1px solid var(--steam-border);
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-bottom: 20px;
+}
+
+.guide-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--steam-accent-blue);
+}
+
+.guide-header svg {
+  width: 16px;
+  height: 16px;
+}
+
+.guide-content {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.guide-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.guide-label {
+  color: var(--steam-text-secondary);
+  white-space: nowrap;
+}
+
+.guide-value {
+  color: var(--steam-text-primary);
+  font-family: 'Courier New', monospace;
+}
+
+.guide-example {
+  background-color: var(--steam-bg-primary);
+  border-radius: 6px;
+  padding: 10px 12px;
+}
+
+.example-title {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--steam-text-secondary);
+  margin-bottom: 6px;
+}
+
+.example-code {
+  font-size: 12px;
+  color: #e2e8f0;
+  background-color: #1e293b;
+  padding: 8px 12px;
+  border-radius: 4px;
+  overflow-x: auto;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.field-hint {
+  font-size: 11px;
+  color: var(--steam-text-secondary);
+  margin: 4px 0 0 0;
 }
 </style>

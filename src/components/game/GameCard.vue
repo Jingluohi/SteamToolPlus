@@ -53,9 +53,9 @@
  * 仿照旧版实现，展示单个游戏的信息
  */
 
-import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import type { GameConfigData } from '../../types'
-import { getCachedCoverImage } from '../../services/imageCache.service'
+import { getCachedCoverImage, imageRefreshSignal } from '../../services/imageCache.service'
 
 /**
  * 组件属性定义
@@ -211,6 +211,18 @@ const setupIntersectionObserver = () => {
   observer.observe(cardRef.value)
 }
 
+// 监听全局图片刷新信号
+// 当窗口从隐藏恢复时，清除旧的 asset:// URL 并重新加载
+watch(imageRefreshSignal, () => {
+  if (coverUrl.value) {
+    imageLoaded.value = false
+    coverUrl.value = ''
+    nextTick(() => {
+      loadCover()
+    })
+  }
+})
+
 // 组件挂载
 onMounted(() => {
   // 延迟设置 observer，优先渲染占位符
@@ -235,6 +247,24 @@ onUnmounted(() => {
   
   // 释放图片内存
   releaseCover()
+})
+
+/**
+ * 重置图片状态
+ * 当窗口从隐藏恢复时调用，清除旧的 asset:// URL 并重新加载
+ */
+function resetImage() {
+  imageLoaded.value = false
+  coverUrl.value = ''
+  // 使用 nextTick 确保 DOM 更新后再重新加载
+  nextTick(() => {
+    loadCover()
+  })
+}
+
+// 暴露方法供外部调用
+defineExpose({
+  resetImage
 })
 </script>
 

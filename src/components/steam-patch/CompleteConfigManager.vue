@@ -1,15 +1,33 @@
 <template>
   <div class="modal-overlay" @click="$emit('close')">
     <div class="modal-content complete-config" @click.stop>
+      <!-- 头部 -->
       <div class="modal-header">
-        <div class="header-icon complete">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="12" r="3"/>
-            <path d="M12 1v6m0 6v6m4.22-10.22l4.24-4.24M6.34 17.66l-4.24 4.24M23 12h-6m-6 0H1m20.24 4.24l-4.24-4.24M6.34 6.34L2.1 2.1"/>
-          </svg>
-        </div>
         <h3>完整配置管理器</h3>
-        <button class="close-btn" @click="$emit('close')">
+        <div class="header-status" v-if="configuredCount > 0">
+          <span class="status-badge">已配置 {{ configuredCount }}/{{ totalCount }} 项</span>
+        </div>
+        <button class="close-btn" @click="$emit('close')" title="关闭">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- 搜索栏 -->
+      <div class="search-bar">
+        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"/>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+        <input 
+          v-model="searchQuery" 
+          type="text" 
+          placeholder="搜索配置项..." 
+          class="search-input"
+        />
+        <button v-if="searchQuery" class="clear-search" @click="searchQuery = ''">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <line x1="18" y1="6" x2="6" y2="18"/>
             <line x1="6" y1="6" x2="18" y2="18"/>
@@ -23,45 +41,63 @@
           <div class="nav-section">
             <h4>核心配置</h4>
             <button 
-              v-for="item in coreConfigs" 
+              v-for="item in filteredCoreConfigs" 
               :key="item.id"
               class="nav-item"
-              :class="{ active: activeTab === item.id }"
+              :class="{ 
+                active: activeTab === item.id,
+                configured: configStatus[item.id] 
+              }"
               @click="activeTab = item.id"
             >
-              <span class="nav-icon" v-html="item.icon"></span>
               <span class="nav-label">{{ item.name }}</span>
-              <span v-if="configStatus[item.id]" class="nav-status configured">✓</span>
+              <span v-if="configStatus[item.id]" class="nav-status configured">
+                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="13 4 6 11 3 8"/>
+                </svg>
+              </span>
             </button>
           </div>
 
           <div class="nav-section">
             <h4>游戏功能</h4>
             <button 
-              v-for="item in gameFeatures" 
+              v-for="item in filteredGameFeatures" 
               :key="item.id"
               class="nav-item"
-              :class="{ active: activeTab === item.id }"
+              :class="{ 
+                active: activeTab === item.id,
+                configured: configStatus[item.id] 
+              }"
               @click="activeTab = item.id"
             >
-              <span class="nav-icon" v-html="item.icon"></span>
               <span class="nav-label">{{ item.name }}</span>
-              <span v-if="configStatus[item.id]" class="nav-status configured">✓</span>
+              <span v-if="configStatus[item.id]" class="nav-status configured">
+                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="13 4 6 11 3 8"/>
+                </svg>
+              </span>
             </button>
           </div>
 
           <div class="nav-section">
             <h4>工具集成</h4>
             <button 
-              v-for="item in toolConfigs" 
+              v-for="item in filteredToolConfigs" 
               :key="item.id"
               class="nav-item"
-              :class="{ active: activeTab === item.id }"
+              :class="{ 
+                active: activeTab === item.id,
+                configured: configStatus[item.id] 
+              }"
               @click="activeTab = item.id"
             >
-              <span class="nav-icon" v-html="item.icon"></span>
               <span class="nav-label">{{ item.name }}</span>
-              <span v-if="configStatus[item.id]" class="nav-status configured">✓</span>
+              <span v-if="configStatus[item.id]" class="nav-status configured">
+                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="13 4 6 11 3 8"/>
+                </svg>
+              </span>
             </button>
           </div>
         </div>
@@ -71,6 +107,36 @@
           <!-- 主配置 -->
           <div v-if="activeTab === 'main'" class="config-panel">
             <h3>主配置 (configs.main.ini)</h3>
+
+            <!-- 格式说明 -->
+            <div class="format-info">
+              <div class="format-header">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10"/>
+                  <line x1="12" y1="16" x2="12" y2="12"/>
+                  <line x1="12" y1="8" x2="12.01" y2="8"/>
+                </svg>
+                <span>格式说明</span>
+              </div>
+              <div class="format-grid">
+                <div class="format-item">
+                  <span class="format-label">主配置文件</span>
+                  <span class="format-value">configs.main.ini</span>
+                </div>
+                <div class="format-item">
+                  <span class="format-label">文件格式</span>
+                  <span class="format-value">INI 格式（键=值）</span>
+                </div>
+                <div class="format-item">
+                  <span class="format-label">布尔值</span>
+                  <span class="format-value">1=启用，0=禁用</span>
+                </div>
+                <div class="format-item">
+                  <span class="format-label">数值</span>
+                  <span class="format-value">直接填写数字，如 300、32</span>
+                </div>
+              </div>
+            </div>
 
             <!-- [main::general] 通用设置 -->
             <div class="config-section">
@@ -222,7 +288,7 @@
               <div class="form-group">
                 <label class="checkbox-label">
                   <input v-model="configs.main.disable_lobby_creation" type="checkbox" />
-                  <span>禁用地堡创建</span>
+                  <span>禁用大厅创建</span>
                 </label>
               </div>
               <div class="form-group">
@@ -282,6 +348,35 @@
           <!-- 用户配置 -->
           <div v-if="activeTab === 'user'" class="config-panel">
             <h3>用户配置 (configs.user.ini)</h3>
+            <!-- 格式说明 -->
+            <div class="format-info">
+              <div class="format-header">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10"/>
+                  <line x1="12" y1="16" x2="12" y2="12"/>
+                  <line x1="12" y1="8" x2="12.01" y2="8"/>
+                </svg>
+                <span>格式说明</span>
+              </div>
+              <div class="format-grid">
+                <div class="format-item">
+                  <span class="format-label">用户配置文件</span>
+                  <span class="format-value">configs.user.ini</span>
+                </div>
+                <div class="format-item">
+                  <span class="format-label">用户名</span>
+                  <span class="format-value">自定义用户名，如 Player</span>
+                </div>
+                <div class="format-item">
+                  <span class="format-label">语言代码</span>
+                  <span class="format-value">schinese / tchinese / english / japanese / korean</span>
+                </div>
+                <div class="format-item">
+                  <span class="format-label">存档路径</span>
+                  <span class="format-value">支持 %appdata% 变量</span>
+                </div>
+              </div>
+            </div>
             <div class="form-group">
               <label>用户名</label>
               <input v-model="configs.user.username" placeholder="Player" />
@@ -301,22 +396,51 @@
               <input v-model="configs.user.save_path" placeholder="%appdata%/GSE Saves" />
             </div>
             <div class="form-group">
-              <label>存档文件夹名称（覆盖默认"GSE Saves"）</label>
-              <input v-model="configs.user.saves_folder_name" placeholder="可选" />
+              <label>存档文件夹名称</label>
+              <input v-model="configs.user.saves_folder_name" placeholder="覆盖默认的 GSE Saves" />
             </div>
             <div class="form-group">
               <label>本地存档路径（便携模式）</label>
-              <input v-model="configs.user.local_save_path" placeholder="可选，设置后完全便携" />
+              <input v-model="configs.user.local_save_path" placeholder="设置后完全便携" />
             </div>
             <div class="form-group">
               <label>EncryptedAppTicket (Base64)</label>
-              <textarea v-model="configs.user.ticket" placeholder="可选，用于某些需要票据验证的游戏" rows="3"></textarea>
+              <textarea v-model="configs.user.ticket" placeholder="可选，用于需要票据验证的游戏" rows="3"></textarea>
             </div>
           </div>
 
           <!-- 应用配置 -->
           <div v-if="activeTab === 'app'" class="config-panel">
             <h3>应用配置 (configs.app.ini)</h3>
+            <!-- 格式说明 -->
+            <div class="format-info">
+              <div class="format-header">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10"/>
+                  <line x1="12" y1="16" x2="12" y2="12"/>
+                  <line x1="12" y1="8" x2="12.01" y2="8"/>
+                </svg>
+                <span>格式说明</span>
+              </div>
+              <div class="format-grid">
+                <div class="format-item">
+                  <span class="format-label">应用配置文件</span>
+                  <span class="format-value">configs.app.ini</span>
+                </div>
+                <div class="format-item">
+                  <span class="format-label">分支名称</span>
+                  <span class="format-value">public（默认）或其他分支名</span>
+                </div>
+                <div class="format-item">
+                  <span class="format-label">DLC 解锁</span>
+                  <span class="format-value">勾选"解锁所有"或指定 DLC ID</span>
+                </div>
+                <div class="format-item">
+                  <span class="format-label">用途</span>
+                  <span class="format-value">控制应用版本和 DLC 解锁</span>
+                </div>
+              </div>
+            </div>
             <div class="form-group">
               <label>分支名称</label>
               <input v-model="configs.app.branch_name" placeholder="public" />
@@ -332,10 +456,39 @@
           <!-- 覆盖层配置 -->
           <div v-if="activeTab === 'overlay'" class="config-panel">
             <h3>覆盖层配置 (configs.overlay.ini)</h3>
+            <!-- 格式说明 -->
+            <div class="format-info">
+              <div class="format-header">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10"/>
+                  <line x1="12" y1="16" x2="12" y2="12"/>
+                  <line x1="12" y1="8" x2="12.01" y2="8"/>
+                </svg>
+                <span>格式说明</span>
+              </div>
+              <div class="format-grid">
+                <div class="format-item">
+                  <span class="format-label">覆盖层文件</span>
+                  <span class="format-value">configs.overlay.ini</span>
+                </div>
+                <div class="format-item">
+                  <span class="format-label">快捷键</span>
+                  <span class="format-value">如 Shift+Tab，用于呼出游戏内覆盖层</span>
+                </div>
+                <div class="format-item">
+                  <span class="format-label">通知类型</span>
+                  <span class="format-value">成就通知 / 好友通知</span>
+                </div>
+                <div class="format-item">
+                  <span class="format-label">用途</span>
+                  <span class="format-value">模拟 Steam 游戏内覆盖层体验</span>
+                </div>
+              </div>
+            </div>
             <div class="form-group">
               <label class="checkbox-label">
                 <input v-model="configs.overlay.enable_experimental_overlay" type="checkbox" />
-                <span>启用实验性游戏内 Overlay (Shift+Tab)</span>
+                <span>启用实验性游戏内覆盖层 (Shift+Tab)</span>
               </label>
             </div>
             <div class="form-group">
@@ -358,6 +511,46 @@
           <!-- 成就配置 -->
           <div v-if="activeTab === 'achievements'" class="config-panel">
             <h3>成就配置 (achievements.json)</h3>
+            <!-- 格式说明 -->
+            <div class="format-info">
+              <div class="format-header">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10"/>
+                  <line x1="12" y1="16" x2="12" y2="12"/>
+                  <line x1="12" y1="8" x2="12.01" y2="8"/>
+                </svg>
+                <span>格式说明</span>
+              </div>
+              <div class="format-grid">
+                <div class="format-item">
+                  <span class="format-label">成就数据文件</span>
+                  <span class="format-value">achievements.json</span>
+                </div>
+                <div class="format-item">
+                  <span class="format-label">成就图标</span>
+                  <span class="format-value">PNG/JPG/BMP，推荐 64x64 或 128x128</span>
+                </div>
+                <div class="format-item">
+                  <span class="format-label">成就ID</span>
+                  <span class="format-value">英文字母+下划线，如 achievement_first_blood</span>
+                </div>
+                <div class="format-item">
+                  <span class="format-label">导入格式</span>
+                  <span class="format-value">JSON 数组，包含 name、displayName、description</span>
+                </div>
+              </div>
+              <div class="format-example">
+                <span class="format-example-title">JSON 示例：</span>
+                <pre class="format-code">[
+  {
+    "name": "achievement_first_blood",
+    "displayName": "第一滴血",
+    "description": "完成首次击杀",
+    "hidden": false
+  }
+]</pre>
+              </div>
+            </div>
             <div class="panel-actions">
               <button class="btn-add" @click="addAchievement">添加成就</button>
               <button class="btn-secondary" @click="importAchievements">导入</button>
@@ -366,18 +559,31 @@
             <div class="list-container">
               <div v-for="(ach, index) in configs.achievements.achievements" :key="index" class="list-item expandable">
                 <div class="item-header" @click="toggleExpand('achievement', index)">
-                  <span>{{ ach.displayName || ach.name || '未命名' }}</span>
+                  <span class="item-title">{{ ach.displayName || ach.name || '未命名' }}</span>
+                  <span class="item-badge" v-if="ach.hidden">隐藏</span>
                   <button class="btn-icon" @click.stop="removeAchievement(index)">×</button>
                 </div>
                 <div v-if="expandedItems[`achievement-${index}`]" class="item-body">
-                  <input v-model="ach.name" placeholder="成就ID" />
-                  <input v-model="ach.displayName" placeholder="显示名称" />
-                  <textarea v-model="ach.description" placeholder="描述" rows="2"></textarea>
+                  <div class="form-group">
+                    <label>成就ID</label>
+                    <input v-model="ach.name" placeholder="achievement_name" />
+                  </div>
+                  <div class="form-group">
+                    <label>显示名称</label>
+                    <input v-model="ach.displayName" placeholder="成就显示名称" />
+                  </div>
+                  <div class="form-group">
+                    <label>描述</label>
+                    <textarea v-model="ach.description" placeholder="成就描述" rows="2"></textarea>
+                  </div>
                   <label class="checkbox-label">
                     <input v-model="ach.hidden" type="checkbox" />
                     <span>隐藏成就</span>
                   </label>
                 </div>
+              </div>
+              <div v-if="configs.achievements.achievements.length === 0" class="empty-state">
+                <p>暂无成就配置，点击"添加成就"开始配置</p>
               </div>
             </div>
           </div>
@@ -385,24 +591,66 @@
           <!-- 统计配置 -->
           <div v-if="activeTab === 'stats'" class="config-panel">
             <h3>统计配置 (stats.json)</h3>
+            <!-- 格式说明 -->
+            <div class="format-info">
+              <div class="format-header">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10"/>
+                  <line x1="12" y1="16" x2="12" y2="12"/>
+                  <line x1="12" y1="8" x2="12.01" y2="8"/>
+                </svg>
+                <span>格式说明</span>
+              </div>
+              <div class="format-grid">
+                <div class="format-item">
+                  <span class="format-label">统计数据文件</span>
+                  <span class="format-value">stats.json</span>
+                </div>
+                <div class="format-item">
+                  <span class="format-label">统计类型</span>
+                  <span class="format-value">int / float / avgrate</span>
+                </div>
+                <div class="format-item">
+                  <span class="format-label">统计名称</span>
+                  <span class="format-value">英文字母+下划线，如 kills、deaths</span>
+                </div>
+                <div class="format-item">
+                  <span class="format-label">默认值</span>
+                  <span class="format-value">整数填 0，浮点数填 0.0</span>
+                </div>
+              </div>
+            </div>
             <div class="panel-actions">
               <button class="btn-add" @click="addStat">添加统计项</button>
             </div>
             <div class="list-container">
               <div v-for="(stat, index) in configs.stats.stats" :key="index" class="list-item expandable">
                 <div class="item-header" @click="toggleExpand('stat', index)">
-                  <span>{{ stat.name || '未命名' }} ({{ stat.type }})</span>
+                  <span class="item-title">{{ stat.name || '未命名' }}</span>
+                  <span class="item-badge">{{ stat.type }}</span>
                   <button class="btn-icon" @click.stop="removeStat(index)">×</button>
                 </div>
                 <div v-if="expandedItems[`stat-${index}`]" class="item-body">
-                  <input v-model="stat.name" placeholder="统计名称" />
-                  <select v-model="stat.type">
-                    <option value="int">整数</option>
-                    <option value="float">浮点数</option>
-                    <option value="avgrate">平均值</option>
-                  </select>
-                  <input v-model.number="stat.defaultValue" type="number" placeholder="默认值" />
+                  <div class="form-group">
+                    <label>统计名称</label>
+                    <input v-model="stat.name" placeholder="stat_name" />
+                  </div>
+                  <div class="form-group">
+                    <label>类型</label>
+                    <select v-model="stat.type">
+                      <option value="int">整数</option>
+                      <option value="float">浮点数</option>
+                      <option value="avgrate">平均值</option>
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label>默认值</label>
+                    <input v-model.number="stat.defaultValue" type="number" placeholder="0" />
+                  </div>
                 </div>
+              </div>
+              <div v-if="configs.stats.stats.length === 0" class="empty-state">
+                <p>暂无统计配置，点击"添加统计项"开始配置</p>
               </div>
             </div>
           </div>
@@ -410,6 +658,35 @@
           <!-- 物品配置 -->
           <div v-if="activeTab === 'items'" class="config-panel">
             <h3>物品配置 (items.json)</h3>
+            <!-- 格式说明 -->
+            <div class="format-info">
+              <div class="format-header">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10"/>
+                  <line x1="12" y1="16" x2="12" y2="12"/>
+                  <line x1="12" y1="8" x2="12.01" y2="8"/>
+                </svg>
+                <span>格式说明</span>
+              </div>
+              <div class="format-grid">
+                <div class="format-item">
+                  <span class="format-label">物品定义文件</span>
+                  <span class="format-value">items.json</span>
+                </div>
+                <div class="format-item">
+                  <span class="format-label">物品图标</span>
+                  <span class="format-value">PNG/JPG/BMP 格式</span>
+                </div>
+                <div class="format-item">
+                  <span class="format-label">物品ID</span>
+                  <span class="format-value">数字，如 1001、1002</span>
+                </div>
+                <div class="format-item">
+                  <span class="format-label">最大堆叠</span>
+                  <span class="format-value">正整数，表示该物品最大堆叠数量</span>
+                </div>
+              </div>
+            </div>
             <div class="panel-actions">
               <button class="btn-add" @click="addItem">添加物品</button>
             </div>
@@ -420,25 +697,85 @@
                 <input v-model.number="item.maxStackSize" type="number" placeholder="最大堆叠" />
                 <button class="btn-icon" @click="removeItem(index)">×</button>
               </div>
+              <div v-if="configs.items.itemDefinitions.length === 0" class="empty-state">
+                <p>暂无物品配置，点击"添加物品"开始配置</p>
+              </div>
             </div>
           </div>
 
           <!-- 模组配置 -->
           <div v-if="activeTab === 'mods'" class="config-panel">
             <h3>模组配置 (mods.json)</h3>
+            <!-- 格式说明 -->
+            <div class="format-info">
+              <div class="format-header">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10"/>
+                  <line x1="12" y1="16" x2="12" y2="12"/>
+                  <line x1="12" y1="8" x2="12.01" y2="8"/>
+                </svg>
+                <span>格式说明</span>
+              </div>
+              <div class="format-grid">
+                <div class="format-item">
+                  <span class="format-label">模组定义文件</span>
+                  <span class="format-value">mods.json</span>
+                </div>
+                <div class="format-item">
+                  <span class="format-label">模组ID</span>
+                  <span class="format-value">Steam 创意工坊文件 ID（纯数字）</span>
+                </div>
+                <div class="format-item">
+                  <span class="format-label">可见性</span>
+                  <span class="format-value">public / friends / private</span>
+                </div>
+                <div class="format-item">
+                  <span class="format-label">获取方式</span>
+                  <span class="format-value">在 Steam 创意工坊页面查看模组 URL</span>
+                </div>
+              </div>
+              <div class="format-example">
+                <span class="format-example-title">JSON 示例：</span>
+                <pre class="format-code">[
+  {
+    "publishedFileId": "123456789",
+    "title": "My Awesome Mod",
+    "visibility": "public"
+  }
+]</pre>
+              </div>
+            </div>
             <div class="panel-actions">
               <button class="btn-add" @click="addMod">添加模组</button>
             </div>
             <div class="list-container">
-              <div v-for="(mod, index) in configs.mods.subscribedMods" :key="index" class="list-item">
-                <input v-model="mod.publishedFileId" placeholder="模组ID" />
-                <input v-model="mod.title" placeholder="模组标题" />
-                <select v-model="mod.visibility">
-                  <option value="public">公开</option>
-                  <option value="friends">好友</option>
-                  <option value="private">私有</option>
-                </select>
-                <button class="btn-icon" @click="removeMod(index)">×</button>
+              <div v-for="(mod, index) in configs.mods.subscribedMods" :key="index" class="list-item expandable">
+                <div class="item-header" @click="toggleExpand('mod', index)">
+                  <span class="item-title">{{ mod.title || '未命名' }}</span>
+                  <span class="item-badge">{{ mod.visibility }}</span>
+                  <button class="btn-icon" @click.stop="removeMod(index)">×</button>
+                </div>
+                <div v-if="expandedItems[`mod-${index}`]" class="item-body">
+                  <div class="form-group">
+                    <label>模组ID</label>
+                    <input v-model="mod.publishedFileId" placeholder="模组文件ID" />
+                  </div>
+                  <div class="form-group">
+                    <label>模组标题</label>
+                    <input v-model="mod.title" placeholder="模组标题" />
+                  </div>
+                  <div class="form-group">
+                    <label>可见性</label>
+                    <select v-model="mod.visibility">
+                      <option value="public">公开</option>
+                      <option value="friends">好友</option>
+                      <option value="private">私有</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+              <div v-if="configs.mods.subscribedMods.length === 0" class="empty-state">
+                <p>暂无模组配置，点击"添加模组"开始配置</p>
               </div>
             </div>
           </div>
@@ -446,25 +783,118 @@
           <!-- 排行榜配置 -->
           <div v-if="activeTab === 'leaderboards'" class="config-panel">
             <h3>排行榜配置 (leaderboards.txt)</h3>
+            <!-- 格式说明 -->
+            <div class="format-info">
+              <div class="format-header">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10"/>
+                  <line x1="12" y1="16" x2="12" y2="12"/>
+                  <line x1="12" y1="8" x2="12.01" y2="8"/>
+                </svg>
+                <span>格式说明</span>
+              </div>
+              <div class="format-grid">
+                <div class="format-item">
+                  <span class="format-label">排行榜定义文件</span>
+                  <span class="format-value">leaderboards.json</span>
+                </div>
+                <div class="format-item">
+                  <span class="format-label">排行榜名称</span>
+                  <span class="format-value">英文字母+下划线，如 high_score</span>
+                </div>
+                <div class="format-item">
+                  <span class="format-label">排序方式</span>
+                  <span class="format-value">asc（升序）或 desc（降序）</span>
+                </div>
+                <div class="format-item">
+                  <span class="format-label">显示类型</span>
+                  <span class="format-value">numeric（数字）或 time-sec（时间）</span>
+                </div>
+              </div>
+              <div class="format-example">
+                <span class="format-example-title">JSON 示例：</span>
+                <pre class="format-code">[
+  {
+    "name": "high_score",
+    "displayName": "最高分",
+    "sortMethod": "desc",
+    "displayType": "numeric"
+  },
+  {
+    "name": "best_time",
+    "displayName": "最佳时间",
+    "sortMethod": "asc",
+    "displayType": "time-sec"
+  }
+]</pre>
+              </div>
+            </div>
             <div class="panel-actions">
               <button class="btn-add" @click="addLeaderboard">添加排行榜</button>
             </div>
             <div class="list-container">
-              <div v-for="(lb, index) in configs.leaderboards.leaderboards" :key="index" class="list-item">
-                <input v-model="lb.name" placeholder="排行榜ID" />
-                <input v-model="lb.displayName" placeholder="显示名称" />
-                <select v-model="lb.sortMethod">
-                  <option value="asc">升序</option>
-                  <option value="desc">降序</option>
-                </select>
-                <button class="btn-icon" @click="removeLeaderboard(index)">×</button>
+              <div v-for="(lb, index) in configs.leaderboards.leaderboards" :key="index" class="list-item expandable">
+                <div class="item-header" @click="toggleExpand('leaderboard', index)">
+                  <span class="item-title">{{ lb.displayName || lb.name || '未命名' }}</span>
+                  <span class="item-badge">{{ lb.sortMethod === 'asc' ? '升序' : '降序' }}</span>
+                  <button class="btn-icon" @click.stop="removeLeaderboard(index)">×</button>
+                </div>
+                <div v-if="expandedItems[`leaderboard-${index}`]" class="item-body">
+                  <div class="form-group">
+                    <label>排行榜ID</label>
+                    <input v-model="lb.name" placeholder="leaderboard_name" />
+                  </div>
+                  <div class="form-group">
+                    <label>显示名称</label>
+                    <input v-model="lb.displayName" placeholder="排行榜显示名称" />
+                  </div>
+                  <div class="form-group">
+                    <label>排序方式</label>
+                    <select v-model="lb.sortMethod">
+                      <option value="asc">升序</option>
+                      <option value="desc">降序</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+              <div v-if="configs.leaderboards.leaderboards.length === 0" class="empty-state">
+                <p>暂无排行榜配置，点击"添加排行榜"开始配置</p>
               </div>
             </div>
           </div>
 
           <!-- 控制器配置 -->
           <div v-if="activeTab === 'controller'" class="config-panel">
-            <h3>控制器配置</h3>
+            <h3>控制器配置 (controller.vdf)</h3>
+            <!-- 格式说明 -->
+            <div class="format-info">
+              <div class="format-header">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10"/>
+                  <line x1="12" y1="16" x2="12" y2="12"/>
+                  <line x1="12" y1="8" x2="12.01" y2="8"/>
+                </svg>
+                <span>格式说明</span>
+              </div>
+              <div class="format-grid">
+                <div class="format-item">
+                  <span class="format-label">控制器定义文件</span>
+                  <span class="format-value">controller.vdf</span>
+                </div>
+                <div class="format-item">
+                  <span class="format-label">控制器类型</span>
+                  <span class="format-value">xbox / playstation / nintendo / generic</span>
+                </div>
+                <div class="format-item">
+                  <span class="format-label">摇杆死区</span>
+                  <span class="format-value">0.0 ~ 1.0，推荐 0.1 ~ 0.2</span>
+                </div>
+                <div class="format-item">
+                  <span class="format-label">按键映射</span>
+                  <span class="format-value">Steam Input 标准按键名称</span>
+                </div>
+              </div>
+            </div>
             <div class="form-group">
               <label>控制器类型</label>
               <select v-model="configs.controller.controllerType">
@@ -489,6 +919,35 @@
           <!-- 其他配置 -->
           <div v-if="activeTab === 'other'" class="config-panel">
             <h3>其他配置</h3>
+            <!-- 格式说明 -->
+            <div class="format-info">
+              <div class="format-header">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10"/>
+                  <line x1="12" y1="16" x2="12" y2="12"/>
+                  <line x1="12" y1="8" x2="12.01" y2="8"/>
+                </svg>
+                <span>格式说明</span>
+              </div>
+              <div class="format-grid">
+                <div class="format-item">
+                  <span class="format-label">已安装应用ID</span>
+                  <span class="format-value">每行一个纯数字，如 480、730</span>
+                </div>
+                <div class="format-item">
+                  <span class="format-label">订阅群组ID</span>
+                  <span class="format-value">每行一个纯数字，Steam 群组 ID</span>
+                </div>
+                <div class="format-item">
+                  <span class="format-label">CD密钥</span>
+                  <span class="format-value">每行一个密钥，如 XXXXX-XXXXX-XXXXX</span>
+                </div>
+                <div class="format-item">
+                  <span class="format-label">获取方式</span>
+                  <span class="format-value">在 SteamDB 上搜索游戏查看相关信息</span>
+                </div>
+              </div>
+            </div>
             <div class="form-group">
               <label>已安装应用ID (每行一个)</label>
               <textarea v-model="otherConfigs.installedAppIds" rows="3" placeholder="480&#10;730"></textarea>
@@ -506,6 +965,35 @@
           <!-- ColdClientLoader -->
           <div v-if="activeTab === 'coldclient'" class="config-panel">
             <h3>ColdClientLoader 配置</h3>
+            <!-- 格式说明 -->
+            <div class="format-info">
+              <div class="format-header">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10"/>
+                  <line x1="12" y1="16" x2="12" y2="12"/>
+                  <line x1="12" y1="8" x2="12.01" y2="8"/>
+                </svg>
+                <span>格式说明</span>
+              </div>
+              <div class="format-grid">
+                <div class="format-item">
+                  <span class="format-label">注入模式</span>
+                  <span class="format-value">direct（直接注入）或 loader（使用加载器）</span>
+                </div>
+                <div class="format-item">
+                  <span class="format-label">启动参数</span>
+                  <span class="format-value">游戏启动命令行参数，如 -windowed -novid</span>
+                </div>
+                <div class="format-item">
+                  <span class="format-label">额外DLL</span>
+                  <span class="format-value">每行一个 DLL 文件名，如 extra.dll</span>
+                </div>
+                <div class="format-item">
+                  <span class="format-label">用途</span>
+                  <span class="format-value">绕过 Steam DRM，实现免Steam启动游戏</span>
+                </div>
+              </div>
+            </div>
             <div class="form-group">
               <label class="checkbox-label">
                 <input v-model="configs.coldClientLoader.enabled" type="checkbox" />
@@ -532,6 +1020,35 @@
           <!-- Lobby Connect -->
           <div v-if="activeTab === 'lobby'" class="config-panel">
             <h3>Lobby Connect 配置</h3>
+            <!-- 格式说明 -->
+            <div class="format-info">
+              <div class="format-header">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10"/>
+                  <line x1="12" y1="16" x2="12" y2="12"/>
+                  <line x1="12" y1="8" x2="12.01" y2="8"/>
+                </svg>
+                <span>格式说明</span>
+              </div>
+              <div class="format-grid">
+                <div class="format-item">
+                  <span class="format-label">大厅ID</span>
+                  <span class="format-value">纯数字，如 109775240970137214</span>
+                </div>
+                <div class="format-item">
+                  <span class="format-label">连接密码</span>
+                  <span class="format-value">可选，由房主设置的连接密码</span>
+                </div>
+                <div class="format-item">
+                  <span class="format-label">用途</span>
+                  <span class="format-value">直接加入指定 Steam 大厅，实现联机</span>
+                </div>
+                <div class="format-item">
+                  <span class="format-label">注意事项</span>
+                  <span class="format-value">需要游戏支持 Steam 大厅系统</span>
+                </div>
+              </div>
+            </div>
             <div class="form-group">
               <label class="checkbox-label">
                 <input v-model="configs.lobbyConnect.enabled" type="checkbox" />
@@ -556,21 +1073,40 @@
         </div>
       </div>
 
+      <!-- 底部操作栏 -->
       <div class="modal-footer">
-        <div class="footer-actions">
-          <button class="btn-secondary" @click="loadAllConfigs">重新加载</button>
-          <button class="btn-secondary" @click="exportAllConfigs">导出全部</button>
-        </div>
-        <div class="footer-actions">
-          <button class="btn-secondary" @click="$emit('close')">取消</button>
-          <button class="btn-primary" @click="saveAllConfigs">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <polyline points="20 6 9 17 4 12"/>
-            </svg>
-            保存所有配置
-          </button>
-        </div>
+        <button class="btn-cancel" @click="$emit('close')">取消</button>
+        <button 
+          class="btn-save" 
+          @click="saveAllConfigs"
+          :class="{ saving: isSaving, saved: isSaved }"
+          :disabled="isSaving"
+        >
+          <svg v-if="!isSaving && !isSaved" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+            <polyline points="17 21 17 13 7 13 7 21"/>
+            <polyline points="7 3 7 8 15 8"/>
+          </svg>
+          <svg v-if="isSaving" class="spin-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+          </svg>
+          <svg v-if="isSaved" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+          <span>{{ isSaving ? '保存中...' : isSaved ? '已保存' : '保存所有配置' }}</span>
+        </button>
       </div>
+
+      <!-- 保存成功提示 -->
+      <transition name="toast">
+        <div v-if="showToast" class="toast-success">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+            <polyline points="22 4 12 14.01 9 11.01"/>
+          </svg>
+          <span>所有配置已保存成功！</span>
+        </div>
+      </transition>
     </div>
   </div>
 </template>
@@ -598,32 +1134,61 @@ const emit = defineEmits<{
 
 const activeTab = ref('main')
 const expandedItems = ref<Record<string, boolean>>({})
+const searchQuery = ref('')
+const isSaving = ref(false)
+const isSaved = ref(false)
+const showToast = ref(false)
 
 // 导航配置
 const coreConfigs = [
-  { id: 'main', name: '主配置', icon: '⚙️' },
-  { id: 'user', name: '用户配置', icon: '👤' },
-  { id: 'app', name: '应用配置', icon: '📱' },
-  { id: 'overlay', name: '覆盖层', icon: '🖥️' },
+  { id: 'main', name: '主配置' },
+  { id: 'user', name: '用户配置' },
+  { id: 'app', name: '应用配置' },
+  { id: 'overlay', name: '覆盖层' },
 ]
 
 const gameFeatures = [
-  { id: 'achievements', name: '成就系统', icon: '🏆' },
-  { id: 'stats', name: '统计数据', icon: '📊' },
-  { id: 'items', name: '物品库存', icon: '📦' },
-  { id: 'mods', name: '创意工坊', icon: '🔧' },
-  { id: 'leaderboards', name: '排行榜', icon: '🏅' },
-  { id: 'controller', name: '控制器', icon: '🎮' },
-  { id: 'other', name: '其他配置', icon: '📋' },
+  { id: 'achievements', name: '成就系统' },
+  { id: 'stats', name: '统计数据' },
+  { id: 'items', name: '物品库存' },
+  { id: 'mods', name: '创意工坊' },
+  { id: 'leaderboards', name: '排行榜' },
+  { id: 'controller', name: '控制器' },
+  { id: 'other', name: '其他配置' },
 ]
 
 const toolConfigs = [
-  { id: 'coldclient', name: 'ColdClient', icon: '❄️' },
-  { id: 'lobby', name: 'Lobby', icon: '👥' },
+  { id: 'coldclient', name: 'ColdClient' },
+  { id: 'lobby', name: 'Lobby' },
 ]
+
+// 搜索过滤
+const filteredCoreConfigs = computed(() => {
+  if (!searchQuery.value) return coreConfigs
+  return coreConfigs.filter(c => c.name.toLowerCase().includes(searchQuery.value.toLowerCase()))
+})
+
+const filteredGameFeatures = computed(() => {
+  if (!searchQuery.value) return gameFeatures
+  return gameFeatures.filter(c => c.name.toLowerCase().includes(searchQuery.value.toLowerCase()))
+})
+
+const filteredToolConfigs = computed(() => {
+  if (!searchQuery.value) return toolConfigs
+  return toolConfigs.filter(c => c.name.toLowerCase().includes(searchQuery.value.toLowerCase()))
+})
 
 // 配置状态
 const configStatus = ref<Record<string, boolean>>({})
+
+// 计算已配置数量
+const totalCount = computed(() => {
+  return coreConfigs.length + gameFeatures.length + toolConfigs.length
+})
+
+const configuredCount = computed(() => {
+  return Object.values(configStatus.value).filter(Boolean).length
+})
 
 // 配置数据 - 使用完整的默认配置
 const configs = reactive({
@@ -777,7 +1342,12 @@ async function exportAllConfigs() {
 
 // 保存所有配置
 async function saveAllConfigs() {
+  if (isSaving.value) return
+  
   try {
+    isSaving.value = true
+    isSaved.value = false
+    
     const promises = [
       invoke('save_main_config', { gamePath: props.gamePath, config: configs.main }),
       invoke('save_user_config', { gamePath: props.gamePath, config: configs.user }),
@@ -792,9 +1362,20 @@ async function saveAllConfigs() {
       invoke('save_lobby_connect_config', { gamePath: props.gamePath, config: configs.lobbyConnect }),
     ]
     await Promise.all(promises)
+    
+    isSaving.value = false
+    isSaved.value = true
+    
+    // 显示成功提示
+    showToast.value = true
+    setTimeout(() => {
+      showToast.value = false
+      isSaved.value = false
+    }, 3000)
+    
     emit('saved')
-    alert('所有配置已保存！')
   } catch (error) {
+    isSaving.value = false
     alert(`保存失败: ${error}`)
   }
 }
@@ -851,49 +1432,42 @@ onMounted(() => {
 </script>
 
 <style scoped>
+/* 遮罩层 */
 .modal-overlay {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
+  background-color: rgba(0, 0, 0, 0.6);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000;
+  backdrop-filter: blur(4px);
 }
 
+/* 模态框主体 */
 .modal-content {
   background-color: var(--steam-bg-primary);
   border-radius: 12px;
   border: 1px solid var(--steam-border);
   width: 90%;
-  max-width: 1100px;
+  max-width: 1200px;
   max-height: 85vh;
   display: flex;
   flex-direction: column;
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.3);
 }
 
+/* 头部 */
 .modal-header {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 20px;
+  gap: 16px;
+  padding: 16px 24px;
   border-bottom: 1px solid var(--steam-border);
   flex-shrink: 0;
-}
-
-.header-icon {
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  background-color: rgba(139, 92, 246, 0.1);
-  color: #8b5cf6;
 }
 
 .modal-header h3 {
@@ -902,6 +1476,21 @@ onMounted(() => {
   font-weight: 600;
   color: var(--steam-text-primary);
   margin: 0;
+}
+
+.header-status {
+  display: flex;
+  align-items: center;
+}
+
+.status-badge {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--steam-accent-blue);
+  background-color: rgba(var(--steam-accent-blue-rgb, 107, 170, 255), 0.1);
+  padding: 4px 12px;
+  border-radius: 20px;
+  border: 1px solid rgba(var(--steam-accent-blue-rgb, 107, 170, 255), 0.2);
 }
 
 .close-btn {
@@ -923,24 +1512,77 @@ onMounted(() => {
   color: var(--steam-text-primary);
 }
 
+/* 搜索栏 */
+.search-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  border-bottom: 1px solid var(--steam-border);
+  flex-shrink: 0;
+}
+
+.search-icon {
+  width: 16px;
+  height: 16px;
+  color: var(--steam-text-secondary);
+  flex-shrink: 0;
+}
+
+.search-input {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid var(--steam-border);
+  border-radius: 8px;
+  background-color: var(--steam-bg-secondary);
+  color: var(--steam-text-primary);
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.search-input:focus {
+  border-color: var(--steam-accent-blue);
+}
+
+.search-input::placeholder {
+  color: var(--steam-text-secondary);
+}
+
+.clear-search {
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 6px;
+  background-color: transparent;
+  color: var(--steam-text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.clear-search:hover {
+  background-color: var(--steam-bg-tertiary);
+  color: var(--steam-text-primary);
+}
+
+/* 主体布局 */
 .modal-body {
   flex: 1;
   overflow: hidden;
   display: flex;
 }
 
+/* 底部操作栏 */
 .modal-footer {
   display: flex;
   justify-content: space-between;
   gap: 12px;
-  padding: 16px 20px;
+  padding: 12px 24px;
   border-top: 1px solid var(--steam-border);
   flex-shrink: 0;
-}
-
-.footer-actions {
-  display: flex;
-  gap: 12px;
 }
 
 /* 左侧导航 */
@@ -957,12 +1599,13 @@ onMounted(() => {
 }
 
 .nav-section h4 {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
   color: var(--steam-text-secondary);
   text-transform: uppercase;
   margin: 0 0 8px 0;
   padding-left: 8px;
+  letter-spacing: 0.5px;
 }
 
 .nav-item {
@@ -979,6 +1622,7 @@ onMounted(() => {
   background-color: transparent;
   color: var(--steam-text-primary);
   text-align: left;
+  position: relative;
 }
 
 .nav-item:hover {
@@ -990,8 +1634,20 @@ onMounted(() => {
   color: white;
 }
 
-.nav-icon {
-  font-size: 16px;
+.nav-item.configured:not(.active) {
+  color: #10b981;
+}
+
+.nav-item.configured:not(.active)::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 60%;
+  background-color: #10b981;
+  border-radius: 2px;
 }
 
 .nav-label {
@@ -1001,6 +1657,11 @@ onMounted(() => {
 .nav-status {
   font-size: 12px;
   color: #10b981;
+}
+
+.nav-status svg {
+  width: 14px;
+  height: 14px;
 }
 
 /* 右侧内容 */
@@ -1028,6 +1689,80 @@ onMounted(() => {
   font-weight: 600;
   color: var(--steam-text-primary);
   margin: 20px 0 12px 0;
+}
+
+/* 格式说明 */
+.format-info {
+  background-color: var(--steam-bg-secondary);
+  border: 1px solid var(--steam-border);
+  border-radius: 8px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+}
+
+.format-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--steam-accent-blue);
+}
+
+.format-header svg {
+  width: 16px;
+  height: 16px;
+}
+
+.format-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.format-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.format-label {
+  color: var(--steam-text-secondary);
+  white-space: nowrap;
+}
+
+.format-value {
+  color: var(--steam-text-primary);
+  font-family: 'Courier New', monospace;
+}
+
+.format-example {
+  background-color: var(--steam-bg-primary);
+  border-radius: 6px;
+  padding: 10px 12px;
+}
+
+.format-example-title {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--steam-text-secondary);
+  margin-bottom: 6px;
+  display: block;
+}
+
+.format-code {
+  font-size: 12px;
+  color: #e2e8f0;
+  background-color: #1e293b;
+  padding: 8px 12px;
+  border-radius: 4px;
+  overflow-x: auto;
+  line-height: 1.5;
+  margin: 0;
+  white-space: pre;
 }
 
 /* 配置分组 */
@@ -1072,6 +1807,7 @@ onMounted(() => {
   font-size: 14px;
   outline: none;
   transition: border-color 0.15s ease;
+  box-sizing: border-box;
 }
 
 .form-group input:focus,
@@ -1142,6 +1878,22 @@ onMounted(() => {
   justify-content: space-between;
   align-items: center;
   cursor: pointer;
+  padding: 4px 0;
+}
+
+.item-title {
+  font-weight: 500;
+  color: var(--steam-text-primary);
+}
+
+.item-badge {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--steam-text-secondary);
+  background-color: var(--steam-bg-tertiary);
+  padding: 2px 8px;
+  border-radius: 4px;
+  text-transform: capitalize;
 }
 
 .item-body {
@@ -1150,7 +1902,11 @@ onMounted(() => {
   border-top: 1px solid var(--steam-border);
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 12px;
+}
+
+.item-body .form-group {
+  margin-bottom: 0;
 }
 
 .list-item input,
@@ -1165,6 +1921,14 @@ onMounted(() => {
   font-size: 13px;
 }
 
+/* 空状态 */
+.empty-state {
+  text-align: center;
+  padding: 32px 16px;
+  color: var(--steam-text-secondary);
+  font-size: 13px;
+}
+
 /* 按钮 */
 .btn-primary {
   display: flex;
@@ -1176,16 +1940,32 @@ onMounted(() => {
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all 0.2s ease;
   background-color: var(--steam-accent-blue);
   color: white;
+  position: relative;
+  overflow: hidden;
 }
 
-.btn-primary:hover {
+.btn-primary:hover:not(:disabled) {
   background-color: var(--steam-accent-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(107, 170, 255, 0.3);
+}
+
+.btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-primary.saved {
+  background-color: #10b981;
 }
 
 .btn-secondary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   padding: 10px 16px;
   border: 1px solid var(--steam-border);
   border-radius: 8px;
@@ -1233,6 +2013,7 @@ onMounted(() => {
   justify-content: center;
   transition: all 0.15s ease;
   font-size: 18px;
+  flex-shrink: 0;
 }
 
 .btn-icon:hover {
@@ -1240,11 +2021,131 @@ onMounted(() => {
   color: #ef4444;
 }
 
+/* 旋转图标 */
+.spin-icon {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Toast 提示 */
+.toast-success {
+  position: absolute;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  background-color: #10b981;
+  color: white;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  z-index: 10;
+}
+
+.toast-success svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* Toast 动画 */
+.toast-enter-active,
+.toast-leave-active {
+  transition: all 0.3s ease;
+}
+
+.toast-enter-from {
+  opacity: 0;
+  transform: translateX(-50%) translateY(20px);
+}
+
+.toast-leave-to {
+  opacity: 0;
+  transform: translateX(-50%) translateY(-20px);
+}
+
+/* 淡入动画 */
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
+/* 取消按钮 */
+.btn-cancel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 16px;
+  border: 1px solid var(--steam-border);
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  background-color: var(--steam-bg-tertiary);
+  color: var(--steam-text-secondary);
+  white-space: nowrap;
+}
+
+.btn-cancel:hover {
+  background-color: var(--steam-border);
+  color: var(--steam-text-primary);
+}
+
+/* 保存按钮 */
+.btn-save {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 20px;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background-color: var(--steam-accent-blue);
+  color: white;
+  white-space: nowrap;
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-save:hover:not(:disabled) {
+  background-color: var(--steam-accent-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(107, 170, 255, 0.3);
+}
+
+.btn-save:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-save.saving {
+  background-color: var(--steam-accent-blue);
+  cursor: wait;
+}
+
+.btn-save.saved {
+  background-color: #10b981;
+}
+
+.btn-save svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* 响应式 */
 @media (max-width: 768px) {
   .modal-body {
     flex-direction: column;
@@ -1269,6 +2170,14 @@ onMounted(() => {
   
   .form-row {
     grid-template-columns: 1fr;
+  }
+  
+  .modal-header h3 {
+    font-size: 16px;
+  }
+  
+  .status-badge {
+    font-size: 12px;
   }
 }
 </style>

@@ -1,6 +1,6 @@
 [package]
 name = "steam-tool-plus"
-version = "1.24.01"
+version = "1.24.2"
 description = "Steam Tool Plus - 本地游戏管理系统"
 authors = ["Steam Tool Plus"]
 edition = "2021"

@@ -20,6 +20,48 @@
       </div>
 
       <div class="modal-body">
+        <!-- 使用说明 -->
+        <div class="usage-guide">
+          <div class="guide-header">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="12" y1="16" x2="12" y2="12"/>
+              <line x1="12" y1="8" x2="12.01" y2="8"/>
+            </svg>
+            <span>格式说明</span>
+          </div>
+          <div class="guide-content">
+            <div class="guide-item">
+              <span class="guide-label">广播 IP 列表</span>
+              <span class="guide-value">custom_broadcasts.txt（每行一个 IP/域名）</span>
+            </div>
+            <div class="guide-item">
+              <span class="guide-label">自动接受邀请</span>
+              <span class="guide-value">auto_accept_invite.txt（每行一个 SteamID64）</span>
+            </div>
+            <div class="guide-item">
+              <span class="guide-label">空文件</span>
+              <span class="guide-value">接受所有人的邀请</span>
+            </div>
+            <div class="guide-item">
+              <span class="guide-label">监听端口</span>
+              <span class="guide-value">UDP 端口，默认 47584</span>
+            </div>
+          </div>
+          <div class="guide-example">
+            <div class="example-title">custom_broadcasts.txt 示例：</div>
+            <pre class="example-code">192.168.1.100
+192.168.1.101
+friend.example.com</pre>
+          </div>
+          <div class="guide-example" style="margin-top: 8px;">
+            <div class="example-title">auto_accept_invite.txt 示例：</div>
+            <pre class="example-code">76561198000000001
+76561198000000002</pre>
+          </div>
+          <p class="guide-tip">提示：所有玩家必须在同一局域网内，且运行相同 AppID 的游戏时不要同时运行多个实例</p>
+        </div>
+
         <div class="config-item">
           <label class="toggle-label">
             <input v-model="config.enabled" type="checkbox" class="toggle-input" />
@@ -561,5 +603,126 @@ onMounted(() => {
 
 .btn-secondary:hover {
   background-color: var(--steam-border);
+}
+
+/* 使用说明 */
+.usage-guide {
+  background-color: var(--steam-bg-secondary);
+  border: 1px solid var(--steam-border);
+  border-radius: 10px;
+  padding: 16px 20px;
+  margin-bottom: 20px;
+}
+
+.guide-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--steam-accent-blue);
+}
+
+.guide-header svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.guide-content {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.guide-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.guide-item::before {
+  content: '';
+  display: block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--steam-accent-blue);
+  flex-shrink: 0;
+  margin-top: 7px;
+}
+
+.guide-label {
+  color: var(--steam-text-secondary);
+  white-space: nowrap;
+  min-width: 100px;
+  flex-shrink: 0;
+}
+
+.guide-value {
+  color: var(--steam-text-primary);
+  font-family: 'Consolas', 'Courier New', monospace;
+  font-size: 12px;
+  word-break: break-all;
+}
+
+.guide-example {
+  background-color: var(--steam-bg-primary);
+  border: 1px solid var(--steam-border);
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin-bottom: 10px;
+}
+
+.guide-example:last-of-type {
+  margin-bottom: 0;
+}
+
+.example-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--steam-text-primary);
+  margin-bottom: 8px;
+}
+
+.example-code {
+  font-size: 12px;
+  color: var(--steam-text-primary);
+  background-color: rgba(0, 0, 0, 0.2);
+  padding: 10px 14px;
+  border-radius: 6px;
+  overflow-x: auto;
+  line-height: 1.6;
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.guide-tip {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--steam-accent-blue);
+  margin-top: 14px;
+  line-height: 1.5;
+  padding: 8px 12px;
+  background-color: rgba(59, 130, 246, 0.08);
+  border-radius: 6px;
+}
+
+.guide-tip::before {
+  content: '';
+  display: block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--steam-accent-blue);
+  flex-shrink: 0;
+  margin-top: 6px;
 }
 </style>

@@ -12,8 +12,6 @@ mod utils;
 use commands::{background_commands, config_commands, download_commands, game_commands, game_data_commands, help_commands, log_commands, manifest_commands, patch_commands, window_commands};
 use services::{ConfigService, ConfigServiceTrait, GameService, GameServiceTrait};
 use std::sync::Arc;
-use std::thread;
-use std::time::Duration;
 use tauri::{Manager, Emitter};
 use tauri::tray::{TrayIconBuilder, TrayIconEvent, MouseButton};
 use tauri::menu::{Menu, MenuItem};
@@ -38,12 +36,22 @@ fn initialize_app_state() -> AppState {
     }
 }
 
-/// 显示主窗口
+/// 显示主窗口并刷新图片
+/// 统一处理窗口显示逻辑，确保图片正确加载
 fn show_main_window(app_handle: &tauri::AppHandle) {
     if let Some(window) = app_handle.get_webview_window("main") {
         let _ = window.show();
         let _ = window.set_focus();
-        log::info!("主窗口已显示");
+        // 延迟注入刷新脚本，确保窗口已完全显示
+        let window_clone = window.clone();
+        std::thread::spawn(move || {
+            std::thread::sleep(std::time::Duration::from_millis(100));
+            // 注入刷新脚本：通知前端刷新所有图片
+            let _ = window_clone.eval(r#"
+                window.dispatchEvent(new CustomEvent('window-focused'));
+            "#);
+            log::info!("主窗口已显示并触发图片刷新");
+        });
     }
 }
 
@@ -196,7 +204,7 @@ fn main() {
                 ],
             )?;
 
-            // 创建托盘图标
+            // 创建托盘图标 - 使用应用默认图标（从编译嵌入的资源中加载）
             let tray_icon = TrayIconBuilder::new()
                 .icon(app.default_window_icon().unwrap().clone())
                 .tooltip("Steam Tool Plus")
@@ -210,69 +218,58 @@ fn main() {
             }
 
             // 处理托盘图标事件（双击）
-            tray_icon.on_tray_icon_event(move |tray, event| {
+            let app_handle_clone = app.handle().clone();
+            tray_icon.on_tray_icon_event(move |_tray, event| {
                 match event {
                     TrayIconEvent::DoubleClick { button: MouseButton::Left, .. } => {
                         // 双击托盘图标显示窗口
-                        if let Some(window) = tray.app_handle().get_webview_window("main") {
-                            let _ = window.show();
-                            let _ = window.set_focus();
-                        }
+                        show_main_window(&app_handle_clone);
                     }
                     _ => {}
                 }
             });
 
             // 处理托盘菜单事件
-            let _app_handle = app.handle().clone();
             tray_icon.on_menu_event(move |tray, event| {
                 let app_handle = tray.app_handle();
                 match event.id().as_ref() {
                     "open" => {
                         // 点击"打开主窗口"，显示窗口
-                        if let Some(window) = app_handle.get_webview_window("main") {
-                            let _ = window.show();
-                            let _ = window.set_focus();
-                        }
+                        show_main_window(&app_handle);
                     }
                     "browse" => {
                         // 跳转到浏览页面
+                        show_main_window(&app_handle);
                         if let Some(window) = app_handle.get_webview_window("main") {
-                            let _ = window.show();
-                            let _ = window.set_focus();
-                            let _ = window.eval("window.location.href = '/';");
+                            let _ = window.eval("setTimeout(() => { window.location.href = '/'; }, 200);");
                         }
                     }
                     "library" => {
                         // 跳转到游戏库页面
+                        show_main_window(&app_handle);
                         if let Some(window) = app_handle.get_webview_window("main") {
-                            let _ = window.show();
-                            let _ = window.set_focus();
-                            let _ = window.eval("window.location.href = '/library';");
+                            let _ = window.eval("setTimeout(() => { window.location.href = '/library'; }, 200);");
                         }
                     }
                     "download" => {
                         // 跳转到下载页面
+                        show_main_window(&app_handle);
                         if let Some(window) = app_handle.get_webview_window("main") {
-                            let _ = window.show();
-                            let _ = window.set_focus();
-                            let _ = window.eval("window.location.href = '/download';");
+                            let _ = window.eval("setTimeout(() => { window.location.href = '/download'; }, 200);");
                         }
                     }
                     "patch" => {
                         // 跳转到免Steam补丁页面
+                        show_main_window(&app_handle);
                         if let Some(window) = app_handle.get_webview_window("main") {
-                            let _ = window.show();
-                            let _ = window.set_focus();
-                            let _ = window.eval("window.location.href = '/patch';");
+                            let _ = window.eval("setTimeout(() => { window.location.href = '/patch'; }, 200);");
                         }
                     }
                     "manifest" => {
                         // 跳转到清单入库页面
+                        show_main_window(&app_handle);
                         if let Some(window) = app_handle.get_webview_window("main") {
-                            let _ = window.show();
-                            let _ = window.set_focus();
-                            let _ = window.eval("window.location.href = '/manifest-import';");
+                            let _ = window.eval("setTimeout(() => { window.location.href = '/manifest-import'; }, 200);");
                         }
                     }
                     "restart_steam" => {
@@ -336,29 +333,38 @@ fn main() {
 
                         // 隐藏窗口
                         if let Some(window) = app_handle.get_webview_window("main") {
+                            // 先通知前端释放 Vue 数据（避免内存泄漏）
+                            let _ = window.emit("window-blurred", ());
+
+                            // 隐藏窗口
                             let _ = window.hide();
                             log::info!("窗口已隐藏到托盘");
 
-                            // 2秒后释放图片缓存
+                            // 立即注入 JS 清理 DOM 图片，释放 WebView2 GPU 进程显存
                             let window_clone = window.clone();
-                            thread::spawn(move || {
-                                thread::sleep(Duration::from_secs(2));
-                                // 执行JavaScript清除图片缓存
+                            std::thread::spawn(move || {
+                                // 等待窗口完全隐藏后再清理 DOM
+                                std::thread::sleep(std::time::Duration::from_millis(300));
                                 let _ = window_clone.eval(r#"
-                                    // 清除所有图片元素的src以释放内存
-                                    document.querySelectorAll('img').forEach(img => {
-                                        img.src = '';
-                                    });
-                                    // 清除背景图片缓存
-                                    document.querySelectorAll('[style*="background-image"]').forEach(el => {
-                                        el.style.backgroundImage = '';
-                                    });
-                                    // 强制垃圾回收提示（如果浏览器支持）
-                                    if (window.gc) {
-                                        window.gc();
-                                    }
+                                    (function() {
+                                        // 清除所有 img 标签的图片，释放 GPU 显存
+                                        document.querySelectorAll('img').forEach(function(img) {
+                                            img.removeAttribute('src');
+                                            img.removeAttribute('srcset');
+                                            img.removeAttribute('data-src');
+                                            img.removeAttribute('data-srcset');
+                                        });
+                                        // 清除所有背景图片
+                                        document.querySelectorAll('[style*="background-image"]').forEach(function(el) {
+                                            el.style.backgroundImage = '';
+                                        });
+                                        // 清除所有 CSS 变量中的图片 URL
+                                        document.documentElement.style.setProperty('--bg-image-url', '');
+                                        // 强制回流，确保浏览器释放资源
+                                        document.body.offsetHeight;
+                                    })();
                                 "#);
-                                log::info!("图片缓存已释放");
+                                log::info!("DOM 图片已清理，GPU 显存已释放");
                             });
                         }
                     }
@@ -405,6 +411,21 @@ fn main() {
                         }
                         _ => {}
                     }
+                }
+            });
+
+            // 处理窗口焦点事件：窗口获得焦点时通知前端
+            // 只在窗口获得焦点时通知前端刷新图片（从托盘恢复、Alt+Tab 切换回来等）
+            // 不监听失去焦点，避免切换到其他应用时误触发图片释放
+            let window_clone = window.clone();
+            window.on_window_event(move |event| {
+                if let WindowEvent::Focused(focused) = event {
+                    if *focused {
+                        // 窗口获得焦点（从托盘恢复、Alt+Tab 切换回来等）
+                        let _ = window_clone.emit("window-focused", ());
+                        log::info!("窗口获得焦点，已通知前端刷新背景");
+                    }
+                    // 不再监听失去焦点事件，避免误触发
                 }
             });
 
@@ -475,12 +496,14 @@ fn main() {
             patch_commands::open_external_link,
             patch_commands::write_text_file,
             // 免Steam补丁注入新命令 - 100% 实现 gbe_fork 所有功能
+            patch_commands::check_steam_dll_exists,
             patch_commands::apply_steam_patch_basic,
             patch_commands::unpack_game_exe,
             // 配置保存命令
             patch_commands::save_main_config,
             patch_commands::save_user_config,
             patch_commands::save_overlay_config,
+            patch_commands::save_app_config,
             patch_commands::save_achievements_config,
             patch_commands::save_stats_config,
             patch_commands::save_items_config,
@@ -493,6 +516,7 @@ fn main() {
             patch_commands::load_main_config,
             patch_commands::load_user_config,
             patch_commands::load_overlay_config,
+            patch_commands::load_app_config,
             patch_commands::load_achievements_config,
             patch_commands::load_stats_config,
             patch_commands::load_items_config,
@@ -541,6 +565,10 @@ fn main() {
             patch_commands::save_steam_http_response,
             patch_commands::load_steam_http_response,
             patch_commands::list_steam_http_configs,
+            patch_commands::save_custom_broadcasts,
+            patch_commands::load_custom_broadcasts,
+            patch_commands::save_auto_accept_invite,
+            patch_commands::load_auto_accept_invite,
             // ColdClientLoader 和 lobby_connect 配置命令
             patch_commands::save_coldclient_config,
             patch_commands::load_coldclient_config,
@@ -565,6 +593,7 @@ fn main() {
             // 帮助命令
             help_commands::read_readme_file,
             help_commands::check_readme_exists,
+            help_commands::get_sponsor_image_base64,
             // 背景图片命令
             background_commands::get_background_config,
             background_commands::save_background_config,
