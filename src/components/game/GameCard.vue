@@ -103,7 +103,8 @@ const gameEnName = computed(() => props.game.game_name)
 const gameId = computed(() => props.game.game_id)
 
 // 计算属性：是否可下载
-const downloadable = computed(() => props.game.downloadable)
+// 当 downloadable 为 true 或 has_extract_play 为 true 时显示可下载标签
+const downloadable = computed(() => props.game.downloadable || props.game.has_extract_play === true)
 
 
 

@@ -3,7 +3,7 @@ import vue from '@vitejs/plugin-vue'
 import { resolve } from 'path'
 
 /**
- * Vite配置文件
+ * Vite配置件
  * 遵循项目规范：极致体积优化、tree-shaking、资源内联
  */
 export default defineConfig({

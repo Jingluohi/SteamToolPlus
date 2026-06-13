@@ -450,6 +450,17 @@
                 <input v-model="configs.app.dlcs.unlock_all" type="checkbox" />
                 <span>解锁所有 DLC</span>
               </label>
+              <p class="field-hint">部分游戏不适用"解锁所有"，可手动指定需要解锁的 DLC</p>
+            </div>
+            <div v-if="!configs.app.dlcs.unlock_all" class="form-group">
+              <label>DLC 列表（每行一个 DLC ID）</label>
+              <textarea
+                v-model="configs.app.dlcs.custom_list"
+                class="dlc-textarea"
+                rows="5"
+                placeholder="例如：&#10;123456&#10;789012"
+              ></textarea>
+              <p class="field-hint">在 SteamDB 搜索游戏可查看所有 DLC ID</p>
             </div>
           </div>
 
@@ -1842,6 +1853,30 @@ onMounted(() => {
 
 .checkbox-label span {
   line-height: 1.4;
+}
+
+.field-hint {
+  font-size: 12px;
+  color: var(--steam-text-secondary);
+  margin: 4px 0 0 0;
+}
+
+.dlc-textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--steam-border);
+  border-radius: 8px;
+  background-color: var(--steam-bg-secondary);
+  color: var(--steam-text-primary);
+  font-size: 13px;
+  font-family: 'Consolas', 'Courier New', monospace;
+  resize: vertical;
+  outline: none;
+  margin-top: 8px;
+}
+
+.dlc-textarea:focus {
+  border-color: var(--steam-accent-blue);
 }
 
 /* 面板操作 */

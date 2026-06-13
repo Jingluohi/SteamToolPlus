@@ -1,6 +1,6 @@
 {
   "name": "steam-tool-plus",
-  "version": "1.24.2",
+  "version": "1.25.0",
   "description": "Steam Tool Plus - 本地游戏管理系统",
   "type": "module",
   "scripts": {
@@ -22,6 +22,7 @@
     "marked": "^18.0.2",
     "pinia": "^2.1.0",
     "vue": "^3.4.0",
+    "vue-i18n": "^9.14.4",
     "vue-router": "^4.2.0"
   },
   "devDependencies": {

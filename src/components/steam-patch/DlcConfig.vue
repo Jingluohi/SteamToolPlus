@@ -61,18 +61,19 @@
             <span class="toggle-slider"></span>
             <span class="toggle-text">解锁所有 DLC</span>
           </label>
+          <p class="field-hint">部分游戏不适用"解锁所有"，可手动指定需要解锁的 DLC</p>
         </div>
 
-        <div class="config-group">
+        <div v-if="!config.unlockAll" class="config-group">
           <label class="config-label">DLC 列表</label>
           <p class="config-desc">输入要解锁的 DLC ID（每行一个纯数字）</p>
           <textarea
             v-model="config.dlcList"
             class="config-textarea"
-            rows="6"
+            rows="8"
             placeholder="例如:&#10;123456&#10;789012"
           ></textarea>
-          <p class="field-hint">每行填写一个 DLC ID，可在 SteamDB 上查找</p>
+          <p class="field-hint">在 SteamDB 搜索游戏可查看所有 DLC ID</p>
         </div>
       </div>
 
@@ -354,77 +355,102 @@ async function saveConfig() {
 .usage-guide {
   background-color: var(--steam-bg-secondary);
   border: 1px solid var(--steam-border);
-  border-radius: 8px;
-  padding: 12px 16px;
+  border-radius: 10px;
+  padding: 16px 20px;
   margin-bottom: 20px;
 }
 
 .guide-header {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 10px;
-  font-size: 13px;
+  gap: 10px;
+  margin-bottom: 14px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--steam-accent-blue);
 }
 
 .guide-header svg {
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
 }
 
 .guide-content {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-  margin-bottom: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 16px;
 }
 
 .guide-item {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 12px;
+  align-items: flex-start;
+  gap: 12px;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.guide-item::before {
+  content: '';
+  display: block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--steam-accent-blue);
+  flex-shrink: 0;
+  margin-top: 7px;
 }
 
 .guide-label {
   color: var(--steam-text-secondary);
   white-space: nowrap;
+  min-width: 100px;
+  flex-shrink: 0;
 }
 
 .guide-value {
   color: var(--steam-text-primary);
-  font-family: 'Courier New', monospace;
+  font-family: 'Consolas', 'Courier New', monospace;
+  font-size: 12px;
+  word-break: break-all;
 }
 
 .guide-example {
   background-color: var(--steam-bg-primary);
-  border-radius: 6px;
-  padding: 10px 12px;
+  border: 1px solid var(--steam-border);
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin-bottom: 10px;
+}
+
+.guide-example:last-of-type {
+  margin-bottom: 0;
 }
 
 .example-title {
   font-size: 12px;
-  font-weight: 500;
-  color: var(--steam-text-secondary);
-  margin-bottom: 6px;
+  font-weight: 600;
+  color: var(--steam-text-primary);
+  margin-bottom: 8px;
 }
 
 .example-code {
   font-size: 12px;
-  color: #e2e8f0;
-  background-color: #1e293b;
-  padding: 8px 12px;
-  border-radius: 4px;
+  color: var(--steam-text-primary);
+  background-color: rgba(0, 0, 0, 0.2);
+  padding: 10px 14px;
+  border-radius: 6px;
   overflow-x: auto;
-  line-height: 1.5;
+  line-height: 1.6;
   margin: 0;
+  white-space: pre-wrap;
+  word-break: break-all;
 }
 
 .field-hint {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--steam-text-secondary);
-  margin: 4px 0 0 0;
+  margin: 6px 0 0 0;
 }
 </style>
