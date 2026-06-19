@@ -107,6 +107,12 @@ const routes: RouteRecordRaw[] = [
     meta: { title: '疑难解答' }
   },
   {
+    path: '/video-tutorial',
+    name: 'VideoTutorial',
+    component: () => import('./views/VideoTutorial/VideoTutorial.vue'),
+    meta: { title: '视频教程' }
+  },
+  {
     path: '/sponsor',
     name: 'Sponsor',
     component: () => import('./views/Sponsor/Sponsor.vue'),

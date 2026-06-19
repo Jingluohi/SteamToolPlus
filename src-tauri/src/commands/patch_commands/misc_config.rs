@@ -335,10 +335,11 @@ pub async fn load_supported_languages(
 // ============================================
 
 /// 保存 depots.txt
+/// gbe_fork 格式: 每行一个 depot ID
 #[tauri::command]
 pub async fn save_depots(
     game_path: String,
-    depots: Vec<serde_json::Value>,
+    depot_ids: Vec<String>,
 ) -> Result<ConfigSaveResult, String> {
     use tokio::fs;
     use tokio::io::AsyncWriteExt;
@@ -348,21 +349,22 @@ pub async fn save_depots(
         .await
         .map_err(|e| format!("创建 steam_settings 目录失败: {}", e))?;
 
-    let file_path = steam_settings_dir.join("depots.txt");
-    let mut lines = vec![];
+    let depots_path = steam_settings_dir.join("depots.txt");
 
-    for depot in depots {
-        if let (Some(id), Some(manifest)) = (
-            depot.get("depotId").and_then(|v| v.as_str()),
-            depot.get("manifestId").and_then(|v| v.as_str())
-        ) {
-            lines.push(format!("{} {}", id, manifest));
+    if depot_ids.is_empty() {
+        if depots_path.exists() {
+            fs::remove_file(&depots_path)
+                .await
+                .map_err(|e| format!("删除 depots.txt 失败: {}", e))?;
         }
+        return Ok(ConfigSaveResult {
+            success: true,
+            message: "Depots 配置已清空".to_string(),
+        });
     }
 
-    let content = lines.join("\n");
-
-    let mut file = fs::File::create(&file_path)
+    let content = depot_ids.join("\n") + "\n";
+    let mut file = fs::File::create(&depots_path)
         .await
         .map_err(|e| format!("创建 depots.txt 失败: {}", e))?;
     file.write_all(content.as_bytes())
@@ -371,15 +373,16 @@ pub async fn save_depots(
 
     Ok(ConfigSaveResult {
         success: true,
-        message: "Depot 配置已保存".to_string(),
+        message: "Depots 配置已保存".to_string(),
     })
 }
 
 /// 加载 depots.txt
+/// gbe_fork 格式: 每行一个 depot ID
 #[tauri::command]
 pub async fn load_depots(
     game_path: String,
-) -> Result<Vec<serde_json::Value>, String> {
+) -> Result<Vec<String>, String> {
     use tokio::fs;
 
     let file_path = Path::new(&game_path).join("steam_settings").join("depots.txt");
@@ -392,18 +395,13 @@ pub async fn load_depots(
         .await
         .map_err(|e| format!("读取 depots.txt 失败: {}", e))?;
 
-    let mut depots = vec![];
-    for line in content.lines() {
-        let parts: Vec<&str> = line.split_whitespace().collect();
-        if parts.len() >= 2 {
-            depots.push(serde_json::json!({
-                "depotId": parts[0],
-                "manifestId": parts[1]
-            }));
-        }
-    }
+    let depot_ids: Vec<String> = content
+        .lines()
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty() && !s.starts_with('#'))
+        .collect();
 
-    Ok(depots)
+    Ok(depot_ids)
 }
 
 // ============================================
@@ -1101,6 +1099,7 @@ pub async fn load_default_items(
 // ============================================
 
 /// 保存 DLC 配置
+/// 接收前端简化格式: { unlockAll, dlcList, depotIds, dlcPaths }
 #[tauri::command]
 pub async fn save_dlc_config(
     game_path: String,
@@ -1126,22 +1125,56 @@ pub async fn save_dlc_config(
         SteamAppConfig::default_config()
     };
 
-    // 更新 DLC 配置
+    // 更新 DLC 配置 - 处理 unlockAll
     if let Some(unlock_all) = config.get("unlockAll").and_then(|v| v.as_bool()) {
         app_config.dlcs.unlock_all = unlock_all;
     }
 
-    if let Some(dlcs) = config.get("individualDlcs").and_then(|v| v.as_array()) {
-        app_config.dlcs.individual_dlcs = dlcs
-            .iter()
-            .filter_map(|v| {
-                Some(IndividualDlc {
-                    app_id: v.get("appId")?.as_str()?.to_string(),
-                    name: v.get("name")?.as_str()?.to_string(),
-                    enabled: v.get("enabled")?.as_bool()?,
-                })
-            })
+    // 处理 dlcList (前端简化格式: 每行一个 ID 的字符串)
+    if let Some(dlc_list_str) = config.get("dlcList").and_then(|v| v.as_str()) {
+        // 清空之前的 individual_dlcs，用 dlcList 中的 ID 重新构建
+        app_config.dlcs.individual_dlcs.clear();
+        app_config.dlcs.dlc_list = dlc_list_str
+            .lines()
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
             .collect();
+
+        // 将 dlcList 转换为 individual_dlcs 格式（用于 to_ini 输出）
+        for dlc_id in &app_config.dlcs.dlc_list {
+            app_config.dlcs.individual_dlcs.push(IndividualDlc {
+                app_id: dlc_id.clone(),
+                name: format!("DLC {}", dlc_id),
+                enabled: true,
+            });
+        }
+    }
+
+    // 处理 depotIds (每行一个 ID 的字符串)
+    if let Some(depot_ids_str) = config.get("depotIds").and_then(|v| v.as_str()) {
+        app_config.dlcs.depot_ids = depot_ids_str
+            .lines()
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
+            .collect();
+    }
+
+    // 处理 dlcPaths (格式: appid=相对路径，每行一个)
+    if let Some(dlc_paths_str) = config.get("dlcPaths").and_then(|v| v.as_str()) {
+        app_config.dlcs.dlc_paths.clear();
+        for line in dlc_paths_str.lines() {
+            let line = line.trim();
+            if line.is_empty() {
+                continue;
+            }
+            if let Some(eq_pos) = line.find('=') {
+                let app_id = line[..eq_pos].trim().to_string();
+                let path = line[eq_pos + 1..].trim().to_string();
+                if !app_id.is_empty() && !path.is_empty() {
+                    app_config.dlcs.dlc_paths.insert(app_id, path);
+                }
+            }
+        }
     }
 
     // 保存配置

@@ -1,4 +1,15 @@
 <template>
+  <!-- 保存成功提示 - 放在弹窗外部，确保关闭弹窗后仍可见 -->
+  <transition name="toast">
+    <div v-if="showToast" class="toast-success">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+        <polyline points="22 4 12 14.01 9 11.01"/>
+      </svg>
+      <span>排行榜配置已保存成功！</span>
+    </div>
+  </transition>
+
   <div class="modal-overlay" @click="$emit('close')">
     <div class="modal-content" @click.stop>
       <div class="modal-header">
@@ -35,7 +46,7 @@
           <div class="guide-content">
             <div class="guide-item">
               <span class="guide-label">排行榜定义文件</span>
-              <span class="guide-value">leaderboards.json</span>
+              <span class="guide-value">leaderboards.txt</span>
             </div>
             <div class="guide-item">
               <span class="guide-label">排行榜名称</span>
@@ -43,27 +54,18 @@
             </div>
             <div class="guide-item">
               <span class="guide-label">排序类型</span>
-              <span class="guide-value">ascend（升序）或 descend（降序）</span>
+              <span class="guide-value">数字 0~3（0=无,1=升序,2=降序,3=近邻）</span>
             </div>
             <div class="guide-item">
               <span class="guide-label">显示类型</span>
-              <span class="guide-value">number（数字）或 time-sec（时间秒）</span>
+              <span class="guide-value">数字 0~3（0=无,1=数字,2=时间秒,3=毫秒）</span>
             </div>
           </div>
           <div class="guide-example">
-            <div class="example-title">排行榜定义示例：</div>
-            <pre class="example-code">[
-  {
-    "name": "high_score",
-    "sortMethod": "descend",
-    "displayType": "number"
-  },
-  {
-    "name": "best_time",
-    "sortMethod": "ascend",
-    "displayType": "time-sec"
-  }
-]</pre>
+            <div class="example-title">排行榜定义示例（gbe_fork 标准格式）：</div>
+            <pre class="example-code">high_score=2=1
+best_time=1=2
+level_reached=2=1</pre>
           </div>
         </div>
 
@@ -77,14 +79,14 @@
 
         <div v-if="config.enabled" class="config-group">
           <label class="config-label">排行榜数据配置</label>
-          <p class="config-desc">配置本地排行榜的排名数据，用于模拟离线排行榜</p>
+          <p class="config-desc">配置本地排行榜的定义，用于模拟离线排行榜</p>
           <textarea
-            v-model="config.leaderboardsText"
+            v-model="leaderboardsText"
             class="config-textarea"
-            rows="6"
-            placeholder="格式: 排行榜名称=分数&#10;例如:&#10;high_score=10000&#10;best_time=3600"
+            rows="8"
+            placeholder="格式: 排行榜名称=排序类型=显示类型&#10;例如:&#10;high_score=2=1&#10;best_time=1=2"
           ></textarea>
-          <p class="field-hint">每行填写一个排行榜条目，格式为 "排行榜名称=分数"</p>
+          <p class="field-hint">每行一个排行榜，格式: NAME=sort=display（gbe_fork 标准格式）</p>
         </div>
       </div>
 
@@ -102,7 +104,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 
 const props = defineProps<{
@@ -115,21 +117,86 @@ const emit = defineEmits<{
   saved: []
 }>()
 
+const showToast = ref(false)
+
+/**
+ * 排行榜配置对象
+ * 与 Rust LeaderboardsConfig 结构体一致
+ */
 const config = ref({
   enabled: true,
-  leaderboardsText: ''
+  leaderboards: [] as Array<{
+    name: string
+    displayName: string
+    sortMethod: string
+    displayType: string
+  }>,
 })
 
+/** 排行榜文本（用于 textarea 编辑） */
+const leaderboardsText = ref('')
+
+/**
+ * 将数组格式的排行榜转换为文本
+ * 输出格式: NAME=sort=display（gbe_fork 标准格式）
+ */
+function syncLeaderboardsToText() {
+  leaderboardsText.value = config.value.leaderboards
+    .map((lb) => `${lb.name}=${lb.sortMethod}=${lb.displayType}`)
+    .join('\n')
+}
+
+/**
+ * 将文本格式的排行榜转换为数组
+ * 输入格式: NAME=sort=display（gbe_fork 标准格式）
+ * 第一个 '=' 前是 name，中间是 sortMethod，最后一个是 displayType
+ */
+function syncTextToLeaderboards() {
+  const lines = leaderboardsText.value
+    .split('\n')
+    .map((l) => l.trim())
+    .filter((l) => l)
+
+  config.value.leaderboards = []
+  for (const line of lines) {
+    const parts = line.split('=')
+    if (parts.length >= 3) {
+      config.value.leaderboards.push({
+        name: parts[0].trim(),
+        displayName: parts[0].trim(),
+        sortMethod: parts[1].trim(),
+        displayType: parts[2].trim(),
+      })
+    }
+  }
+}
+
+/** 监听文本变化同步到数组 */
+watch(leaderboardsText, syncTextToLeaderboards)
+
+/**
+ * 保存配置
+ */
 async function saveConfig() {
+  // 确保文本已同步到数组
+  syncTextToLeaderboards()
+
   try {
     const result = await invoke<{ success: boolean; message: string }>('save_leaderboards_config', {
       gamePath: props.gamePath,
-      config: config.value
+      config: config.value,
     })
 
     if (result.success) {
+      showToast.value = true
+      setTimeout(() => {
+        showToast.value = false
+      }, 3000)
       emit('saved')
-      emit('close')
+      // 延迟关闭弹窗，等待 Toast 消失后再关闭
+      setTimeout(() => {
+        emit('close')
+      }, 3000)
     } else {
       alert(`保存失败: ${result.message}`)
     }
@@ -137,6 +204,36 @@ async function saveConfig() {
     alert(`保存失败: ${error}`)
   }
 }
+
+/**
+ * 加载现有配置
+ */
+async function loadConfig() {
+  try {
+    const result = await invoke<{
+      exists: boolean
+      config?: any
+    }>('load_leaderboards_config', {
+      gamePath: props.gamePath,
+    })
+
+    if (result.exists && result.config) {
+      config.value.enabled = result.config.enabled ?? true
+
+      // 加载排行榜定义
+      if (result.config.leaderboards && result.config.leaderboards.length > 0) {
+        config.value.leaderboards = result.config.leaderboards
+        syncLeaderboardsToText()
+      }
+    }
+  } catch (error) {
+    console.error('加载排行榜配置失败:', error)
+  }
+}
+
+onMounted(() => {
+  loadConfig()
+})
 </script>
 
 <style scoped>
@@ -438,5 +535,59 @@ async function saveConfig() {
   font-size: 11px;
   color: var(--steam-text-secondary);
   margin: 4px 0 0 0;
+}
+
+/* 保存成功提示 */
+.toast-success {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: #10b981;
+  color: white;
+  padding: 12px 24px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 9999;
+}
+
+.toast-success svg {
+  width: 20px;
+  height: 20px;
+}
+
+.toast-enter-active {
+  animation: toast-in 0.3s ease;
+}
+
+.toast-leave-active {
+  animation: toast-out 0.3s ease;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+@keyframes toast-out {
+  from {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-20px);
+  }
 }
 </style>

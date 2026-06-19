@@ -146,58 +146,68 @@
                   <input v-model="configs.main.new_app_ticket" type="checkbox" />
                   <span>生成新版认证票据 (new_app_ticket)</span>
                 </label>
+                <p class="field-hint">启用后生成新版 Steam 认证票据，大多数游戏需要开启</p>
               </div>
               <div class="form-group">
                 <label class="checkbox-label">
                   <input v-model="configs.main.gc_token" type="checkbox" />
                   <span>启用游戏协调器令牌 (gc_token)</span>
                 </label>
+                <p class="field-hint">用于 Valve 游戏的 GC 认证，如 CS:GO、Dota2 等需要开启</p>
               </div>
               <div class="form-group">
                 <label class="checkbox-label">
                   <input v-model="configs.main.block_unknown_clients" type="checkbox" />
                   <span>阻止未知客户端</span>
                 </label>
+                <p class="field-hint">阻止非 Steam 官方客户端连接，增强安全性</p>
               </div>
               <div class="form-group">
                 <label class="checkbox-label">
                   <input v-model="configs.main.steam_deck" type="checkbox" />
                   <span>模拟 Steam Deck</span>
                 </label>
+                <p class="field-hint">让游戏认为运行在 Steam Deck 上，可能解锁 Deck 专属内容</p>
               </div>
               <div class="form-group">
                 <label class="checkbox-label">
                   <input v-model="configs.main.enable_account_avatar" type="checkbox" />
                   <span>启用头像功能</span>
                 </label>
+                <p class="field-hint">允许游戏获取并显示用户头像，需配合头像文件使用</p>
               </div>
               <div class="form-group">
                 <label class="checkbox-label">
                   <input v-model="configs.main.enable_voice_chat" type="checkbox" />
                   <span>启用语音聊天</span>
                 </label>
+                <p class="field-hint">启用 Steam 语音聊天功能，需要游戏支持</p>
               </div>
               <div class="form-group">
                 <label class="checkbox-label">
                   <input v-model="configs.main.immediate_gameserver_stats" type="checkbox" />
                   <span>即时游戏服务器统计</span>
                 </label>
+                <p class="field-hint">立即上报游戏服务器统计数据，不等待批量提交</p>
               </div>
               <div class="form-group">
                 <label class="checkbox-label">
                   <input v-model="configs.main.matchmaking_server_list_actual_type" type="checkbox" />
                   <span>匹配服务器列表实际类型</span>
                 </label>
+                <p class="field-hint">返回实际的服务器列表类型，而非强制局域网类型</p>
               </div>
               <div class="form-group">
                 <label class="checkbox-label">
                   <input v-model="configs.main.matchmaking_server_details_via_source_query" type="checkbox" />
                   <span>通过 Source 查询获取服务器详情</span>
                 </label>
+                <p class="field-hint">使用 Source 协议查询服务器详细信息</p>
               </div>
               <div class="form-group">
                 <label>崩溃日志位置</label>
                 <input v-model="configs.main.crash_printer_location" placeholder="可选" />
+                <p class="field-hint">设置崩溃日志输出目录，留空则不输出</p>
               </div>
             </div>
 
@@ -209,34 +219,40 @@
                   <input v-model="configs.main.disable_leaderboards_create_unknown" type="checkbox" />
                   <span>禁用未知排行榜创建</span>
                 </label>
+                <p class="field-hint">阻止游戏自动创建未预定义的排行榜，避免数据混乱</p>
               </div>
               <div class="form-group">
                 <label class="checkbox-label">
                   <input v-model="configs.main.allow_unknown_stats" type="checkbox" />
                   <span>允许未知统计</span>
                 </label>
+                <p class="field-hint">允许游戏上报未预定义的统计数据，大多数游戏建议开启</p>
               </div>
               <div class="form-group">
                 <label class="checkbox-label">
                   <input v-model="configs.main.stat_achievement_progress_functionality" type="checkbox" />
                   <span>统计成就进度功能</span>
                 </label>
+                <p class="field-hint">启用基于统计数据的成就进度追踪</p>
               </div>
               <div class="form-group">
                 <label class="checkbox-label">
                   <input v-model="configs.main.save_only_higher_stat_achievement_progress" type="checkbox" />
                   <span>只保存更高的统计成就进度</span>
                 </label>
+                <p class="field-hint">仅当新进度高于旧进度时才保存，防止进度倒退</p>
               </div>
               <div class="form-group">
                 <label>分页成就图标数量</label>
                 <input v-model.number="configs.main.paginated_achievements_icons" type="number" />
+                <p class="field-hint">每页加载的成就图标数量，默认 10</p>
               </div>
               <div class="form-group">
                 <label class="checkbox-label">
                   <input v-model="configs.main.record_playtime" type="checkbox" />
                   <span>记录游戏时间</span>
                 </label>
+                <p class="field-hint">启用游戏时长统计，可在 Steam 个人资料中显示</p>
               </div>
             </div>
 
@@ -248,17 +264,20 @@
                   <input v-model="configs.main.disable_lan_only" type="checkbox" />
                   <span>禁用仅局域网模式</span>
                 </label>
+                <p class="field-hint">取消局域网限制，允许非局域网连接。联机游戏建议关闭此项</p>
               </div>
               <div class="form-group">
                 <label class="checkbox-label">
                   <input v-model="configs.main.disable_networking" type="checkbox" />
                   <span>禁用网络功能</span>
                 </label>
+                <p class="field-hint">完全禁用网络功能，纯单机游戏可开启</p>
               </div>
               <div class="form-row">
                 <div class="form-group">
                   <label>监听端口</label>
                   <input v-model.number="configs.main.listen_port" type="number" />
+                  <p class="field-hint">模拟器监听的 UDP 端口，默认 47584，联机时需保持一致</p>
                 </div>
               </div>
               <div class="form-group">
@@ -266,36 +285,42 @@
                   <input v-model="configs.main.offline" type="checkbox" />
                   <span>离线模式</span>
                 </label>
+                <p class="field-hint">强制离线模式，不尝试任何网络连接</p>
               </div>
               <div class="form-group">
                 <label class="checkbox-label">
                   <input v-model="configs.main.disable_sharing_stats_with_gameserver" type="checkbox" />
                   <span>禁用与游戏服务器共享统计</span>
                 </label>
+                <p class="field-hint">阻止统计数据发送到游戏服务器</p>
               </div>
               <div class="form-group">
                 <label class="checkbox-label">
                   <input v-model="configs.main.disable_source_query" type="checkbox" />
                   <span>禁用 Source 查询</span>
                 </label>
+                <p class="field-hint">禁用 Source 协议服务器查询</p>
               </div>
               <div class="form-group">
                 <label class="checkbox-label">
                   <input v-model="configs.main.share_leaderboards_over_network" type="checkbox" />
                   <span>网络共享排行榜</span>
                 </label>
+                <p class="field-hint">通过网络与其他玩家共享排行榜数据</p>
               </div>
               <div class="form-group">
                 <label class="checkbox-label">
                   <input v-model="configs.main.disable_lobby_creation" type="checkbox" />
                   <span>禁用大厅创建</span>
                 </label>
+                <p class="field-hint">阻止游戏创建 Steam 大厅，纯单机游戏可开启</p>
               </div>
               <div class="form-group">
                 <label class="checkbox-label">
                   <input v-model="configs.main.download_steamhttp_requests" type="checkbox" />
                   <span>下载 SteamHTTP 请求</span>
                 </label>
+                <p class="field-hint">拦截并缓存 SteamHTTP 请求结果</p>
               </div>
             </div>
 
@@ -307,40 +332,47 @@
                   <input v-model="configs.main.achievements_bypass" type="checkbox" />
                   <span>成就绕过</span>
                 </label>
+                <p class="field-hint">绕过成就解锁限制，允许解锁所有成就</p>
               </div>
               <div class="form-group">
                 <label class="checkbox-label">
                   <input v-model="configs.main.force_steamhttp_success" type="checkbox" />
                   <span>强制 SteamHTTP 成功</span>
                 </label>
+                <p class="field-hint">强制所有 SteamHTTP 请求返回成功，避免网络请求失败导致的问题</p>
               </div>
               <div class="form-group">
                 <label class="checkbox-label">
                   <input v-model="configs.main.disable_steamoverlaygameid_env_var" type="checkbox" />
                   <span>禁用 Steam 覆盖层游戏 ID 环境变量</span>
                 </label>
+                <p class="field-hint">阻止设置 SteamOverlayGameId 环境变量</p>
               </div>
               <div class="form-group">
                 <label class="checkbox-label">
                   <input v-model="configs.main.enable_steam_preowned_ids" type="checkbox" />
                   <span>启用 Steam 预拥有 ID</span>
                 </label>
+                <p class="field-hint">模拟 Steam 预拥有游戏 ID 列表</p>
               </div>
               <div class="form-group">
                 <label>Steam 游戏统计报告目录</label>
                 <input v-model="configs.main.steam_game_stats_reports_dir" placeholder="可选" />
+                <p class="field-hint">设置游戏统计报告输出目录</p>
               </div>
               <div class="form-group">
                 <label class="checkbox-label">
                   <input v-model="configs.main.free_weekend" type="checkbox" />
                   <span>免费周末</span>
                 </label>
+                <p class="field-hint">模拟免费周末活动状态</p>
               </div>
               <div class="form-group">
                 <label class="checkbox-label">
                   <input v-model="configs.main.use_32bit_inventory_item_ids" type="checkbox" />
                   <span>使用 32 位库存物品 ID</span>
                 </label>
+                <p class="field-hint">使用 32 位而非 64 位物品 ID，兼容旧版游戏</p>
               </div>
             </div>
           </div>
@@ -371,15 +403,16 @@
                   <span class="format-label">语言代码</span>
                   <span class="format-value">schinese / tchinese / english / japanese / korean</span>
                 </div>
-                <div class="format-item">
-                  <span class="format-label">存档路径</span>
-                  <span class="format-value">支持 %appdata% 变量</span>
-                </div>
               </div>
             </div>
             <div class="form-group">
               <label>用户名</label>
               <input v-model="configs.user.username" placeholder="Player" />
+            </div>
+            <div class="form-group">
+              <label>SteamID（Steam64 格式，可选）</label>
+              <input v-model="configs.user.account_steamid" placeholder="76561197960287930" />
+              <p class="field-hint">无效 ID 会被模拟器忽略，留空则自动生成</p>
             </div>
             <div class="form-group">
               <label>语言</label>
@@ -392,8 +425,9 @@
               </select>
             </div>
             <div class="form-group">
-              <label>存档路径</label>
-              <input v-model="configs.user.save_path" placeholder="%appdata%/GSE Saves" />
+              <label>IP 国家代码</label>
+              <input v-model="configs.user.ip_country" placeholder="CN" />
+              <p class="field-hint">ISO 3166-1-alpha-2 格式，游戏查询 IP 时上报的国家代码</p>
             </div>
             <div class="form-group">
               <label>存档文件夹名称</label>
@@ -433,34 +467,113 @@
                 </div>
                 <div class="format-item">
                   <span class="format-label">DLC 解锁</span>
-                  <span class="format-value">勾选"解锁所有"或指定 DLC ID</span>
+                  <span class="format-value">勾选"解锁所有"或手动指定 DLC ID</span>
                 </div>
                 <div class="format-item">
                   <span class="format-label">用途</span>
-                  <span class="format-value">控制应用版本和 DLC 解锁</span>
+                  <span class="format-value">控制应用版本分支和 DLC 解锁策略</span>
                 </div>
               </div>
+              <div class="format-example">
+                <span class="format-example-title">DLC 列表示例（支持带名称）：</span>
+                <pre class="format-code">367680=RimWorld - Name in Game Access
+990430=RimWorld - Soundtrack
+1149640=RimWorld - Royalty
+1392840=RimWorld - Ideology</pre>
+              </div>
             </div>
+
+            <!-- 分支名称 -->
             <div class="form-group">
               <label>分支名称</label>
               <input v-model="configs.app.branch_name" placeholder="public" />
+              <p class="field-hint">Steam 应用分支名称，默认为 public。部分游戏有 beta 分支可填写对应名称</p>
             </div>
-            <div class="form-group">
-              <label class="checkbox-label">
-                <input v-model="configs.app.dlcs.unlock_all" type="checkbox" />
-                <span>解锁所有 DLC</span>
+
+            <!-- DLC 模式选择（单选互斥） -->
+            <div class="dlc-mode-selector">
+              <label class="dlc-mode-option">
+                <input 
+                  type="radio" 
+                  name="dlcMode" 
+                  :checked="configs.app.dlcs.unlock_all" 
+                  @change="onDlcModeChange(true)" 
+                />
+                <span class="dlc-mode-label">解锁所有 DLC</span>
               </label>
-              <p class="field-hint">部分游戏不适用"解锁所有"，可手动指定需要解锁的 DLC</p>
+              <label class="dlc-mode-option">
+                <input 
+                  type="radio" 
+                  name="dlcMode" 
+                  :checked="!configs.app.dlcs.unlock_all" 
+                  @change="onDlcModeChange(false)" 
+                />
+                <span class="dlc-mode-label">手动指定 DLC</span>
+              </label>
             </div>
-            <div v-if="!configs.app.dlcs.unlock_all" class="form-group">
-              <label>DLC 列表（每行一个 DLC ID）</label>
-              <textarea
-                v-model="configs.app.dlcs.custom_list"
-                class="dlc-textarea"
-                rows="5"
-                placeholder="例如：&#10;123456&#10;789012"
-              ></textarea>
-              <p class="field-hint">在 SteamDB 搜索游戏可查看所有 DLC ID</p>
+            <p class="field-hint" style="margin-top: -8px; margin-bottom: 16px;">
+              部分游戏不适用"解锁所有"，可手动指定需要解锁的 DLC ID。两种模式互斥，只能选一种
+            </p>
+
+            <!-- 手动指定 DLC 列表 -->
+            <div v-if="!configs.app.dlcs.unlock_all" class="dlc-manual-section">
+              <div class="form-group">
+                <label>DLC 列表</label>
+                <textarea
+                  v-model="configs.app.dlcs.custom_list"
+                  class="dlc-textarea"
+                  rows="6"
+                  placeholder="格式1（纯ID）:&#10;123456&#10;789012&#10;&#10;格式2（带名称）:&#10;367680=RimWorld - Royalty&#10;1392840=RimWorld - Ideology"
+                ></textarea>
+                <p class="field-hint">每行一个 DLC ID，支持 "appid=DLC名称" 格式（名称仅用于显示）。在 SteamDB 搜索游戏可查看所有 DLC ID</p>
+              </div>
+
+            </div>
+
+            <!-- Steam Input 控制器配置 -->
+            <div class="config-section">
+              <h4>Steam Input 控制器</h4>
+              <div class="form-group">
+                <label class="checkbox-label">
+                  <input v-model="configs.app.controller.steam_input" type="checkbox" />
+                  <span>启用 Steam Input</span>
+                </label>
+                <p class="field-hint">启用后，模拟器会模拟 Steam Input API，让游戏识别手柄输入</p>
+              </div>
+              <div class="form-group">
+                <label>控制器类型</label>
+                <select v-model="configs.app.controller.type">
+                  <option value="">不指定</option>
+                  <option value="XBOX360">Xbox 360</option>
+                  <option value="PS4">PS4</option>
+                  <option value="PS5">PS5</option>
+                  <option value="SWITCH">Switch</option>
+                </select>
+                <p class="field-hint">指定后，游戏会认为连接的是该类型控制器</p>
+              </div>
+            </div>
+
+            <!-- 云存档配置 -->
+            <div class="config-section">
+              <h4>云存档</h4>
+              <div class="form-group">
+                <label class="checkbox-label">
+                  <input v-model="configs.app.cloud_saves.enabled" type="checkbox" />
+                  <span>启用云存档</span>
+                </label>
+                <p class="field-hint">启用后，模拟器会模拟 Steam 云存档功能，支持存档同步</p>
+              </div>
+              <div class="form-row">
+                <label class="checkbox-label">
+                  <input v-model="configs.app.cloud_saves.create_default_dir" type="checkbox" />
+                  <span>自动创建默认目录</span>
+                </label>
+                <label class="checkbox-label">
+                  <input v-model="configs.app.cloud_saves.create_specific_dirs" type="checkbox" />
+                  <span>自动创建特定目录</span>
+                </label>
+              </div>
+              <p class="field-hint">自动创建目录可避免游戏因找不到存档目录而报错</p>
             </div>
           </div>
 
@@ -504,17 +617,77 @@
             </div>
             <div class="form-group">
               <label>快捷键</label>
-              <input v-model="configs.overlay.hotkey" placeholder="Shift+Tab" />
+              <input v-model="configs.overlay.overlay_hotkey" placeholder="shift + tab" />
             </div>
-            <h4>通知设置</h4>
+            <h4>通知与功能开关</h4>
             <div class="form-row">
               <label class="checkbox-label">
-                <input v-model="configs.overlay.notifications.achievement" type="checkbox" />
-                <span>成就通知</span>
+                <input v-model="configs.overlay.notifications.disable_achievement_notification" type="checkbox" />
+                <span>禁用成就通知</span>
               </label>
               <label class="checkbox-label">
-                <input v-model="configs.overlay.notifications.friend" type="checkbox" />
-                <span>好友通知</span>
+                <input v-model="configs.overlay.notifications.disable_friend_notification" type="checkbox" />
+                <span>禁用好友通知</span>
+              </label>
+            </div>
+            <div class="form-row">
+              <label class="checkbox-label">
+                <input v-model="configs.overlay.notifications.disable_achievement_progress" type="checkbox" />
+                <span>禁用成就进度</span>
+              </label>
+              <label class="checkbox-label">
+                <input v-model="configs.overlay.notifications.disable_warning_any" type="checkbox" />
+                <span>禁用所有警告</span>
+              </label>
+            </div>
+            <div class="form-row">
+              <label class="checkbox-label">
+                <input v-model="configs.overlay.notifications.overlay_always_show_fps" type="checkbox" />
+                <span>始终显示 FPS</span>
+              </label>
+              <label class="checkbox-label">
+                <input v-model="configs.overlay.notifications.overlay_always_show_playtime" type="checkbox" />
+                <span>始终显示游玩时间</span>
+              </label>
+            </div>
+
+            <!-- 性能设置 -->
+            <h4>性能设置</h4>
+            <div class="form-group">
+              <label>FPS 限制</label>
+              <input v-model.number="configs.overlay.performance.fps_limit" type="number" min="1" max="240" />
+            </div>
+            <div class="form-row">
+              <label class="checkbox-label">
+                <input v-model="configs.overlay.performance.hardware_acceleration" type="checkbox" />
+                <span>硬件加速</span>
+              </label>
+              <label class="checkbox-label">
+                <input v-model="configs.overlay.performance.low_performance_mode" type="checkbox" />
+                <span>低性能模式</span>
+              </label>
+            </div>
+
+            <!-- 功能开关 -->
+            <h4>覆盖层功能</h4>
+            <div class="form-row">
+              <label class="checkbox-label">
+                <input v-model="configs.overlay.features.achievements" type="checkbox" />
+                <span>成就</span>
+              </label>
+              <label class="checkbox-label">
+                <input v-model="configs.overlay.features.friends" type="checkbox" />
+                <span>好友</span>
+              </label>
+            </div>
+            <div class="form-row">
+              <label class="checkbox-label">
+                <input v-model="configs.overlay.features.chat" type="checkbox" />
+                <span>聊天</span>
+              </label>
+              <label class="checkbox-label">
+                <input v-model="configs.overlay.features.browser" type="checkbox" />
+                <span>浏览器</span>
               </label>
             </div>
           </div>
@@ -807,7 +980,7 @@
               <div class="format-grid">
                 <div class="format-item">
                   <span class="format-label">排行榜定义文件</span>
-                  <span class="format-value">leaderboards.json</span>
+                  <span class="format-value">leaderboards.txt</span>
                 </div>
                 <div class="format-item">
                   <span class="format-label">排行榜名称</span>
@@ -823,21 +996,9 @@
                 </div>
               </div>
               <div class="format-example">
-                <span class="format-example-title">JSON 示例：</span>
-                <pre class="format-code">[
-  {
-    "name": "high_score",
-    "displayName": "最高分",
-    "sortMethod": "desc",
-    "displayType": "numeric"
-  },
-  {
-    "name": "best_time",
-    "displayName": "最佳时间",
-    "sortMethod": "asc",
-    "displayType": "time-sec"
-  }
-]</pre>
+                <span class="format-example-title">格式示例（NAME=sort=display）：</span>
+                <pre class="format-code">high_score=desc=numeric
+best_time=asc=time-sec</pre>
               </div>
             </div>
             <div class="panel-actions">
@@ -1108,17 +1269,18 @@
         </button>
       </div>
 
-      <!-- 保存成功提示 -->
-      <transition name="toast">
-        <div v-if="showToast" class="toast-success">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-            <polyline points="22 4 12 14.01 9 11.01"/>
-          </svg>
-          <span>所有配置已保存成功！</span>
-        </div>
-      </transition>
     </div>
+
+    <!-- 保存成功提示 -->
+    <transition name="toast">
+      <div v-if="showToast" class="toast-success">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+          <polyline points="22 4 12 14.01 9 11.01"/>
+        </svg>
+        <span>所有配置已保存成功！</span>
+      </div>
+    </transition>
   </div>
 </template>
 
@@ -1126,12 +1288,7 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 import { open, save } from '@tauri-apps/plugin-dialog'
-import type { 
-  MainConfig, UserConfig, AppConfig, OverlayConfig,
-  AchievementsConfig, StatsConfig, ItemsConfig, ModsConfig, LeaderboardsConfig,
-  ControllerConfig, ColdClientLoaderConfig, LobbyConnectConfig,
-  Achievement, StatItem, ItemDefinition, WorkshopMod, Leaderboard
-} from '../../../src/types/steam-config.types'
+import * as SteamTypes from '../../../src/types/steam-config.types'
 
 const props = defineProps<{
   gamePath: string
@@ -1149,6 +1306,13 @@ const searchQuery = ref('')
 const isSaving = ref(false)
 const isSaved = ref(false)
 const showToast = ref(false)
+/**
+ * DLC 模式切换（单选互斥）
+ * @param unlockAll true=解锁所有 DLC，false=手动指定 DLC
+ */
+function onDlcModeChange(unlockAll: boolean) {
+  configs.app.dlcs.unlock_all = unlockAll
+}
 
 // 导航配置
 const coreConfigs = [
@@ -1242,27 +1406,83 @@ const configs = reactive({
     use_32bit_inventory_item_ids: false,
     // extra_dlls
     extra_dlls: []
-  } as MainConfig,
+  } as SteamTypes.MainConfig,
   user: {
     username: 'Player',
+    account_steamid: undefined,
     language: 'schinese',
-    save_path: '%appdata%/GSE Saves',
-    avatar_path: undefined,
-    use_default_avatar: true,
+    ip_country: 'CN',
     saves_folder_name: undefined,
     local_save_path: undefined,
-    ticket: undefined
-  } as UserConfig,
-  app: { branch_name: 'public', dlcs: { unlock_all: true, individualDlcs: [] } } as AppConfig,
-  overlay: { enable_experimental_overlay: false, hotkey: 'Shift+Tab', notifications: { achievement: true, friend: true } } as OverlayConfig,
-  achievements: { enabled: true, showNotifications: true, achievements: [] } as AchievementsConfig,
-  stats: { enabled: true, stats: [] } as StatsConfig,
-  items: { enabled: true, itemDefinitions: [], initialItems: [] } as ItemsConfig,
-  mods: { enabled: true, subscribedMods: [], autoUpdate: false } as ModsConfig,
-  leaderboards: { enabled: true, leaderboards: [] } as LeaderboardsConfig,
-  controller: { enabled: true, controllerType: 'xbox', deadzone: { leftStick: 0.1, rightStick: 0.1 } } as ControllerConfig,
-  coldClientLoader: { enabled: false, injectionMode: 'direct', extraDlls: [], launchArgs: '' } as ColdClientLoaderConfig,
-  lobbyConnect: { enabled: false, autoJoin: false, targetLobbyId: '', password: '' } as LobbyConnectConfig,
+    ticket: undefined,
+    alt_steamid: undefined,
+    alt_steamid_count: undefined,
+  } as SteamTypes.UserConfig,
+  app: {
+    branch_name: 'public',
+    is_beta_branch: false,
+    app_paths: {},
+    dlcs: {
+      unlock_all: true,
+      custom_list: '',
+    },
+    // Steam Input 控制器配置
+    controller: {
+      steam_input: false,
+      type: '',
+    },
+    // 云存档配置
+    cloud_saves: {
+      enabled: false,
+      create_default_dir: false,
+      create_specific_dirs: false,
+      windows_dirs: [] as string[],
+      linux_dirs: [] as string[],
+    },
+  } as SteamTypes.AppConfig,
+  overlay: {
+    enable_experimental_overlay: false,
+    overlay_hotkey: 'shift + tab',
+    notifications: {
+      disable_achievement_notification: false,
+      disable_friend_notification: false,
+      disable_achievement_progress: false,
+      disable_warning_any: false,
+      disable_warning_bad_appid: false,
+      disable_warning_local_save: false,
+      upload_achievements_icons_to_gpu: true,
+      overlay_always_show_user_info: false,
+      overlay_always_show_fps: false,
+      overlay_always_show_frametime: false,
+      overlay_always_show_playtime: false,
+    },
+    appearance: {
+      theme: 'dark',
+      opacity: 0.95,
+      scale: 1.0,
+      blur: true,
+    },
+    performance: {
+      hardware_acceleration: true,
+      fps_limit: 60,
+      low_performance_mode: false,
+    },
+    features: {
+      achievements: true,
+      friends: true,
+      chat: true,
+      browser: true,
+      settings: true,
+    },
+  } as SteamTypes.OverlayConfig,
+  achievements: { enabled: true, showNotifications: true, achievements: [] } as SteamTypes.AchievementsConfig,
+  stats: { enabled: true, stats: [] } as SteamTypes.StatsConfig,
+  items: { enabled: true, itemDefinitions: [], initialItems: [] } as SteamTypes.ItemsConfig,
+  mods: { enabled: true, subscribedMods: [], autoUpdate: false } as SteamTypes.ModsConfig,
+  leaderboards: { enabled: true, leaderboards: [] } as SteamTypes.LeaderboardsConfig,
+  controller: { enabled: true, controllerType: 'xbox', deadzone: { leftStick: 0.1, rightStick: 0.1 } } as SteamTypes.ControllerConfig,
+  coldClientLoader: { enabled: false, injectionMode: 'direct', extraDlls: [], launchArgs: '' } as SteamTypes.ColdClientLoaderConfig,
+  lobbyConnect: { enabled: false, autoJoin: false, targetLobbyId: '', password: '' } as SteamTypes.LobbyConnectConfig,
 })
 
 const otherConfigs = reactive({
@@ -1284,7 +1504,7 @@ function toggleExpand(type: string, index: number) {
 
 // 成就操作
 function addAchievement() {
-  configs.achievements.achievements.push({ name: '', displayName: '', description: '', hidden: false } as Achievement)
+  configs.achievements.achievements.push({ name: '', displayName: '', description: '', hidden: false } as SteamTypes.Achievement)
 }
 function removeAchievement(index: number) {
   configs.achievements.achievements.splice(index, 1)
@@ -1292,7 +1512,7 @@ function removeAchievement(index: number) {
 
 // 统计操作
 function addStat() {
-  configs.stats.stats.push({ name: '', type: 'int', defaultValue: 0 } as StatItem)
+  configs.stats.stats.push({ name: '', type: 'int', defaultValue: 0 } as SteamTypes.StatItem)
 }
 function removeStat(index: number) {
   configs.stats.stats.splice(index, 1)
@@ -1300,7 +1520,7 @@ function removeStat(index: number) {
 
 // 物品操作
 function addItem() {
-  configs.items.itemDefinitions.push({ id: '', name: '', stackable: true, maxStackSize: 99 } as ItemDefinition)
+  configs.items.itemDefinitions.push({ id: '', name: '', stackable: true, maxStackSize: 99 } as SteamTypes.ItemDefinition)
 }
 function removeItem(index: number) {
   configs.items.itemDefinitions.splice(index, 1)
@@ -1308,7 +1528,7 @@ function removeItem(index: number) {
 
 // 模组操作
 function addMod() {
-  configs.mods.subscribedMods.push({ publishedFileId: '', title: '', visibility: 'public', files: [] } as WorkshopMod)
+  configs.mods.subscribedMods.push({ publishedFileId: '', title: '', visibility: 'public', files: [] } as SteamTypes.WorkshopMod)
 }
 function removeMod(index: number) {
   configs.mods.subscribedMods.splice(index, 1)
@@ -1316,7 +1536,7 @@ function removeMod(index: number) {
 
 // 排行榜操作
 function addLeaderboard() {
-  configs.leaderboards.leaderboards.push({ name: '', displayName: '', sortMethod: 'desc', displayType: 'numeric', entries: [] } as Leaderboard)
+  configs.leaderboards.leaderboards.push({ name: '', displayName: '', sortMethod: 'desc', displayType: 'numeric', entries: [] } as SteamTypes.Leaderboard)
 }
 function removeLeaderboard(index: number) {
   configs.leaderboards.leaderboards.splice(index, 1)
@@ -1326,7 +1546,7 @@ function removeLeaderboard(index: number) {
 async function importAchievements() {
   const file = await open({ filters: [{ name: 'JSON', extensions: ['json'] }] })
   if (file) {
-    const result = await invoke<{ success: boolean; achievements?: Achievement[] }>('import_achievements_from_file', { filePath: file })
+    const result = await invoke<{ success: boolean; achievements?: SteamTypes.Achievement[] }>('import_achievements_from_file', { filePath: file })
     if (result.success && result.achievements) {
       configs.achievements.achievements.push(...result.achievements)
     }
@@ -1351,6 +1571,130 @@ async function exportAllConfigs() {
   }
 }
 
+// 将前端 main 配置对象转换为 INI 字符串
+function buildMainConfigIni(main: any): string {
+  const lines: string[] = []
+  const boolFields = (fields: string[]) => {
+    for (const f of fields) {
+      if (main[f]) lines.push(`${f} = 1`)
+    }
+  }
+
+  // [main::general]
+  lines.push('[main::general]')
+  boolFields([
+    'new_app_ticket', 'gc_token', 'block_unknown_clients', 'steam_deck',
+    'enable_account_avatar', 'enable_voice_chat', 'immediate_gameserver_stats',
+    'matchmaking_server_list_actual_type', 'matchmaking_server_details_via_source_query'
+  ])
+  if (main.crash_printer_location) {
+    lines.push(`crash_printer_location = ${main.crash_printer_location}`)
+  }
+
+  // [main::stats]
+  lines.push('')
+  lines.push('[main::stats]')
+  boolFields([
+    'disable_leaderboards_create_unknown', 'allow_unknown_stats',
+    'stat_achievement_progress_functionality', 'save_only_higher_stat_achievement_progress',
+    'record_playtime'
+  ])
+  if (main.paginated_achievements_icons !== undefined && main.paginated_achievements_icons !== 10) {
+    lines.push(`paginated_achievements_icons = ${main.paginated_achievements_icons}`)
+  }
+
+  // [main::connectivity]
+  lines.push('')
+  lines.push('[main::connectivity]')
+  boolFields([
+    'disable_lan_only', 'disable_networking', 'offline',
+    'disable_sharing_stats_with_gameserver', 'disable_source_query',
+    'share_leaderboards_over_network', 'disable_lobby_creation', 'download_steamhttp_requests'
+  ])
+  if (main.listen_port !== undefined && main.listen_port !== 47584) {
+    lines.push(`listen_port = ${main.listen_port}`)
+  }
+
+  // [main::misc]
+  lines.push('')
+  lines.push('[main::misc]')
+  boolFields([
+    'achievements_bypass', 'force_steamhttp_success',
+    'disable_steamoverlaygameid_env_var', 'enable_steam_preowned_ids',
+    'free_weekend', 'use_32bit_inventory_item_ids'
+  ])
+  if (main.steam_game_stats_reports_dir) {
+    lines.push(`steam_game_stats_reports_dir = ${main.steam_game_stats_reports_dir}`)
+  }
+
+  // [main::extra]
+  if (main.extra_dlls && main.extra_dlls.length > 0) {
+    lines.push('')
+    lines.push('[main::extra]')
+    for (const dll of main.extra_dlls) {
+      lines.push(dll)
+    }
+  }
+
+  return lines.join('\n')
+}
+
+// 解析主配置 INI 字符串为对象
+function parseMainConfigIni(content: string): Partial<any> {
+  const result: any = {}
+  const boolKeys = new Set([
+    'new_app_ticket', 'gc_token', 'block_unknown_clients', 'steam_deck',
+    'enable_account_avatar', 'enable_voice_chat', 'immediate_gameserver_stats',
+    'matchmaking_server_list_actual_type', 'matchmaking_server_details_via_source_query',
+    'disable_leaderboards_create_unknown', 'allow_unknown_stats',
+    'stat_achievement_progress_functionality', 'save_only_higher_stat_achievement_progress',
+    'record_playtime', 'disable_lan_only', 'disable_networking', 'offline',
+    'disable_sharing_stats_with_gameserver', 'disable_source_query',
+    'share_leaderboards_over_network', 'disable_lobby_creation', 'download_steamhttp_requests',
+    'achievements_bypass', 'force_steamhttp_success', 'disable_steamoverlaygameid_env_var',
+    'enable_steam_preowned_ids', 'free_weekend', 'use_32bit_inventory_item_ids'
+  ])
+  const intKeys = new Set(['paginated_achievements_icons', 'listen_port'])
+
+  for (const line of content.split('\n')) {
+    const t = line.trim()
+    if (!t || t.startsWith('[') || t.startsWith('#')) continue
+    const i = t.indexOf('=')
+    if (i < 0) {
+      // extra dlls section
+      if (!result.extra_dlls) result.extra_dlls = []
+      result.extra_dlls.push(t)
+      continue
+    }
+    const k = t.slice(0, i).trim()
+    const v = t.slice(i + 1).trim()
+
+    if (boolKeys.has(k)) {
+      result[k] = v === '1' || v === 'true'
+    } else if (intKeys.has(k)) {
+      result[k] = parseInt(v, 10) || 0
+    } else {
+      result[k] = v
+    }
+  }
+  return result
+}
+
+// 将前端 app 配置转换为 Rust 后端期望的格式
+function buildAppConfigForRust() {
+  return {
+    branchName: configs.app.branch_name,
+    isBetaBranch: configs.app.is_beta_branch || false,
+    appPaths: {},
+    controller: configs.app.controller || {},
+    cloudSaves: configs.app.cloud_saves || {},
+    dlcs: {
+      unlockAll: configs.app.dlcs.unlock_all,
+      dlcList: configs.app.dlcs.custom_list || '',
+    }
+  }
+}
+
 // 保存所有配置
 async function saveAllConfigs() {
   if (isSaving.value) return
@@ -1360,8 +1704,9 @@ async function saveAllConfigs() {
     isSaved.value = false
     
     const promises = [
-      invoke('save_main_config', { gamePath: props.gamePath, config: configs.main }),
+      invoke('save_main_config', { gamePath: props.gamePath, config: { mainIni: buildMainConfigIni(configs.main) } }),
       invoke('save_user_config', { gamePath: props.gamePath, config: configs.user }),
+      invoke('save_app_config', { gamePath: props.gamePath, config: buildAppConfigForRust() }),
       invoke('save_overlay_config', { gamePath: props.gamePath, config: configs.overlay }),
       invoke('save_achievements_config', { gamePath: props.gamePath, config: configs.achievements }),
       invoke('save_stats_config', { gamePath: props.gamePath, config: configs.stats }),
@@ -1394,24 +1739,84 @@ async function saveAllConfigs() {
 // 加载所有配置
 async function loadAllConfigs() {
   const results = await Promise.all([
-    invoke<{ exists: boolean; config?: MainConfig }>('load_main_config', { gamePath: props.gamePath }),
-    invoke<{ exists: boolean; config?: UserConfig }>('load_user_config', { gamePath: props.gamePath }),
-    invoke<{ exists: boolean; config?: OverlayConfig }>('load_overlay_config', { gamePath: props.gamePath }),
-    invoke<{ exists: boolean; config?: AchievementsConfig }>('load_achievements_config', { gamePath: props.gamePath }),
-    invoke<{ exists: boolean; config?: StatsConfig }>('load_stats_config', { gamePath: props.gamePath }),
-    invoke<{ exists: boolean; config?: ItemsConfig }>('load_items_config', { gamePath: props.gamePath }),
-    invoke<{ exists: boolean; config?: ModsConfig }>('load_mods_config', { gamePath: props.gamePath }),
-    invoke<{ exists: boolean; config?: LeaderboardsConfig }>('load_leaderboards_config', { gamePath: props.gamePath }),
-    invoke<{ exists: boolean; config?: ControllerConfig }>('load_controller_config', { gamePath: props.gamePath }),
-    invoke<{ exists: boolean; config?: ColdClientLoaderConfig }>('load_coldclient_config', { gamePath: props.gamePath }),
-    invoke<{ exists: boolean; config?: LobbyConnectConfig }>('load_lobby_connect_config', { gamePath: props.gamePath }),
+    invoke<{ exists: boolean; content?: string }>('load_main_config', { gamePath: props.gamePath }),
+    invoke<{ exists: boolean; config?: SteamTypes.UserConfig }>('load_user_config', { gamePath: props.gamePath }),
+    invoke<{ exists: boolean; config?: SteamTypes.SteamAppConfig }>('load_app_config', { gamePath: props.gamePath }),
+    invoke<{ exists: boolean; config?: SteamTypes.OverlayConfig }>('load_overlay_config', { gamePath: props.gamePath }),
+    invoke<{ exists: boolean; config?: SteamTypes.AchievementsConfig }>('load_achievements_config', { gamePath: props.gamePath }),
+    invoke<{ exists: boolean; config?: SteamTypes.StatsConfig }>('load_stats_config', { gamePath: props.gamePath }),
+    invoke<{ exists: boolean; config?: SteamTypes.ItemsConfig }>('load_items_config', { gamePath: props.gamePath }),
+    invoke<{ exists: boolean; config?: SteamTypes.ModsConfig }>('load_mods_config', { gamePath: props.gamePath }),
+    invoke<{ exists: boolean; config?: SteamTypes.LeaderboardsConfig }>('load_leaderboards_config', { gamePath: props.gamePath }),
+    invoke<{ exists: boolean; config?: SteamTypes.ControllerConfig }>('load_controller_config', { gamePath: props.gamePath }),
+    invoke<{ exists: boolean; config?: SteamTypes.ColdClientLoaderConfig }>('load_coldclient_config', { gamePath: props.gamePath }),
+    invoke<{ exists: boolean; config?: SteamTypes.LobbyConnectConfig }>('load_lobby_connect_config', { gamePath: props.gamePath }),
   ])
 
-  const [main, user, overlay, achievements, stats, items, mods, leaderboards, controller, coldclient, lobbyconnect] = results
+  const [main, user, app, overlay, achievements, stats, items, mods, leaderboards, controller, coldclient, lobbyconnect] = results
 
-  if (main.exists && main.config) Object.assign(configs.main, main.config)
-  if (user.exists && user.config) Object.assign(configs.user, user.config)
-  if (overlay.exists && overlay.config) Object.assign(configs.overlay, overlay.config)
+  // 加载主配置（Rust 返回原始 INI 字符串，前端解析为对象）
+  if (main.exists && main.content) {
+    const parsed = parseMainConfigIni(main.content)
+    Object.assign(configs.main, parsed)
+  }
+
+  // 加载用户配置（Rust 返回 snake_case，需要映射）
+  if (user.exists && user.config) {
+    const c = user.config as any
+    Object.keys(c).forEach((key) => {
+      const camelKey = key.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase())
+      if (key in configs.user || camelKey in configs.user) {
+        (configs.user as any)[camelKey || key] = c[key]
+      }
+    })
+  }
+
+  // 加载应用配置
+  if (app.exists && app.config) {
+    // 将 Rust 格式转换为前端格式（snake_case 字符串格式，用于 textarea 编辑）
+    configs.app.branch_name = app.config.branch_name || 'public'
+    configs.app.is_beta_branch = app.config.is_beta_branch || false
+    configs.app.dlcs.unlock_all = app.config.dlcs?.unlock_all ?? true
+
+    // 加载控制器配置
+    if (app.config.controller) {
+      configs.app.controller = {
+        steam_input: app.config.controller.steam_input,
+        type: app.config.controller.type,
+      }
+    }
+
+    // 加载云存档配置
+    if (app.config.cloud_saves) {
+      configs.app.cloud_saves = {
+        enabled: app.config.cloud_saves.enabled,
+        create_default_dir: app.config.cloud_saves.create_default_dir,
+        create_specific_dirs: app.config.cloud_saves.create_specific_dirs,
+        windows_dirs: app.config.cloud_saves.windows_dirs || [],
+        linux_dirs: app.config.cloud_saves.linux_dirs || [],
+      }
+    }
+
+    // 将 individual_dlcs 转换为 custom_list 字符串（用于编辑，保留名称信息）
+    if (app.config.dlcs?.individual_dlcs && app.config.dlcs.individual_dlcs.length > 0) {
+      configs.app.dlcs.custom_list = app.config.dlcs.individual_dlcs
+        .filter((d: any) => d.enabled)
+        .map((d: any) => {
+          // 如果有名称且与 app_id 不同，使用 appid=Name 格式
+          if (d.name && d.name !== `DLC ${d.app_id}` && d.name !== d.app_id) {
+            return `${d.app_id}=${d.name}`
+          }
+          return d.app_id
+        })
+        .join('\n')
+    }
+  }
+
+  // 加载覆盖层配置（直接赋值，字段名一致）
+  if (overlay.exists && overlay.config) {
+    Object.assign(configs.overlay, overlay.config)
+  }
   if (achievements.exists && achievements.config) Object.assign(configs.achievements, achievements.config)
   if (stats.exists && stats.config) Object.assign(configs.stats, stats.config)
   if (items.exists && items.config) Object.assign(configs.items, items.config)
@@ -1425,6 +1830,7 @@ async function loadAllConfigs() {
   configStatus.value = {
     main: main.exists,
     user: user.exists,
+    app: app.exists,
     overlay: overlay.exists,
     achievements: achievements.exists,
     stats: stats.exists,
@@ -1879,6 +2285,77 @@ onMounted(() => {
   border-color: var(--steam-accent-blue);
 }
 
+/* DLC 模式选择器（单选互斥） */
+.dlc-mode-selector {
+  display: flex;
+  gap: 24px;
+  margin: 16px 0;
+  padding: 12px 16px;
+  background-color: var(--steam-bg-secondary);
+  border-radius: 8px;
+  border: 1px solid var(--steam-border);
+}
+
+.dlc-mode-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--steam-text-primary);
+}
+
+.dlc-mode-option input[type="radio"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.dlc-mode-label {
+  font-weight: 500;
+}
+
+.dlc-manual-section {
+  margin-top: 16px;
+}
+
+/* 高级选项 */
+.advanced-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  color: var(--steam-text-secondary);
+  font-size: 13px;
+  padding: 10px 0;
+  border-top: 1px solid var(--steam-border);
+  margin-top: 12px;
+}
+
+.advanced-toggle:hover {
+  color: var(--steam-accent-blue);
+}
+
+.chevron {
+  width: 16px;
+  height: 16px;
+  transition: transform 0.2s ease;
+  flex-shrink: 0;
+}
+
+.chevron.rotated {
+  transform: rotate(180deg);
+}
+
+.advanced-hint {
+  font-size: 12px;
+  color: var(--steam-text-secondary);
+}
+
+.advanced-content {
+  margin-top: 12px;
+}
+
 /* 面板操作 */
 .panel-actions {
   display: flex;
@@ -2082,7 +2559,7 @@ onMounted(() => {
   font-size: 14px;
   font-weight: 500;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-  z-index: 10;
+  z-index: 9999;
 }
 
 .toast-success svg {

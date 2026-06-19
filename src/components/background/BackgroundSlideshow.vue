@@ -10,12 +10,12 @@
         <div
           v-if="currentIndex === index && item.url"
           class="background-layer"
-          :style="{ backgroundImage: `url('${item.url}')` }"
+          :style="[{ backgroundImage: `url('${item.url}')` }, layerStyle]"
         ></div>
       </transition>
     </div>
 
-    <!-- 效果层：模糊 + 暗化 -->
+    <!-- 效果层：暗化（模糊已移至背景层本身，避免透明窗口拖动时 backdrop-filter 闪烁） -->
     <div
       class="background-effects"
       :style="effectsStyle"
@@ -66,17 +66,22 @@ const transitionName = computed(() => {
   return `bg-${pageConfig.transitionEffect}`
 })
 
-// 计算属性：效果层样式
+// 计算属性：背景层样式（filter: blur 应用在图片本身，避免透明窗口拖动时 backdrop-filter 闪烁）
+const layerStyle = computed(() => {
+  const pageConfig = config.value?.pageConfigs.find(p => p.pageType === props.pageType)
+  if (!pageConfig || pageConfig.blurStrength <= 0) return {}
+
+  return {
+    filter: `blur(${pageConfig.blurStrength}px)`
+  }
+})
+
+// 计算属性：效果层样式（仅暗化，模糊已移至背景层）
 const effectsStyle = computed(() => {
   const pageConfig = config.value?.pageConfigs.find(p => p.pageType === props.pageType)
   if (!pageConfig) return {}
 
   const styles: Record<string, string> = {}
-
-  // 模糊效果
-  if (pageConfig.blurStrength > 0) {
-    styles.backdropFilter = `blur(${pageConfig.blurStrength}px)`
-  }
 
   // 暗化效果
   if (pageConfig.darkness > 0) {
@@ -294,6 +299,9 @@ defineExpose({
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
+  /* GPU 硬件加速优化：强制提升为独立合成层，减少透明窗口拖动时的闪烁 */
+  will-change: transform;
+  transform: translateZ(0);
 }
 
 /* 效果层 */

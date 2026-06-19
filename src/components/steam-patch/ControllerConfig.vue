@@ -37,16 +37,16 @@
               <span class="guide-value">steam_settings/controller/ACTION_SET.txt</span>
             </div>
             <div class="guide-item">
-              <span class="guide-label">控制器类型</span>
-              <span class="guide-value">仅支持 XInput 控制器（xbox）</span>
-            </div>
-            <div class="guide-item">
               <span class="guide-label">数字按键格式</span>
-              <span class="guide-value">ACTION_NAME=BUTTON_NAME</span>
+              <span class="guide-value">ACTION_NAME=BUTTON_NAME，如 jump=A</span>
             </div>
             <div class="guide-item">
               <span class="guide-label">模拟按键格式</span>
               <span class="guide-value">ACTION_NAME=ANALOG_NAME=input source mode</span>
+            </div>
+            <div class="guide-item">
+              <span class="guide-label">配置文件</span>
+              <span class="guide-value">configs.controller.ini</span>
             </div>
           </div>
           <div class="guide-example">
@@ -60,9 +60,7 @@ pause=START</pre>
             <pre class="example-code">DUP, DDOWN, DLEFT, DRIGHT
 START, BACK, LSTICK, RSTICK
 LBUMPER, RBUMPER, A, B, X, Y
-DLTRIGGER, DRTRIGGER
-DLJOYUP, DLJOYDOWN, DLJOYLEFT, DLJOYRIGHT
-DRJOYUP, DRJOYDOWN, DRJOYLEFT, DRJOYRIGHT</pre>
+DLTRIGGER, DRTRIGGER</pre>
           </div>
           <div class="guide-example" style="margin-top: 8px;">
             <div class="example-title">有效模拟按键名称：</div>
@@ -71,13 +69,94 @@ DRJOYUP, DRJOYDOWN, DRJOYLEFT, DRJOYRIGHT</pre>
           <p class="guide-tip">提示：非 XInput 控制器需使用工具转换为 XInput 模拟器</p>
         </div>
 
-        <div class="config-group">
+        <!-- 启用开关 -->
+        <div class="config-section">
           <label class="toggle-label">
             <input v-model="config.enabled" type="checkbox" class="toggle-input" />
             <span class="toggle-slider"></span>
             <span class="toggle-text">启用 XInput 控制器支持</span>
           </label>
         </div>
+
+        <template v-if="config.enabled">
+          <!-- 控制器类型 -->
+          <div class="config-group">
+            <label>控制器类型</label>
+            <select v-model="config.controller_type" class="config-select">
+              <option value="xbox">Xbox</option>
+              <option value="playstation">PlayStation</option>
+              <option value="nintendo">Nintendo</option>
+              <option value="generic">通用</option>
+            </select>
+          </div>
+
+          <!-- 按键绑定 -->
+          <div class="config-group">
+            <label>按键绑定（可选）</label>
+            <textarea
+              v-model="bindingsText"
+              class="config-textarea"
+              rows="5"
+              placeholder="每行一个绑定:&#10;jump=A&#10;attack=X,B&#10;pause=START"
+            ></textarea>
+            <p class="field-hint">格式: ACTION_NAME=BUTTON_NAME，每行一个</p>
+          </div>
+
+          <!-- 死区设置 -->
+          <h4 class="section-title">死区设置</h4>
+          <div class="config-group">
+            <label>左摇杆死区</label>
+            <input v-model.number="config.deadzone.left_stick" type="range" min="0" max="1" step="0.01" class="config-slider" />
+            <span class="slider-value">{{ (config.deadzone.left_stick * 100).toFixed(0) }}%</span>
+          </div>
+          <div class="config-group">
+            <label>右摇杆死区</label>
+            <input v-model.number="config.deadzone.right_stick" type="range" min="0" max="1" step="0.01" class="config-slider" />
+            <span class="slider-value">{{ (config.deadzone.right_stick * 100).toFixed(0) }}%</span>
+          </div>
+          <div class="config-group">
+            <label>左扳机死区</label>
+            <input v-model.number="config.deadzone.left_trigger" type="range" min="0" max="1" step="0.01" class="config-slider" />
+            <span class="slider-value">{{ (config.deadzone.left_trigger * 100).toFixed(0) }}%</span>
+          </div>
+          <div class="config-group">
+            <label>右扳机死区</label>
+            <input v-model.number="config.deadzone.right_trigger" type="range" min="0" max="1" step="0.01" class="config-slider" />
+            <span class="slider-value">{{ (config.deadzone.right_trigger * 100).toFixed(0) }}%</span>
+          </div>
+
+          <!-- 震动设置 -->
+          <h4 class="section-title">震动设置</h4>
+          <div class="config-group">
+            <label class="checkbox-label">
+              <input v-model="config.rumble.enabled" type="checkbox" />
+              <span>启用手柄震动</span>
+            </label>
+          </div>
+          <div class="config-group">
+            <label>震动强度</label>
+            <input v-model.number="config.rumble.intensity" type="range" min="0" max="1" step="0.05" class="config-slider" />
+            <span class="slider-value">{{ (config.rumble.intensity * 100).toFixed(0) }}%</span>
+          </div>
+
+          <!-- 自定义图标 -->
+          <h4 class="section-title">自定义图标</h4>
+          <div class="config-group">
+            <label class="checkbox-label">
+              <input v-model="config.custom_glyphs.enabled" type="checkbox" />
+              <span>使用自定义图标</span>
+            </label>
+          </div>
+          <div class="config-group">
+            <label>图标路径（每行一个）</label>
+            <textarea
+              v-model="glyphsText"
+              class="config-textarea"
+              rows="3"
+              placeholder="图标文件路径，每行一个&#10;例如：glyphs/cross.png"
+            ></textarea>
+          </div>
+        </template>
       </div>
 
       <div class="modal-footer">
@@ -91,10 +170,21 @@ DRJOYUP, DRJOYDOWN, DRJOYLEFT, DRJOYRIGHT</pre>
       </div>
     </div>
   </div>
+
+  <!-- 保存成功提示 -->
+  <transition name="toast">
+    <div v-if="showToast" class="toast-success">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+        <polyline points="22 4 12 14.01 9 11.01"/>
+      </svg>
+      <span>控制器配置已保存成功！</span>
+    </div>
+  </transition>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 
 const props = defineProps<{
@@ -107,20 +197,110 @@ const emit = defineEmits<{
   saved: []
 }>()
 
+const showToast = ref(false)
+
+/**
+ * 控制器配置对象
+ * 字段名与 Rust 后端 ControllerConfig 结构一致
+ */
 const config = ref({
-  enabled: true
+  enabled: true,
+  controller_type: 'xbox',
+  bindings: [] as Array<{ action: string; buttons: string }>,
+  deadzone: {
+    left_stick: 0.1,
+    right_stick: 0.1,
+    left_trigger: 0.05,
+    right_trigger: 0.05,
+  },
+  rumble: {
+    enabled: true,
+    intensity: 0.8,
+  },
+  custom_glyphs: {
+    enabled: false,
+    glyphs: [] as string[],
+  },
 })
 
+/** 按键绑定文本（用于 textarea 编辑） */
+const bindingsText = ref('')
+
+/** 自定义图标文本（用于 textarea 编辑） */
+const glyphsText = ref('')
+
+/**
+ * 将数组格式的 bindings 转换为文本
+ */
+function syncBindingsToText() {
+  bindingsText.value = config.value.bindings
+    .map((b) => `${b.action}=${b.buttons}`)
+    .join('\n')
+}
+
+/**
+ * 将文本格式的 bindings 转换为数组
+ */
+function syncTextToBindings() {
+  const lines = bindingsText.value
+    .split('\n')
+    .map((l) => l.trim())
+    .filter((l) => l && l.includes('='))
+
+  config.value.bindings = lines.map((line) => {
+    const idx = line.indexOf('=')
+    return {
+      action: line.slice(0, idx),
+      buttons: line.slice(idx + 1),
+    }
+  })
+}
+
+/**
+ * 将数组格式的 glyphs 转换为文本
+ */
+function syncGlyphsToText() {
+  glyphsText.value = config.value.custom_glyphs.glyphs.join('\n')
+}
+
+/**
+ * 将文本格式的 glyphs 转换为数组
+ */
+function syncTextToGlyphs() {
+  config.value.custom_glyphs.glyphs = glyphsText.value
+    .split('\n')
+    .map((l) => l.trim())
+    .filter((l) => l)
+}
+
+/** 监听文本变化同步到数组 */
+watch(bindingsText, syncTextToBindings)
+watch(glyphsText, syncTextToGlyphs)
+
+/**
+ * 保存配置
+ */
 async function saveConfig() {
+  // 确保文本已同步到数组
+  syncTextToBindings()
+  syncTextToGlyphs()
+
   try {
     const result = await invoke<{ success: boolean; message: string }>('save_controller_config', {
       gamePath: props.gamePath,
-      config: config.value
+      config: config.value,
     })
 
     if (result.success) {
+      showToast.value = true
+      setTimeout(() => {
+        showToast.value = false
+      }, 3000)
       emit('saved')
-      emit('close')
+      // 延迟关闭弹窗，等待 Toast 消失后再关闭
+      setTimeout(() => {
+        emit('close')
+      }, 3000)
     } else {
       alert(`保存失败: ${result.message}`)
     }
@@ -128,6 +308,67 @@ async function saveConfig() {
     alert(`保存失败: ${error}`)
   }
 }
+
+/**
+ * 加载现有配置
+ */
+async function loadConfig() {
+  try {
+    const result = await invoke<{
+      exists: boolean
+      config?: any
+    }>('load_controller_config', {
+      gamePath: props.gamePath,
+    })
+
+    if (result.exists && result.config) {
+      const cfg = result.config
+      config.value.enabled = cfg.enabled ?? true
+      config.value.controller_type = cfg.controller_type || 'xbox'
+
+      // 加载死区
+      if (cfg.deadzone) {
+        config.value.deadzone = {
+          left_stick: cfg.deadzone.left_stick ?? 0.1,
+          right_stick: cfg.deadzone.right_stick ?? 0.1,
+          left_trigger: cfg.deadzone.left_trigger ?? 0.05,
+          right_trigger: cfg.deadzone.right_trigger ?? 0.05,
+        }
+      }
+
+      // 加载震动
+      if (cfg.rumble) {
+        config.value.rumble = {
+          enabled: cfg.rumble.enabled ?? true,
+          intensity: cfg.rumble.intensity ?? 0.8,
+        }
+      }
+
+      // 加载自定义图标
+      if (cfg.custom_glyphs) {
+        config.value.custom_glyphs = {
+          enabled: cfg.custom_glyphs.enabled ?? false,
+          glyphs: cfg.custom_glyphs.glyphs || [],
+        }
+      }
+
+      // 加载按键绑定
+      if (cfg.bindings && cfg.bindings.length > 0) {
+        config.value.bindings = cfg.bindings
+        syncBindingsToText()
+      }
+
+      // 同步图标文本
+      syncGlyphsToText()
+    }
+  } catch (error) {
+    console.error('加载控制器配置失败:', error)
+  }
+}
+
+onMounted(() => {
+  loadConfig()
+})
 </script>
 
 <style scoped>
@@ -149,8 +390,8 @@ async function saveConfig() {
   border-radius: 12px;
   border: 1px solid var(--steam-border);
   width: 90%;
-  max-width: 600px;
-  max-height: 80vh;
+  max-width: 650px;
+  max-height: 85vh;
   display: flex;
   flex-direction: column;
 }
@@ -232,10 +473,113 @@ async function saveConfig() {
   flex-shrink: 0;
 }
 
+.config-section {
+  margin-bottom: 24px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--steam-border);
+}
+
+.config-section:last-of-type {
+  border-bottom: none;
+  margin-bottom: 0;
+}
+
+.section-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--steam-text-primary);
+  margin: 0 0 16px 0;
+}
+
 .config-group {
   margin-bottom: 20px;
 }
 
+.config-group label {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--steam-text-primary);
+  margin-bottom: 8px;
+}
+
+.field-hint {
+  font-size: 12px;
+  color: var(--steam-text-secondary);
+  margin: 4px 0 0 0;
+}
+
+.config-input,
+.config-textarea,
+.config-select {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--steam-border);
+  border-radius: 8px;
+  background-color: var(--steam-bg-secondary);
+  color: var(--steam-text-primary);
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.config-textarea {
+  font-family: 'Consolas', 'Courier New', monospace;
+  resize: vertical;
+}
+
+.config-input:focus,
+.config-textarea:focus,
+.config-select:focus {
+  border-color: var(--steam-accent-blue);
+}
+
+/* 滑块样式 */
+.config-group input[type="range"] {
+  width: 100%;
+  height: 6px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: var(--steam-border);
+  border-radius: 3px;
+  outline: none;
+}
+
+.config-group input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  background: var(--steam-accent-blue);
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.slider-value {
+  font-size: 13px;
+  color: var(--steam-text-secondary);
+  display: block;
+  text-align: right;
+  margin-top: 4px;
+}
+
+/* 复选框样式 */
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--steam-text-primary);
+}
+
+.checkbox-label input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--steam-accent-blue);
+}
+
+/* 开关样式 */
 .toggle-label {
   display: flex;
   align-items: center;
@@ -282,6 +626,7 @@ async function saveConfig() {
   color: var(--steam-text-primary);
 }
 
+/* 按钮样式 */
 .btn-primary {
   display: flex;
   align-items: center;
@@ -441,5 +786,59 @@ async function saveConfig() {
   background-color: var(--steam-accent-blue);
   flex-shrink: 0;
   margin-top: 6px;
+}
+
+/* 保存成功提示 */
+.toast-success {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: #10b981;
+  color: white;
+  padding: 12px 24px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 9999;
+}
+
+.toast-success svg {
+  width: 20px;
+  height: 20px;
+}
+
+.toast-enter-active {
+  animation: toast-in 0.3s ease;
+}
+
+.toast-leave-active {
+  animation: toast-out 0.3s ease;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+@keyframes toast-out {
+  from {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-20px);
+  }
 }
 </style>

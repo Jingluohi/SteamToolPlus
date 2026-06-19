@@ -32,26 +32,23 @@
           <div class="guide-content">
             <div class="guide-item">
               <span class="guide-label">DLC 配置文件</span>
-              <span class="guide-value">dlc.json / dlcs.txt</span>
+              <span class="guide-value">configs.app.ini</span>
             </div>
             <div class="guide-item">
               <span class="guide-label">DLC ID</span>
               <span class="guide-value">纯数字，如 123456</span>
             </div>
             <div class="guide-item">
-              <span class="guide-label">获取方式</span>
-              <span class="guide-value">在 SteamDB 上搜索游戏查看 DLC 列表</span>
-            </div>
-            <div class="guide-item">
-              <span class="guide-label">输入格式</span>
-              <span class="guide-value">每行一个 DLC ID，或勾选"解锁所有"</span>
+              <span class="guide-label">DLC 名称（可选）</span>
+              <span class="guide-value">appid=DLC名称，如 367680=RimWorld - Royalty</span>
             </div>
           </div>
           <div class="guide-example">
-            <div class="example-title">DLC 列表示例：</div>
-            <pre class="example-code">123456
-789012
-345678</pre>
+            <div class="example-title">DLC 列表示例（支持带名称）：</div>
+            <pre class="example-code">367680=RimWorld - Name in Game Access
+990430=RimWorld - Soundtrack
+1149640=RimWorld - Royalty
+1392840=RimWorld - Ideology</pre>
           </div>
         </div>
 
@@ -66,14 +63,14 @@
 
         <div v-if="!config.unlockAll" class="config-group">
           <label class="config-label">DLC 列表</label>
-          <p class="config-desc">输入要解锁的 DLC ID（每行一个纯数字）</p>
+          <p class="config-desc">输入要解锁的 DLC ID，支持带名称（每行一个）</p>
           <textarea
             v-model="config.dlcList"
             class="config-textarea"
             rows="8"
-            placeholder="例如:&#10;123456&#10;789012"
+            placeholder="格式1（纯ID）:&#10;123456&#10;789012&#10;&#10;格式2（带名称）:&#10;367680=RimWorld - Royalty&#10;1392840=RimWorld - Ideology"
           ></textarea>
-          <p class="field-hint">在 SteamDB 搜索游戏可查看所有 DLC ID</p>
+          <p class="field-hint">支持两种格式：纯数字 ID 或 appid=DLC名称，名称仅用于显示</p>
         </div>
       </div>
 
@@ -88,10 +85,21 @@
       </div>
     </div>
   </div>
+
+  <!-- 保存成功提示：放到弹窗外部，与 modal-overlay 同级，避免弹窗关闭后 Toast 消失 -->
+  <transition name="toast">
+    <div v-if="showToast" class="toast-success">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+        <polyline points="22 4 12 14.01 9 11.01"/>
+      </svg>
+      <span>DLC 配置已保存成功！</span>
+    </div>
+  </transition>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 
 const props = defineProps<{
@@ -106,19 +114,116 @@ const emit = defineEmits<{
 
 const config = ref({
   unlockAll: true,
-  dlcList: ''
+  dlcList: ''      // 支持 "appid" 或 "appid=DLC Name" 格式
 })
 
+const showToast = ref(false)
+
+/**
+ * 解析 DLC 列表文本，提取纯 appid
+ * 支持格式: "123456" 或 "123456=DLC Name"
+ * 只返回 appid 部分
+ */
+function parseDlcList(text: string): string {
+  return text
+    .split('\n')
+    .map(line => line.trim())
+    .filter(line => line && /^\d/.test(line))
+    .map(line => {
+      // 如果是 "appid=Name" 格式，只取 appid
+      const eqIdx = line.indexOf('=')
+      return eqIdx > 0 ? line.slice(0, eqIdx).trim() : line
+    })
+    .filter(id => /^\d+$/.test(id))
+    .join('\n')
+}
+
+// 加载现有的 DLC 配置
+async function loadDlcConfig() {
+  try {
+    const result = await invoke<{ exists: boolean; config?: any }>('load_app_config', {
+      gamePath: props.gamePath
+    })
+
+    if (result.exists && result.config) {
+      const appConfig = result.config
+      // 解锁所有 DLC 状态
+      config.value.unlockAll = appConfig.dlcs?.unlock_all ?? true
+
+      // 将 individual_dlcs 转换为字符串列表（保留名称信息）
+      if (appConfig.dlcs?.individual_dlcs && appConfig.dlcs.individual_dlcs.length > 0) {
+        config.value.dlcList = appConfig.dlcs.individual_dlcs
+          .filter((d: any) => d.enabled)
+          .map((d: any) => {
+            // 如果有名称，使用 appid=Name 格式
+            if (d.name && d.name !== d.app_id) {
+              return `${d.app_id}=${d.name}`
+            }
+            return d.app_id
+          })
+          .join('\n')
+      }
+    }
+  } catch (error) {
+    console.error('加载 DLC 配置失败:', error)
+  }
+}
+
+// 组件挂载时加载配置
+onMounted(() => {
+  loadDlcConfig()
+})
+
+/**
+ * 保存配置
+ * 提取 DLC 列表中的纯 appid 发送到后端
+ * 同时补充 controller/cloudSaves 字段，避免覆盖已有数据
+ */
 async function saveConfig() {
   try {
-    const result = await invoke<{ success: boolean; message: string }>('save_dlc_config', {
+    // 先读取已有配置，保留 controller 和 cloudSaves
+    let existingController = {}
+    let existingCloudSaves = {}
+    try {
+      const existing = await invoke<{ exists: boolean; config?: any }>('load_app_config', {
+        gamePath: props.gamePath
+      })
+      if (existing.exists && existing.config) {
+        existingController = existing.config.controller || {}
+        existingCloudSaves = existing.config.cloud_saves || {}
+      }
+    } catch {
+      // 读取失败不影响保存
+    }
+
+    // 解析 DLC 列表，提取纯 appid
+    const pureDlcList = parseDlcList(config.value.dlcList)
+
+    const result = await invoke<{ success: boolean; message: string }>('save_app_config', {
       gamePath: props.gamePath,
-      config: config.value
+      config: {
+        branchName: 'public',
+        isBetaBranch: false,
+        // 保留已有的 controller 和 cloudSaves 配置
+        controller: existingController,
+        cloudSaves: existingCloudSaves,
+        dlcs: {
+          unlockAll: config.value.unlockAll,
+          dlcList: pureDlcList
+        }
+      }
     })
 
     if (result.success) {
+      showToast.value = true
+      setTimeout(() => {
+        showToast.value = false
+      }, 3000)
       emit('saved')
-      emit('close')
+      // 延迟关闭弹窗，等待 Toast 消失后再关闭
+      setTimeout(() => {
+        emit('close')
+      }, 3000)
     } else {
       alert(`保存失败: ${result.message}`)
     }
@@ -452,5 +557,59 @@ async function saveConfig() {
   font-size: 12px;
   color: var(--steam-text-secondary);
   margin: 6px 0 0 0;
+}
+
+/* 保存成功提示 */
+.toast-success {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: #10b981;
+  color: white;
+  padding: 12px 24px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 9999;
+}
+
+.toast-success svg {
+  width: 20px;
+  height: 20px;
+}
+
+.toast-enter-active {
+  animation: toast-in 0.3s ease;
+}
+
+.toast-leave-active {
+  animation: toast-out 0.3s ease;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+@keyframes toast-out {
+  from {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-20px);
+  }
 }
 </style>

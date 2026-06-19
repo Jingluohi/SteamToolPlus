@@ -1,4 +1,15 @@
 <template>
+  <!-- 保存成功提示 - 放在弹窗外部，确保关闭弹窗后仍可见 -->
+  <transition name="toast">
+    <div v-if="showToast" class="toast-success">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+        <polyline points="22 4 12 14.01 9 11.01"/>
+      </svg>
+      <span>物品库存配置已保存成功！</span>
+    </div>
+  </transition>
+
   <div class="modal-overlay" @click="$emit('close')">
     <div class="modal-content" @click.stop>
       <div class="modal-header">
@@ -56,6 +67,7 @@ item_health_potion=20</pre>
           </div>
         </div>
 
+        <!-- 启用开关 -->
         <div class="config-group">
           <label class="toggle-label">
             <input v-model="config.enabled" type="checkbox" class="toggle-input" />
@@ -64,17 +76,33 @@ item_health_potion=20</pre>
           </label>
         </div>
 
-        <div v-if="config.enabled" class="config-group">
-          <label class="config-label">初始库存配置</label>
-          <p class="config-desc">配置游戏启动时的初始物品和数量</p>
-          <textarea
-            v-model="config.inventoryText"
-            class="config-textarea"
-            rows="6"
-            placeholder="格式: 物品ID=数量&#10;每行一个物品，例如:&#10;item_001=10&#10;item_002=5"
-          ></textarea>
-          <p class="field-hint">每行填写一个物品，格式为 "物品ID=数量"</p>
-        </div>
+        <template v-if="config.enabled">
+          <!-- 物品定义 -->
+          <div class="config-section">
+            <h4 class="section-title">物品定义</h4>
+            <p class="config-desc">定义游戏中可用的所有物品及其属性</p>
+            <textarea
+              v-model="itemDefsText"
+              class="config-textarea"
+              rows="8"
+              placeholder="每行一个物品定义（JSON格式）:&#10;{&quot;id&quot;: 1001, &quot;name&quot;: &quot;铁剑&quot;, &quot;stackable&quot;: true, &quot;maxStackSize&quot;: 99}&#10;{&quot;id&quot;: 1002, &quot;name&quot;: &quot;生命药水&quot;, &quot;stackable&quot;: true, &quot;maxStackSize&quot;: 999}"
+            ></textarea>
+            <p class="field-hint">每行一个 JSON 对象，包含 id、name、stackable、maxStackSize</p>
+          </div>
+
+          <!-- 初始库存 -->
+          <div class="config-section">
+            <h4 class="section-title">初始库存</h4>
+            <p class="config-desc">配置游戏启动时的初始物品和数量</p>
+            <textarea
+              v-model="initialItemsText"
+              class="config-textarea"
+              rows="5"
+              placeholder="格式: 物品ID=数量&#10;例如:&#10;1001=5&#10;1002=10&#10;item_sword=1"
+            ></textarea>
+            <p class="field-hint">每行一个物品，格式为 "物品ID=数量"</p>
+          </div>
+        </template>
       </div>
 
       <div class="modal-footer">
@@ -91,7 +119,7 @@ item_health_potion=20</pre>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 
 const props = defineProps<{
@@ -104,21 +132,123 @@ const emit = defineEmits<{
   saved: []
 }>()
 
+const showToast = ref(false)
+
+/**
+ * 物品配置对象
+ * 与 Rust ItemsConfig 结构体一致
+ */
 const config = ref({
   enabled: true,
-  inventoryText: ''
+  itemDefinitions: [] as Array<{
+    id: number | string
+    name: string
+    stackable: boolean
+    maxStackSize: number
+  }>,
+  initialItems: [] as Array<{
+    itemId: string
+    quantity: number
+  }>,
 })
 
+/** 物品定义文本（用于 textarea 编辑） */
+const itemDefsText = ref('')
+
+/** 初始库存文本（用于 textarea 编辑） */
+const initialItemsText = ref('')
+
+/**
+ * 将数组格式的物品定义转换为文本
+ */
+function syncItemDefsToText() {
+  itemDefsText.value = config.value.itemDefinitions
+    .map((d) => JSON.stringify(d))
+    .join('\n')
+}
+
+/**
+ * 将文本格式的物品定义转换为数组
+ */
+function syncTextToItemDefs() {
+  const lines = itemDefsText.value
+    .split('\n')
+    .map((l) => l.trim())
+    .filter((l) => l)
+
+  config.value.itemDefinitions = []
+  for (const line of lines) {
+    try {
+      const parsed = JSON.parse(line)
+      if (parsed.id !== undefined) {
+        config.value.itemDefinitions.push({
+          id: parsed.id,
+          name: parsed.name || '',
+          stackable: parsed.stackable ?? true,
+          maxStackSize: parsed.maxStackSize ?? 99,
+        })
+      }
+    } catch {
+      // 跳过无效行
+    }
+  }
+}
+
+/**
+ * 将数组格式的初始库存转换为文本
+ */
+function syncInitialItemsToText() {
+  initialItemsText.value = config.value.initialItems
+    .map((i) => `${i.itemId}=${i.quantity}`)
+    .join('\n')
+}
+
+/**
+ * 将文本格式的初始库存转换为数组
+ */
+function syncTextToInitialItems() {
+  const lines = initialItemsText.value
+    .split('\n')
+    .map((l) => l.trim())
+    .filter((l) => l && l.includes('='))
+
+  config.value.initialItems = lines.map((line) => {
+    const idx = line.indexOf('=')
+    return {
+      itemId: line.slice(0, idx),
+      quantity: parseInt(line.slice(idx + 1), 10) || 1,
+    }
+  })
+}
+
+/** 监听文本变化同步到数组 */
+watch(itemDefsText, syncTextToItemDefs)
+watch(initialItemsText, syncTextToInitialItems)
+
+/**
+ * 保存配置
+ */
 async function saveConfig() {
+  // 确保文本已同步到数组
+  syncTextToItemDefs()
+  syncTextToInitialItems()
+
   try {
     const result = await invoke<{ success: boolean; message: string }>('save_items_config', {
       gamePath: props.gamePath,
-      config: config.value
+      config: config.value,
     })
 
     if (result.success) {
+      showToast.value = true
+      setTimeout(() => {
+        showToast.value = false
+      }, 3000)
       emit('saved')
-      emit('close')
+      // 延迟关闭弹窗，等待 Toast 消失后再关闭
+      setTimeout(() => {
+        emit('close')
+      }, 3000)
     } else {
       alert(`保存失败: ${result.message}`)
     }
@@ -126,9 +256,46 @@ async function saveConfig() {
     alert(`保存失败: ${error}`)
   }
 }
+
+/**
+ * 加载现有配置
+ */
+async function loadConfig() {
+  try {
+    const result = await invoke<{
+      exists: boolean
+      config?: any
+    }>('load_items_config', {
+      gamePath: props.gamePath,
+    })
+
+    if (result.exists && result.config) {
+      config.value.enabled = result.config.enabled ?? true
+
+      // 加载物品定义
+      if (result.config.itemDefinitions && result.config.itemDefinitions.length > 0) {
+        config.value.itemDefinitions = result.config.itemDefinitions
+        syncItemDefsToText()
+      }
+
+      // 加载初始库存
+      if (result.config.initialItems && result.config.initialItems.length > 0) {
+        config.value.initialItems = result.config.initialItems
+        syncInitialItemsToText()
+      }
+    }
+  } catch (error) {
+    console.error('加载物品配置失败:', error)
+  }
+}
+
+onMounted(() => {
+  loadConfig()
+})
 </script>
 
 <style scoped>
+/* 复用与 LeaderboardsConfig 相同的样式 */
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -147,8 +314,8 @@ async function saveConfig() {
   border-radius: 12px;
   border: 1px solid var(--steam-border);
   width: 90%;
-  max-width: 600px;
-  max-height: 80vh;
+  max-width: 650px;
+  max-height: 85vh;
   display: flex;
   flex-direction: column;
 }
@@ -234,12 +401,22 @@ async function saveConfig() {
   margin-bottom: 20px;
 }
 
-.config-label {
-  display: block;
+.config-section {
+  margin-bottom: 24px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--steam-border);
+}
+
+.config-section:last-of-type {
+  border-bottom: none;
+  margin-bottom: 0;
+}
+
+.section-title {
   font-size: 14px;
   font-weight: 600;
   color: var(--steam-text-primary);
-  margin-bottom: 8px;
+  margin: 0 0 8px 0;
 }
 
 .config-desc {
@@ -256,13 +433,19 @@ async function saveConfig() {
   background-color: var(--steam-bg-secondary);
   color: var(--steam-text-primary);
   font-size: 13px;
-  font-family: 'Courier New', monospace;
+  font-family: 'Consolas', 'Courier New', monospace;
   resize: vertical;
   outline: none;
 }
 
 .config-textarea:focus {
   border-color: var(--steam-accent-blue);
+}
+
+.field-hint {
+  font-size: 12px;
+  color: var(--steam-text-secondary);
+  margin: 4px 0 0 0;
 }
 
 .toggle-label {
@@ -355,77 +538,146 @@ async function saveConfig() {
 .usage-guide {
   background-color: var(--steam-bg-secondary);
   border: 1px solid var(--steam-border);
-  border-radius: 8px;
-  padding: 12px 16px;
+  border-radius: 10px;
+  padding: 16px 20px;
   margin-bottom: 20px;
 }
 
 .guide-header {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 10px;
-  font-size: 13px;
+  gap: 10px;
+  margin-bottom: 14px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--steam-accent-blue);
 }
 
 .guide-header svg {
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
 }
 
 .guide-content {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-  margin-bottom: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 16px;
 }
 
 .guide-item {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 12px;
+  align-items: flex-start;
+  gap: 12px;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.guide-item::before {
+  content: '';
+  display: block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--steam-accent-blue);
+  flex-shrink: 0;
+  margin-top: 7px;
 }
 
 .guide-label {
   color: var(--steam-text-secondary);
   white-space: nowrap;
+  min-width: 100px;
+  flex-shrink: 0;
 }
 
 .guide-value {
   color: var(--steam-text-primary);
-  font-family: 'Courier New', monospace;
+  font-family: 'Consolas', 'Courier New', monospace;
+  font-size: 12px;
+  word-break: break-all;
 }
 
 .guide-example {
   background-color: var(--steam-bg-primary);
-  border-radius: 6px;
-  padding: 10px 12px;
+  border: 1px solid var(--steam-border);
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin-bottom: 10px;
 }
 
 .example-title {
   font-size: 12px;
-  font-weight: 500;
-  color: var(--steam-text-secondary);
-  margin-bottom: 6px;
+  font-weight: 600;
+  color: var(--steam-text-primary);
+  margin-bottom: 8px;
 }
 
 .example-code {
   font-size: 12px;
-  color: #e2e8f0;
-  background-color: #1e293b;
-  padding: 8px 12px;
-  border-radius: 4px;
+  color: var(--steam-text-primary);
+  background-color: rgba(0, 0, 0, 0.2);
+  padding: 10px 14px;
+  border-radius: 6px;
   overflow-x: auto;
-  line-height: 1.5;
+  line-height: 1.6;
   margin: 0;
+  white-space: pre-wrap;
+  word-break: break-all;
 }
 
-.field-hint {
-  font-size: 11px;
-  color: var(--steam-text-secondary);
-  margin: 4px 0 0 0;
+/* 保存成功提示 */
+.toast-success {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: #10b981;
+  color: white;
+  padding: 12px 24px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 9999;
+}
+
+.toast-success svg {
+  width: 20px;
+  height: 20px;
+}
+
+.toast-enter-active {
+  animation: toast-in 0.3s ease;
+}
+
+.toast-leave-active {
+  animation: toast-out 0.3s ease;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+@keyframes toast-out {
+  from {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-20px);
+  }
 }
 </style>

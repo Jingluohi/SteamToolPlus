@@ -31,216 +31,114 @@
           </div>
           <div class="guide-content">
             <div class="guide-item">
-              <span class="guide-label">Overlay 配置文件</span>
+              <span class="guide-label">配置文件</span>
               <span class="guide-value">configs.overlay.ini</span>
             </div>
             <div class="guide-item">
-              <span class="guide-label">通知音效</span>
-              <span class="guide-value">.wav 文件，放在 steam_settings/sounds/</span>
+              <span class="guide-label">启用字段</span>
+              <span class="guide-value">enable_experimental_overlay = 1</span>
             </div>
             <div class="guide-item">
-              <span class="guide-label">成就音效</span>
-              <span class="guide-value">overlay_achievement_notification.wav</span>
+              <span class="guide-label">快捷键格式</span>
+              <span class="guide-value">shift + tab（gbe_fork 格式）</span>
             </div>
             <div class="guide-item">
-              <span class="guide-label">好友音效</span>
-              <span class="guide-value">overlay_friend_notification.wav</span>
+              <span class="guide-label">通知字段</span>
+              <span class="guide-value">disable_achievement_notification、disable_friend_notification 等</span>
             </div>
           </div>
-          <div class="guide-example">
-            <div class="example-title">configs.overlay.ini 示例：</div>
-            <pre class="example-code">[overlay]
-# 启用实验性 Overlay 功能
-enable_experimental_overlay = 1
-# Overlay 快捷键
-overlay_key = SHIFT-TAB
-# 成就通知音效路径
-achievement_sound = sounds/overlay_achievement_notification.wav</pre>
-          </div>
-          <p class="guide-tip">提示：通知音效放在 steam_settings/sounds/ 目录下，命名为对应文件名即可</p>
         </div>
 
         <!-- 启用开关 -->
         <div class="config-section">
           <label class="toggle-label">
-            <input v-model="config.enabled" type="checkbox" class="toggle-input" />
+            <input v-model="config.enable_experimental_overlay" type="checkbox" class="toggle-input" />
             <span class="toggle-slider"></span>
-            <span class="toggle-text">启用游戏内 Overlay（Shift+Tab）</span>
+            <span class="toggle-text">启用实验性 Overlay（Shift+Tab）</span>
           </label>
           <p class="config-hint">实验性功能，如遇到游戏崩溃或卡顿请关闭</p>
         </div>
 
-        <template v-if="config.enabled">
+        <template v-if="config.enable_experimental_overlay">
           <!-- 快捷键设置 -->
           <div class="config-group">
             <label class="config-label">快捷键</label>
-            <input v-model="config.hotkey" type="text" class="config-input" placeholder="Shift+Tab" />
+            <input v-model="config.overlay_hotkey" type="text" class="config-input" placeholder="shift + tab" />
             <p class="config-hint">按下组合键显示/隐藏 Overlay</p>
           </div>
 
-          <!-- 通知设置 -->
-          <div class="config-section">
-            <h4 class="section-title">通知设置</h4>
-            
-            <div class="config-row">
-              <label class="checkbox-label">
-                <input v-model="config.notifications.achievement" type="checkbox" />
-                <span>成就解锁通知</span>
-              </label>
-            </div>
-            
-            <div class="config-row">
-              <label class="checkbox-label">
-                <input v-model="config.notifications.friend" type="checkbox" />
-                <span>好友上线通知</span>
-              </label>
-            </div>
-            
-            <div class="config-row">
-              <label class="checkbox-label">
-                <input v-model="config.notifications.message" type="checkbox" />
-                <span>消息通知</span>
-              </label>
-            </div>
-
-            <div class="config-row two-col">
-              <div class="config-item">
-                <label class="config-label">显示时长（秒）</label>
-                <input 
-                  v-model.number="config.notifications.duration" 
-                  type="number" 
-                  class="config-input" 
-                  min="1" 
-                  max="30" 
-                />
-              </div>
-              
-              <div class="config-item">
-                <label class="config-label">通知位置</label>
-                <select v-model="config.notifications.position" class="config-select">
-                  <option value="top-left">左上</option>
-                  <option value="top-right">右上</option>
-                  <option value="bottom-left">左下</option>
-                  <option value="bottom-right">右下</option>
-                </select>
-              </div>
-            </div>
+          <!-- Hook 延迟 -->
+          <div class="config-group">
+            <label>Hook 延迟（秒）</label>
+            <input v-model.number="config.hook_delay_sec" type="number" class="config-input" min="0" max="30" placeholder="0" />
+            <p class="config-hint">游戏启动后延迟 Hook 的时间，避免冲突</p>
           </div>
 
-          <!-- 外观设置 -->
-          <div class="config-section">
-            <h4 class="section-title">外观设置</h4>
-            
-            <div class="config-row two-col">
-              <div class="config-item">
-                <label class="config-label">主题</label>
-                <select v-model="config.appearance.theme" class="config-select">
-                  <option value="dark">深色</option>
-                  <option value="light">浅色</option>
-                  <option value="auto">跟随系统</option>
-                </select>
-              </div>
-              
-              <div class="config-item">
-                <label class="config-label">缩放比例</label>
-                <input 
-                  v-model.number="config.appearance.scale" 
-                  type="number" 
-                  class="config-input" 
-                  min="0.5" 
-                  max="2.0" 
-                  step="0.1"
-                />
-              </div>
-            </div>
-
-            <div class="config-row two-col">
-              <div class="config-item">
-                <label class="config-label">透明度</label>
-                <div class="slider-group">
-                  <input 
-                    v-model.number="config.appearance.opacity" 
-                    type="range" 
-                    min="0.1" 
-                    max="1.0" 
-                    step="0.05"
-                    class="config-slider"
-                  />
-                  <span class="slider-value">{{ Math.round(config.appearance.opacity * 100) }}%</span>
-                </div>
-              </div>
-              
-              <div class="config-item">
-                <label class="checkbox-label">
-                  <input v-model="config.appearance.blur" type="checkbox" />
-                  <span>背景模糊效果</span>
-                </label>
-              </div>
-            </div>
+          <!-- 渲染器检测超时 -->
+          <div class="config-group">
+            <label>渲染器检测超时（秒）</label>
+            <input v-model.number="config.renderer_detector_timeout_sec" type="number" class="config-input" min="1" max="60" placeholder="10" />
+            <p class="config-hint">检测游戏渲染器的超时时间</p>
           </div>
 
-          <!-- 性能设置 -->
-          <div class="config-section">
-            <h4 class="section-title">性能设置</h4>
-            
-            <div class="config-row">
-              <label class="checkbox-label">
-                <input v-model="config.performance.hardwareAcceleration" type="checkbox" />
-                <span>硬件加速</span>
-              </label>
-            </div>
-            
-            <div class="config-row">
-              <label class="checkbox-label">
-                <input v-model="config.performance.lowPerformanceMode" type="checkbox" />
-                <span>低性能模式（减少动画和特效）</span>
-              </label>
-            </div>
-
-            <div class="config-row">
-              <div class="config-item">
-                <label class="config-label">帧率限制</label>
-                <select v-model="config.performance.fpsLimit" class="config-select">
-                  <option :value="30">30 FPS</option>
-                  <option :value="60">60 FPS</option>
-                  <option :value="120">120 FPS</option>
-                  <option :value="144">144 FPS</option>
-                  <option :value="0">无限制</option>
-                </select>
-              </div>
-            </div>
+          <!-- 通知与功能开关 -->
+          <h4 class="section-title">通知与功能开关</h4>
+          <div class="form-row">
+            <label class="checkbox-label">
+              <input v-model="config.notifications.disable_achievement_notification" type="checkbox" />
+              <span>禁用成就通知</span>
+            </label>
+            <label class="checkbox-label">
+              <input v-model="config.notifications.disable_friend_notification" type="checkbox" />
+              <span>禁用好友通知</span>
+            </label>
+          </div>
+          <div class="form-row">
+            <label class="checkbox-label">
+              <input v-model="config.notifications.disable_achievement_progress" type="checkbox" />
+              <span>禁用成就进度</span>
+            </label>
+            <label class="checkbox-label">
+              <input v-model="config.notifications.disable_warning_any" type="checkbox" />
+              <span>禁用所有警告</span>
+            </label>
+          </div>
+          <div class="form-row">
+            <label class="checkbox-label">
+              <input v-model="config.notifications.disable_warning_bad_appid" type="checkbox" />
+              <span>禁用 AppID 警告</span>
+            </label>
+            <label class="checkbox-label">
+              <input v-model="config.notifications.disable_warning_local_save" type="checkbox" />
+              <span>禁用本地存档警告</span>
+            </label>
+          </div>
+          <div class="form-row">
+            <label class="checkbox-label">
+              <input v-model="config.notifications.overlay_always_show_user_info" type="checkbox" />
+              <span>始终显示用户信息</span>
+            </label>
+            <label class="checkbox-label">
+              <input v-model="config.notifications.overlay_always_show_fps" type="checkbox" />
+              <span>始终显示 FPS</span>
+            </label>
+          </div>
+          <div class="form-row">
+            <label class="checkbox-label">
+              <input v-model="config.notifications.overlay_always_show_frametime" type="checkbox" />
+              <span>始终显示帧时间</span>
+            </label>
+            <label class="checkbox-label">
+              <input v-model="config.notifications.overlay_always_show_playtime" type="checkbox" />
+              <span>始终显示游玩时间</span>
+            </label>
           </div>
 
-          <!-- 功能开关 -->
-          <div class="config-section">
-            <h4 class="section-title">功能开关</h4>
-            
-            <div class="feature-grid">
-              <label class="checkbox-label">
-                <input v-model="config.features.achievements" type="checkbox" />
-                <span>成就页面</span>
-              </label>
-              
-              <label class="checkbox-label">
-                <input v-model="config.features.friends" type="checkbox" />
-                <span>好友列表</span>
-              </label>
-              
-              <label class="checkbox-label">
-                <input v-model="config.features.chat" type="checkbox" />
-                <span>聊天功能</span>
-              </label>
-              
-              <label class="checkbox-label">
-                <input v-model="config.features.browser" type="checkbox" />
-                <span>内置浏览器</span>
-              </label>
-              
-              <label class="checkbox-label">
-                <input v-model="config.features.settings" type="checkbox" />
-                <span>设置页面</span>
-              </label>
-            </div>
+          <!-- FPS 平均窗口 -->
+          <div class="config-group">
+            <label>FPS 平均窗口</label>
+            <input v-model.number="config.fps_averaging_window" type="number" class="config-input" min="0.1" max="10" step="0.1" placeholder="1.0" />
+            <p class="config-hint">FPS 计算的平均窗口（秒）</p>
           </div>
         </template>
       </div>
@@ -256,12 +154,22 @@ achievement_sound = sounds/overlay_achievement_notification.wav</pre>
       </div>
     </div>
   </div>
+
+  <!-- 保存成功提示 -->
+  <transition name="toast">
+    <div v-if="showToast" class="toast-success">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+        <polyline points="22 4 12 14.01 9 11.01"/>
+      </svg>
+      <span>覆盖层配置已保存成功！</span>
+    </div>
+  </transition>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
-import type { OverlayConfig } from '../../../src/types/steam-config.types'
 
 const props = defineProps<{
   gamePath: string
@@ -274,46 +182,54 @@ const emit = defineEmits<{
   saved: []
 }>()
 
-const config = ref<OverlayConfig>({
-  enabled: true,
-  hotkey: 'Shift+Tab',
+const showToast = ref(false)
+
+/**
+ * Overlay 配置对象
+ * 字段名与 Rust 后端 OverlayConfig 结构完全一致（snake_case）
+ */
+const config = ref({
+  enable_experimental_overlay: true,
+  hook_delay_sec: 0,
+  renderer_detector_timeout_sec: 10,
+  overlay_hotkey: 'shift + tab',
+  fps_averaging_window: 1.0,
   notifications: {
-    achievement: true,
-    friend: true,
-    message: true,
-    duration: 5,
-    position: 'bottom-right'
+    disable_achievement_notification: false,
+    disable_friend_notification: false,
+    disable_achievement_progress: false,
+    disable_warning_any: false,
+    disable_warning_bad_appid: false,
+    disable_warning_local_save: false,
+    upload_achievements_icons_to_gpu: true,
+    overlay_always_show_user_info: false,
+    overlay_always_show_fps: false,
+    overlay_always_show_frametime: false,
+    overlay_always_show_playtime: false,
   },
-  appearance: {
-    theme: 'dark',
-    opacity: 0.95,
-    scale: 1.0,
-    blur: true
-  },
-  performance: {
-    hardwareAcceleration: true,
-    fpsLimit: 60,
-    lowPerformanceMode: false
-  },
-  features: {
-    achievements: true,
-    friends: true,
-    chat: true,
-    browser: true,
-    settings: true
-  }
 })
 
+/**
+ * 保存配置
+ * 将配置发送到后端 save_overlay_config 命令
+ */
 async function saveConfig() {
   try {
     const result = await invoke<{ success: boolean; message: string }>('save_overlay_config', {
       gamePath: props.gamePath,
-      config: config.value
+      config: config.value,
     })
 
     if (result.success) {
+      showToast.value = true
+      setTimeout(() => {
+        showToast.value = false
+      }, 3000)
       emit('saved')
-      emit('close')
+      // 延迟关闭弹窗，等待 Toast 消失后再关闭
+      setTimeout(() => {
+        emit('close')
+      }, 3000)
     } else {
       alert(`保存失败: ${result.message}`)
     }
@@ -322,20 +238,30 @@ async function saveConfig() {
   }
 }
 
+/**
+ * 加载现有配置
+ * 从后端读取 configs.overlay.ini 并填充到表单
+ */
 async function loadConfig() {
   try {
-    const result = await invoke<{ 
+    const result = await invoke<{
       exists: boolean
-      config?: OverlayConfig 
+      config?: any
     }>('load_overlay_config', {
-      gamePath: props.gamePath
+      gamePath: props.gamePath,
     })
 
     if (result.exists && result.config) {
+      // 合并已有配置，保留默认值
       config.value = { ...config.value, ...result.config }
+      // 确保 notifications 子对象也存在
+      if (result.config.notifications) {
+        config.value.notifications = { ...config.value.notifications, ...result.config.notifications }
+      }
     }
   } catch (error) {
     // 加载失败时使用默认值
+    console.error('加载 Overlay 配置失败:', error)
   }
 }
 
@@ -345,6 +271,7 @@ onMounted(() => {
 </script>
 
 <style scoped>
+/* 复用已有样式 */
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -499,20 +426,26 @@ onMounted(() => {
   border-color: var(--steam-accent-blue);
 }
 
-.config-select {
-  width: 100%;
-  padding: 10px 12px;
-  border: 1px solid var(--steam-border);
-  border-radius: 8px;
-  background-color: var(--steam-bg-secondary);
-  color: var(--steam-text-primary);
-  font-size: 14px;
-  outline: none;
-  cursor: pointer;
+.form-row {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 12px;
 }
 
-.config-select:focus {
-  border-color: var(--steam-accent-blue);
+/* 复选框样式 */
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--steam-text-primary);
+}
+
+.checkbox-label input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--steam-accent-blue);
 }
 
 /* 开关样式 */
@@ -561,87 +494,6 @@ onMounted(() => {
   font-size: 14px;
   font-weight: 500;
   color: var(--steam-text-primary);
-}
-
-/* 复选框样式 */
-.checkbox-label {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-  font-size: 14px;
-  color: var(--steam-text-primary);
-}
-
-.checkbox-label input[type="checkbox"] {
-  width: 18px;
-  height: 18px;
-  accent-color: var(--steam-accent-blue);
-}
-
-/* 行布局 */
-.config-row {
-  margin-bottom: 16px;
-}
-
-.config-row:last-child {
-  margin-bottom: 0;
-}
-
-.config-row.two-col {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-}
-
-/* 功能网格 */
-.feature-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
-}
-
-/* 滑块样式 */
-.slider-group {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.config-slider {
-  flex: 1;
-  height: 6px;
-  -webkit-appearance: none;
-  appearance: none;
-  background: var(--steam-border);
-  border-radius: 3px;
-  outline: none;
-}
-
-.config-slider::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 18px;
-  height: 18px;
-  background: var(--steam-accent-blue);
-  border-radius: 50%;
-  cursor: pointer;
-}
-
-.config-slider::-moz-range-thumb {
-  width: 18px;
-  height: 18px;
-  background: var(--steam-accent-blue);
-  border-radius: 50%;
-  cursor: pointer;
-  border: none;
-}
-
-.slider-value {
-  font-size: 13px;
-  color: var(--steam-text-secondary);
-  min-width: 40px;
-  text-align: right;
 }
 
 /* 按钮样式 */
@@ -750,70 +602,57 @@ onMounted(() => {
   word-break: break-all;
 }
 
-.guide-example {
-  background-color: var(--steam-bg-primary);
-  border: 1px solid var(--steam-border);
+/* 保存成功提示 */
+.toast-success {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: #10b981;
+  color: white;
+  padding: 12px 24px;
   border-radius: 8px;
-  padding: 12px 14px;
-  margin-bottom: 10px;
-}
-
-.guide-example:last-of-type {
-  margin-bottom: 0;
-}
-
-.example-title {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--steam-text-primary);
-  margin-bottom: 8px;
-}
-
-.example-code {
-  font-size: 12px;
-  color: var(--steam-text-primary);
-  background-color: rgba(0, 0, 0, 0.2);
-  padding: 10px 14px;
-  border-radius: 6px;
-  overflow-x: auto;
-  line-height: 1.6;
-  margin: 0;
-  white-space: pre-wrap;
-  word-break: break-all;
-}
-
-.guide-tip {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 8px;
-  font-size: 12px;
-  color: var(--steam-accent-blue);
-  margin-top: 14px;
-  line-height: 1.5;
-  padding: 8px 12px;
-  background-color: rgba(59, 130, 246, 0.08);
-  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 9999;
 }
 
-.guide-tip::before {
-  content: '';
-  display: block;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background-color: var(--steam-accent-blue);
-  flex-shrink: 0;
-  margin-top: 6px;
+.toast-success svg {
+  width: 20px;
+  height: 20px;
 }
 
-/* 响应式 */
-@media (max-width: 600px) {
-  .config-row.two-col {
-    grid-template-columns: 1fr;
+.toast-enter-active {
+  animation: toast-in 0.3s ease;
+}
+
+.toast-leave-active {
+  animation: toast-out 0.3s ease;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-20px);
   }
-  
-  .feature-grid {
-    grid-template-columns: 1fr;
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+@keyframes toast-out {
+  from {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-20px);
   }
 }
 </style>

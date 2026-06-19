@@ -1,4 +1,15 @@
 <template>
+  <!-- 保存成功提示 - 放在弹窗外部，确保关闭弹窗后仍可见 -->
+  <transition name="toast">
+    <div v-if="showToast" class="toast-success">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+        <polyline points="22 4 12 14.01 9 11.01"/>
+      </svg>
+      <span>用户配置已保存成功！</span>
+    </div>
+  </transition>
+
   <div class="modal-overlay" @click="$emit('close')">
     <div class="modal-content" @click.stop>
       <div class="modal-header">
@@ -68,6 +79,12 @@ saves_folder_name = </pre>
         </div>
 
         <div class="config-group">
+          <label class="config-label">SteamID（Steam64 格式，可选）</label>
+          <input v-model="config.account_steamid" type="text" class="config-input" placeholder="76561197960287930" />
+          <p class="field-hint">无效 ID 会被模拟器忽略，留空则自动生成</p>
+        </div>
+
+        <div class="config-group">
           <label class="config-label">语言</label>
           <select v-model="config.language" class="config-input">
             <option value="schinese">简体中文</option>
@@ -87,9 +104,27 @@ saves_folder_name = </pre>
         </div>
 
         <div class="config-group">
-          <label class="config-label">便携存档路径（可选）</label>
-          <input v-model="config.localSavePath" type="text" class="config-input" placeholder="留空使用系统默认路径，例如：./saves" />
+          <label class="config-label">IP 国家代码</label>
+          <input v-model="config.ip_country" type="text" class="config-input" placeholder="CN" />
+          <p class="field-hint">ISO 3166-1-alpha-2 格式，游戏查询 IP 时上报的国家代码</p>
+        </div>
+
+        <div class="config-group">
+          <label class="config-label">存档文件夹名称（可选）</label>
+          <input v-model="config.saves_folder_name" type="text" class="config-input" placeholder="覆盖默认的 GSE Saves" />
+          <p class="field-hint">设置后会覆盖默认的存档文件夹名称</p>
+        </div>
+
+        <div class="config-group">
+          <label class="config-label">本地存档路径（便携模式）</label>
+          <input v-model="config.local_save_path" type="text" class="config-input" placeholder="设置后完全便携，例如：./saves" />
           <p class="field-hint">设置后，存档将保存在此相对路径下，实现便携存档</p>
+        </div>
+
+        <div class="config-group">
+          <label class="config-label">EncryptedAppTicket（Base64，可选）</label>
+          <textarea v-model="config.ticket" class="config-textarea" rows="3" placeholder="用于需要票据验证的游戏"></textarea>
+          <p class="field-hint">部分游戏需要 EncryptedAppTicket 才能正常运行</p>
         </div>
       </div>
 
@@ -107,7 +142,7 @@ saves_folder_name = </pre>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 
 const props = defineProps<{
@@ -122,20 +157,77 @@ const emit = defineEmits<{
 
 const config = ref({
   username: 'Player',
+  account_steamid: '',
   language: 'schinese',
-  localSavePath: ''
+  ip_country: 'CN',
+  saves_folder_name: '',
+  local_save_path: '',
+  ticket: '',
+  alt_steamid: '',
+  alt_steamid_count: 0
 })
 
+const showToast = ref(false)
+
+/**
+ * 加载已有配置
+ * 调用 load_user_config 读取 configs.user.ini 并填充表单
+ */
+async function loadConfig() {
+  try {
+    const result = await invoke<{ exists: boolean; config?: any }>('load_user_config', {
+      gamePath: props.gamePath
+    })
+
+    if (result.exists && result.config) {
+      const cfg = result.config
+      config.value.username = cfg.username || 'Player'
+      config.value.account_steamid = cfg.account_steamid || ''
+      config.value.language = cfg.language || 'schinese'
+      config.value.ip_country = cfg.ip_country || 'CN'
+      config.value.saves_folder_name = cfg.saves_folder_name || ''
+      config.value.local_save_path = cfg.local_save_path || ''
+      config.value.ticket = cfg.ticket || ''
+      config.value.alt_steamid = cfg.alt_steamid || ''
+      config.value.alt_steamid_count = cfg.alt_steamid_count || 0
+    }
+  } catch (error) {
+    // 加载配置失败时静默处理，使用默认值
+  }
+}
+
+/**
+ * 保存配置
+ * 调用 save_user_config 将表单数据写入 configs.user.ini
+ */
 async function saveConfig() {
   try {
+    const payload = {
+      username: config.value.username,
+      account_steamid: config.value.account_steamid,
+      language: config.value.language,
+      ip_country: config.value.ip_country,
+      saves_folder_name: config.value.saves_folder_name,
+      local_save_path: config.value.local_save_path,
+      ticket: config.value.ticket,
+      alt_steamid: config.value.alt_steamid,
+      alt_steamid_count: config.value.alt_steamid_count
+    }
     const result = await invoke<{ success: boolean; message: string }>('save_user_config', {
       gamePath: props.gamePath,
-      config: config.value
+      config: payload
     })
 
     if (result.success) {
+      showToast.value = true
+      setTimeout(() => {
+        showToast.value = false
+      }, 3000)
       emit('saved')
-      emit('close')
+      // 延迟关闭弹窗，等待 Toast 消失后再关闭
+      setTimeout(() => {
+        emit('close')
+      }, 3000)
     } else {
       alert(`保存失败: ${result.message}`)
     }
@@ -143,6 +235,10 @@ async function saveConfig() {
     alert(`保存失败: ${error}`)
   }
 }
+
+onMounted(() => {
+  loadConfig()
+})
 </script>
 
 <style scoped>
@@ -271,6 +367,23 @@ async function saveConfig() {
 }
 
 .config-input:focus {
+  border-color: var(--steam-accent-blue);
+}
+
+.config-textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--steam-border);
+  border-radius: 8px;
+  background-color: var(--steam-bg-secondary);
+  color: var(--steam-text-primary);
+  font-size: 12px;
+  font-family: 'Consolas', 'Courier New', monospace;
+  resize: vertical;
+  outline: none;
+}
+
+.config-textarea:focus {
   border-color: var(--steam-accent-blue);
 }
 
@@ -450,6 +563,60 @@ async function saveConfig() {
 @media (max-width: 600px) {
   .guide-content {
     grid-template-columns: 1fr;
+  }
+}
+
+/* 保存成功提示 */
+.toast-success {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: #10b981;
+  color: white;
+  padding: 12px 24px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 9999;
+}
+
+.toast-success svg {
+  width: 20px;
+  height: 20px;
+}
+
+.toast-enter-active {
+  animation: toast-in 0.3s ease;
+}
+
+.toast-leave-active {
+  animation: toast-out 0.3s ease;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+@keyframes toast-out {
+  from {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-20px);
   }
 }
 </style>

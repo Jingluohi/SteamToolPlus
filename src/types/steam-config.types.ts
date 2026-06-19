@@ -95,38 +95,111 @@ export interface MainConfig {
 export interface UserConfig {
   /** 用户名 */
   username: string
+  /** Steam64 格式的用户 ID */
+  accountSteamid?: string
   /** 语言 */
   language: string
-  /** 存档路径 */
-  savePath: string
-  /** 头像路径 */
-  avatarPath?: string
-  /** 默认头像 */
-  useDefaultAvatar: boolean
+  /** IP 国家代码 (ISO 3166-1-alpha-2) */
+  ipCountry?: string
   /** 存档文件夹名称（覆盖默认的 "GSE Saves"） */
   savesFolderName?: string
   /** 本地存档路径（便携模式） */
   localSavePath?: string
   /** EncryptedAppTicket (Base64编码) */
   ticket?: string
+  /** 备用 SteamID（用于加密存档替换） */
+  altSteamid?: string
+  /** 备用 SteamID 替换触发次数 */
+  altSteamidCount?: number
 }
 
 /**
- * configs.app.ini - 应用配置文件
+ * configs.app.ini - 应用配置文件（前端编辑格式，简化为字符串）
+ * 100% 实现 gbe_fork 所有配置选项
  */
 export interface AppConfig {
   /** 分支名称 */
-  branchName: string
-  /** 应用路径 */
-  appPaths: Record<string, string>
+  branch_name: string
+  /** 是否为 Beta 分支 */
+  is_beta_branch?: boolean
+  /** 应用路径映射 */
+  app_paths?: Record<string, string>
+  /** DLC解锁配置（前端简化格式，用于 textarea 编辑） */
+  dlcs: {
+    /** 是否解锁所有 DLC */
+    unlock_all: boolean
+    /** DLC ID 列表（前端简化格式：每行一个 ID 的字符串） */
+    custom_list?: string
+    /** Depot ID 列表（前端简化格式：每行一个 ID 的字符串） */
+    depot_ids?: string
+    /** DLC 路径映射（前端简化格式：每行一个 "appid=相对路径" 的字符串） */
+    dlc_paths?: string
+  }
+  /** Steam Input 控制器配置 */
+  controller?: {
+    /** Steam Input 开关 */
+    steam_input?: boolean
+    /** 控制器类型 */
+    type?: string
+  }
+  /** 云存档配置 */
+  cloud_saves?: {
+    /** 是否启用 */
+    enabled?: boolean
+    /** 自动创建默认目录 */
+    create_default_dir?: boolean
+    /** 自动创建特定目录 */
+    create_specific_dirs?: boolean
+    /** Windows 云存档路径 */
+    windows_dirs?: string[]
+    /** Linux 云存档路径 */
+    linux_dirs?: string[]
+  }
+}
+
+/**
+ * Steam 应用配置（Rust 返回格式，包含完整结构）
+ * 用于 load_app_config 返回的类型
+ */
+export interface SteamAppConfig {
+  /** 分支名称 */
+  branch_name: string
+  /** 是否为 Beta 分支 */
+  is_beta_branch?: boolean
+  /** 应用路径映射 */
+  app_paths?: Record<string, string>
   /** DLC解锁配置 */
   dlcs: {
-    unlockAll: boolean
-    individualDlcs: Array<{
-      appId: string
-      name: string
-      enabled: boolean
-    }>
+    /** 是否解锁所有 DLC */
+    unlock_all: boolean
+    /** 单个 DLC 列表（Rust 格式：{app_id, name, enabled}[]） */
+    individual_dlcs?: Array<{ app_id: string; name: string; enabled: boolean }>
+    /** DLC ID 列表（Rust 格式） */
+    dlc_list?: string[]
+    /** Depot ID 列表（Rust 格式） */
+    depot_ids?: string[]
+    /** DLC 路径映射（Rust 格式：Record<string, string>） */
+    dlc_paths?: Record<string, string>
+  }
+  /** Steam Input 控制器配置 */
+  controller?: {
+    /** Steam Input 开关 */
+    steam_input?: boolean
+    /** 控制器类型 */
+    type?: string
+  }
+  /** 云存档配置 */
+  cloud_saves?: {
+    /** 是否启用 */
+    enabled?: boolean
+    /** 自动创建默认目录 */
+    create_default_dir?: boolean
+    /** 自动创建特定目录 */
+    create_specific_dirs?: boolean
+    /** Windows 云存档路径 */
+    windows_dirs?: string[]
+    /** Linux 云存档路径 */
+    linux_dirs?: string[]
   }
 }
 
@@ -135,56 +208,178 @@ export interface AppConfig {
  * 100% 实现 gbe_fork 所有配置选项
  */
 export interface OverlayConfig {
-  /** 启用实验性覆盖层 (gbe_fork 关键配置) */
+  /** 启用实验性覆盖层 */
   enableExperimentalOverlay: boolean
-  /** 快捷键 */
-  hotkey: string
-  /** 通知设置 */
-  notifications: {
-    /** 成就通知 */
-    achievement: boolean
-    /** 好友通知 */
-    friend: boolean
-    /** 消息通知 */
-    message: boolean
-    /** 通知显示时间(秒) */
-    duration: number
-    /** 通知位置 */
-    position: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
-  }
-  /** 界面设置 */
-  appearance: {
-    /** 主题 */
-    theme: 'dark' | 'light' | 'auto'
-    /** 透明度 */
-    opacity: number
-    /** 缩放比例 */
-    scale: number
-    /** 背景模糊 */
-    blur: boolean
-  }
+  /** Hook 延迟（秒） */
+  hookDelaySec?: number
+  /** 渲染器检测超时（秒） */
+  rendererDetectorTimeoutSec?: number
+  /** 热键（gbe_fork 格式: shift + tab） */
+  overlayHotkey: string
+  /** FPS 平均窗口 */
+  fpsAveragingWindow?: number
+  /** 通知与功能开关 */
+  notifications: OverlayNotifications
+  /** 外观设置 */
+  appearance: OverlayAppearance
   /** 性能设置 */
-  performance: {
-    /** 硬件加速 */
-    hardwareAcceleration: boolean
-    /** 帧率限制 */
-    fpsLimit: number
-    /** 低性能模式 */
-    lowPerformanceMode: boolean
-  }
+  performance: OverlayPerformance
   /** 功能开关 */
-  features: {
-    /** 成就页面 */
-    achievements: boolean
-    /** 好友列表 */
-    friends: boolean
-    /** 聊天 */
-    chat: boolean
-    /** 浏览器 */
-    browser: boolean
-    /** 设置 */
-    settings: boolean
-  }
+  features: OverlayFeatures
+}
+
+/** Overlay 通知与功能开关 */
+export interface OverlayNotifications {
+  /** 禁用成就通知 */
+  disableAchievementNotification: boolean
+  /** 禁用好友通知 */
+  disableFriendNotification: boolean
+  /** 禁用成就进度 */
+  disableAchievementProgress: boolean
+  /** 禁用所有警告 */
+  disableWarningAny: boolean
+  /** 禁用 Bad AppID 警告 */
+  disableWarningBadAppid: boolean
+  /** 禁用本地存档警告 */
+  disableWarningLocalSave: boolean
+  /** 上传成就图标到 GPU */
+  uploadAchievementsIconsToGpu: boolean
+  /** 始终显示用户信息 */
+  overlayAlwaysShowUserInfo: boolean
+  /** 始终显示 FPS */
+  overlayAlwaysShowFps: boolean
+  /** 始终显示帧时间 */
+  overlayAlwaysShowFrametime: boolean
+  /** 始终显示游玩时间 */
+  overlayAlwaysShowPlaytime: boolean
+  /** 成就通知时长（秒） */
+  notificationDurationAchievement?: number
+  /** 邀请通知时长（秒） */
+  notificationDurationInvitation?: number
+  /** 聊天通知时长（秒） */
+  notificationDurationChat?: number
+  /** 进度通知时长（秒） */
+  notificationDurationProgress?: number
+}
+
+/** Overlay 外观设置 */
+export interface OverlayAppearance {
+  /** 字体覆盖 */
+  fontOverride?: string
+  /** 字体大小 */
+  fontSize?: number
+  /** 字体字间距 X */
+  fontGlyphExtraSpacingX?: number
+  /** 字体字间距 Y */
+  fontGlyphExtraSpacingY?: number
+  /** 图标大小 */
+  iconSize?: number
+  /** 主题 */
+  theme: string
+  /** 透明度 */
+  opacity: number
+  /** 缩放 */
+  scale: number
+  /** 模糊 */
+  blur: boolean
+  /** 通知圆角 */
+  notificationRounding?: number
+  /** 通知边距 X */
+  notificationMarginX?: number
+  /** 通知边距 Y */
+  notificationMarginY?: number
+  /** 通知背景色 R */
+  notificationR?: number
+  /** 通知背景色 G */
+  notificationG?: number
+  /** 通知背景色 B */
+  notificationB?: number
+  /** 通知背景色 A */
+  notificationA?: number
+  /** 成就解锁日期格式 */
+  achievementUnlockDatetimeFormat?: string
+  /** 背景色 R */
+  backgroundR?: number
+  /** 背景色 G */
+  backgroundG?: number
+  /** 背景色 B */
+  backgroundB?: number
+  /** 背景色 A */
+  backgroundA?: number
+  /** 元素色 R */
+  elementR?: number
+  /** 元素色 G */
+  elementG?: number
+  /** 元素色 B */
+  elementB?: number
+  /** 元素色 A */
+  elementA?: number
+  /** 元素悬停色 R */
+  elementHoveredR?: number
+  /** 元素悬停色 G */
+  elementHoveredG?: number
+  /** 元素悬停色 B */
+  elementHoveredB?: number
+  /** 元素悬停色 A */
+  elementHoveredA?: number
+  /** 元素激活色 R */
+  elementActiveR?: number
+  /** 元素激活色 G */
+  elementActiveG?: number
+  /** 元素激活色 B */
+  elementActiveB?: number
+  /** 元素激活色 A */
+  elementActiveA?: number
+  /** 成就通知位置 */
+  posAchievement?: string
+  /** 邀请通知位置 */
+  posInvitation?: string
+  /** 聊天消息位置 */
+  posChatMsg?: string
+  /** 统计背景色 R */
+  statsBackgroundR?: number
+  /** 统计背景色 G */
+  statsBackgroundG?: number
+  /** 统计背景色 B */
+  statsBackgroundB?: number
+  /** 统计背景色 A */
+  statsBackgroundA?: number
+  /** 统计文字色 R */
+  statsTextR?: number
+  /** 统计文字色 G */
+  statsTextG?: number
+  /** 统计文字色 B */
+  statsTextB?: number
+  /** 统计文字色 A */
+  statsTextA?: number
+  /** 统计位置 X */
+  statsPosX?: number
+  /** 统计位置 Y */
+  statsPosY?: number
+}
+
+/** Overlay 性能设置 */
+export interface OverlayPerformance {
+  /** 硬件加速 */
+  hardwareAcceleration: boolean
+  /** FPS 限制 */
+  fpsLimit: number
+  /** 低性能模式 */
+  lowPerformanceMode: boolean
+}
+
+/** Overlay 功能开关 */
+export interface OverlayFeatures {
+  /** 成就 */
+  achievements: boolean
+  /** 好友 */
+  friends: boolean
+  /** 聊天 */
+  chat: boolean
+  /** 浏览器 */
+  browser: boolean
+  /** 设置 */
+  settings: boolean
 }
 
 // ============================================
@@ -813,34 +1008,96 @@ export const DEFAULT_MAIN_CONFIG: MainConfig = {
 export const DEFAULT_USER_CONFIG: UserConfig = {
   username: 'Player',
   language: 'schinese',
-  savePath: '%appdata%/GSE Saves',
-  useDefaultAvatar: true
+  ipCountry: 'CN'
 }
 
 export const DEFAULT_APP_CONFIG: AppConfig = {
-  branchName: 'public',
-  appPaths: {},
+  branch_name: 'public',
+  is_beta_branch: false,
+  app_paths: {},
   dlcs: {
-    unlockAll: true,
-    individualDlcs: []
+    unlock_all: true,
+    custom_list: '',
+    depot_ids: '',
+    dlc_paths: ''
+  },
+  controller: {
+    steam_input: undefined,
+    type: undefined
+  },
+  cloud_saves: {
+    enabled: undefined,
+    create_default_dir: undefined,
+    create_specific_dirs: undefined,
+    windows_dirs: [],
+    linux_dirs: []
   }
 }
 
 export const DEFAULT_OVERLAY_CONFIG: OverlayConfig = {
   enableExperimentalOverlay: false,
-  hotkey: 'Shift+Tab',
+  hookDelaySec: undefined,
+  rendererDetectorTimeoutSec: undefined,
+  overlayHotkey: 'shift + tab',
+  fpsAveragingWindow: undefined,
   notifications: {
-    achievement: true,
-    friend: true,
-    message: true,
-    duration: 5,
-    position: 'bottom-right'
+    disableAchievementNotification: false,
+    disableFriendNotification: false,
+    disableAchievementProgress: false,
+    disableWarningAny: false,
+    disableWarningBadAppid: false,
+    disableWarningLocalSave: false,
+    uploadAchievementsIconsToGpu: true,
+    overlayAlwaysShowUserInfo: false,
+    overlayAlwaysShowFps: false,
+    overlayAlwaysShowFrametime: false,
+    overlayAlwaysShowPlaytime: false,
+    notificationDurationAchievement: undefined,
+    notificationDurationInvitation: undefined,
+    notificationDurationChat: undefined,
+    notificationDurationProgress: undefined
   },
   appearance: {
     theme: 'dark',
     opacity: 0.95,
     scale: 1.0,
-    blur: true
+    blur: true,
+    notificationRounding: undefined,
+    notificationMarginX: undefined,
+    notificationMarginY: undefined,
+    notificationR: undefined,
+    notificationG: undefined,
+    notificationB: undefined,
+    notificationA: undefined,
+    backgroundR: undefined,
+    backgroundG: undefined,
+    backgroundB: undefined,
+    backgroundA: undefined,
+    elementR: undefined,
+    elementG: undefined,
+    elementB: undefined,
+    elementA: undefined,
+    elementHoveredR: undefined,
+    elementHoveredG: undefined,
+    elementHoveredB: undefined,
+    elementHoveredA: undefined,
+    elementActiveR: undefined,
+    elementActiveG: undefined,
+    elementActiveB: undefined,
+    elementActiveA: undefined,
+    posAchievement: undefined,
+    posInvitation: undefined,
+    posChatMsg: undefined,
+    statsBackgroundR: undefined,
+    statsBackgroundG: undefined,
+    statsBackgroundB: undefined,
+    statsBackgroundA: undefined,
+    statsTextR: undefined,
+    statsTextG: undefined,
+    statsTextB: undefined,
+    statsTextA: undefined,
+    statsPosX: undefined,
+    statsPosY: undefined
   },
   performance: {
     hardwareAcceleration: true,

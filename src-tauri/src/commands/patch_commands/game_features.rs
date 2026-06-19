@@ -375,7 +375,8 @@ pub async fn load_leaderboards_config(
     })
 }
 
-/// 解析排行榜 TXT 内容
+/// 解析 gbe_fork leaderboards.txt 内容
+/// 格式: LEADERBOARD_NAME=sort method=display type
 fn parse_leaderboards_txt(content: &str) -> Result<LeaderboardsConfig, String> {
     let mut config = LeaderboardsConfig::default_config();
 
@@ -385,13 +386,14 @@ fn parse_leaderboards_txt(content: &str) -> Result<LeaderboardsConfig, String> {
             continue;
         }
 
-        let parts: Vec<&str> = line.split('|').collect();
-        if parts.len() >= 4 {
+        // gbe_fork 格式: NAME=sort=display
+        let parts: Vec<&str> = line.split('=').collect();
+        if parts.len() >= 3 {
             config.leaderboards.push(Leaderboard {
-                name: parts[0].to_string(),
-                display_name: parts[1].to_string(),
-                sort_method: parts[2].to_string(),
-                display_type: parts[3].to_string(),
+                name: parts[0].trim().to_string(),
+                display_name: parts[0].trim().to_string(), // gbe_fork 格式没有 display_name，使用 name 代替
+                sort_method: parts[1].trim().to_string(),
+                display_type: parts[2].trim().to_string(),
                 entries: vec![],
             });
         }
@@ -565,3 +567,5 @@ fn parse_controller_ini(content: &str) -> Result<ControllerConfig, String> {
 
     Ok(config)
 }
+
+

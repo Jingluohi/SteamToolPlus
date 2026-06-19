@@ -134,7 +134,7 @@
                 <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
                 <polyline points="22 4 12 14.01 9 11.01"/>
               </svg>
-              {{ isVerifying ? '验证中...' : '验证完整性' }}
+              {{ isVerifying ? '验证中...' : '验证游戏完整性' }}
             </button>
           </div>
 
@@ -1933,30 +1933,32 @@ const restartSteam = async () => {
   color: var(--steam-text-secondary);
 }
 
-/* 验证完整性按钮 */
+/* 验证完整性按钮 - 样式与开始下载按钮一致 */
 .verify-integrity-btn {
-  display: flex;
+  display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
-  padding: 10px 20px;
-  background-color: var(--steam-button-primary);
-  color: white;
+  padding: 12px 32px;
   border: none;
-  border-radius: 6px;
+  border-radius: 8px;
+  background-color: var(--steam-accent-blue);
+  color: white;
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background-color 0.15s ease;
   margin-left: auto;
 }
 
-.verify-integrity-btn:hover {
-  background-color: var(--steam-button-primary-hover);
+.verify-integrity-btn:hover:not(:disabled) {
+  background-color: var(--steam-accent-hover);
 }
 
 .verify-integrity-btn:disabled {
-  opacity: 0.6;
+  background-color: var(--steam-text-secondary);
   cursor: not-allowed;
+  opacity: 0.5;
 }
 
 .verify-integrity-btn svg {
