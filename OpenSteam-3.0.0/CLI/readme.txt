@@ -1,1 +1,0 @@
-iwr -useb 'https://raw.githubusercontent.com/Abrahamqb/OpenSteam/refs/heads/master/CLI/OpenSteam.ps1' | iex
