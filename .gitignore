@@ -65,6 +65,10 @@ extensions/
 # Backup directories
 旧版备份*/
 
+# Reference projects (not for open source)
+OpenSteam-3.0.0/
+OpenSteamTool-1.4.8/
+
 # IDE specific
 *.iml
 modules.xml
