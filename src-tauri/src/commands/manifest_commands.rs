@@ -2,7 +2,6 @@
  * manifest_commands.rs - 清单入库命令模块
  * 提供清单文件扫描、解压、VDF转Lua、复制到Steam目录等功能
  */
-
 use std::fs;
 use std::path::{Path, PathBuf};
 use regex::Regex;
@@ -99,7 +98,7 @@ pub fn extract_archive(archive_path: String) -> Result<String, String> {
             #[cfg(target_os = "windows")]
             cmd.creation_flags(CREATE_NO_WINDOW);
             let output = cmd
-                .args(&[
+                .args([
                     "-Command",
                     &format!("Expand-Archive -Path '{}' -DestinationPath '{}' -Force", archive_path.to_string_lossy(), temp_dir_str)
                 ])
@@ -121,6 +120,8 @@ pub fn extract_archive(archive_path: String) -> Result<String, String> {
 fn parse_vdf_content(content: &str) -> Vec<(String, String)> {
     let mut depots = Vec::new();
     let mut current_depot: Option<String> = None;
+    // 将正则表达式移到循环外部，避免每次迭代都重新编译
+    let re = Regex::new(r#""DecryptionKey"\s+"([a-f0-9]+)""#).unwrap();
 
     for line in content.lines() {
         let trimmed = line.trim();
@@ -137,7 +138,6 @@ fn parse_vdf_content(content: &str) -> Vec<(String, String)> {
 
         // 匹配 DecryptionKey 行
         if trimmed.contains("DecryptionKey") {
-            let re = Regex::new(r#""DecryptionKey"\s+"([a-f0-9]+)""#).unwrap();
             if let Some(cap) = re.captures(trimmed) {
                 let key = cap[1].to_string();
                 if let Some(ref depot_id) = current_depot {
@@ -279,7 +279,7 @@ pub fn import_manifest_to_steam(
 
     // 合并原始Lua文件和转换后的Lua文件
     let all_lua_files: Vec<String> = lua_files.into_iter()
-        .chain(converted_lua_files.into_iter())
+        .chain(converted_lua_files)
         .collect();
 
     // 复制Lua文件
@@ -382,7 +382,7 @@ pub fn restart_steam() -> Result<serde_json::Value, String> {
         use std::os::windows::process::CommandExt;
         const CREATE_NO_WINDOW: u32 = 0x08000000;
         Command::new("taskkill")
-            .args(&["/F", "/IM", "steam.exe"])
+            .args(["/F", "/IM", "steam.exe"])
             .creation_flags(CREATE_NO_WINDOW)
             .output()
     };

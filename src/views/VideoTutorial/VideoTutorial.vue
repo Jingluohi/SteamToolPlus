@@ -2,7 +2,7 @@
   <div class="video-tutorial-page">
     <div class="tutorial-content">
       <h1 class="page-title">视频教程</h1>
-      <p class="page-subtitle">观看视频教程，快速上手 Steam Tool Plus</p>
+      <p class="page-subtitle">工具详细视频教程及各个游戏安装演示</p>
 
       <!-- 按钮区域 -->
       <div class="button-section">

@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "OpenSteam": {
+      "commandName": "Project",
+      "environmentVariables": {
+        "InitialMessage": "True"
+      }
+    }
+  }
+}

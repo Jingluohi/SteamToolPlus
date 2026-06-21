@@ -377,19 +377,19 @@ defineExpose({
   bottom: 0;
   left: 0;
   right: 0;
-  padding: 8px 12px;
+  padding: 8px 12px 2px 12px;
   z-index: 1;
 }
 
 .game-name {
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 600;
   color: #ffffff;
   margin: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  line-height: 1.3;
+  line-height: 1.2;
 }
 
 .game-en-name {
@@ -400,14 +400,14 @@ defineExpose({
   overflow: hidden;
   text-overflow: ellipsis;
   display: block;
-  line-height: 1.3;
+  line-height: 1.2;
 }
 
 .game-id {
   font-size: 12px;
   color: rgba(255, 255, 255, 0.7);
   font-family: 'Courier New', monospace;
-  line-height: 1.3;
+  line-height: 1.2;
 }
 
 /* GPU加速 */

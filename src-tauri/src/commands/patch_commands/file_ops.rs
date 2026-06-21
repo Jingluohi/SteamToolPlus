@@ -57,8 +57,7 @@ pub(crate) async fn rename_example_files(dir: &Path) -> Result<(), String> {
         let file_name_str = file_name.to_string_lossy();
 
         // 格式1: name.EXAMPLE (以 .EXAMPLE 结尾)
-        if file_name_str.ends_with(".EXAMPLE") {
-            let new_name = &file_name_str[..file_name_str.len() - 8];
+        if let Some(new_name) = file_name_str.strip_suffix(".EXAMPLE") {
             let new_path = dir.join(new_name);
             entries_to_rename.push((path.clone(), new_path));
         }

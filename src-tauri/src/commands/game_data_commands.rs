@@ -50,11 +50,12 @@ pub async fn update_game_play_time(
 }
 
 /// 删除游戏目录
-/// 卸载游戏时使用，删除游戏安装目录但保留存档
+/// 卸载游戏时使用，删除游戏安装目录但保留存档，同时清理下载日志目录
 #[tauri::command]
 pub async fn delete_game_directory(
     path: String,
     save_path: Option<String>,
+    game_id: Option<String>,
 ) -> Result<(), String> {
     use std::fs;
 
@@ -116,6 +117,18 @@ pub async fn delete_game_directory(
 
         // 清理临时备份
         let _ = fs::remove_dir_all(&backup_path);
+    }
+
+    // 如果提供了游戏ID，清理下载日志目录 %APPDATA%/SteamToolPlus/log/{game_id}
+    if let Some(gid) = game_id {
+        let log_dir = crate::utils::config_path_utils::get_appdata_dir()?
+            .join("log")
+            .join(&gid);
+        if log_dir.exists() {
+            if let Err(e) = fs::remove_dir_all(&log_dir) {
+                eprintln!("清理下载日志目录失败 ({}): {}", log_dir.display(), e);
+            }
+        }
     }
 
     Ok(())
@@ -187,6 +200,7 @@ pub async fn check_game_exists(app: AppHandle, game_id: String) -> Result<bool, 
 
 /// 导入自定义游戏
 #[tauri::command]
+#[allow(clippy::too_many_arguments)]
 pub async fn import_custom_game(
     app: AppHandle,
     game_name: String,
@@ -379,7 +393,7 @@ fn get_game_processes_snapshot(dir_path: &str, exe_name: &str, initial_pid: u32)
         use std::os::windows::process::CommandExt;
         const CREATE_NO_WINDOW: u32 = 0x08000000;
         Command::new("wmic")
-            .args(&["process", "get", "ProcessId,ExecutablePath,Name", "/format:csv"])
+            .args(["process", "get", "ProcessId,ExecutablePath,Name", "/format:csv"])
             .creation_flags(CREATE_NO_WINDOW)
             .output()
     };
@@ -459,7 +473,7 @@ fn check_game_running(
         use std::os::windows::process::CommandExt;
         const CREATE_NO_WINDOW: u32 = 0x08000000;
         Command::new("tasklist")
-            .args(&["/FO", "CSV", "/NH"])
+            .args(["/FO", "CSV", "/NH"])
             .creation_flags(CREATE_NO_WINDOW)
             .output()
     };
@@ -532,7 +546,7 @@ fn check_processes_in_directory_wmic(dir_lower: &str) -> bool {
         use std::os::windows::process::CommandExt;
         const CREATE_NO_WINDOW: u32 = 0x08000000;
         Command::new("wmic")
-            .args(&["process", "get", "ExecutablePath", "/format:csv"])
+            .args(["process", "get", "ExecutablePath", "/format:csv"])
             .creation_flags(CREATE_NO_WINDOW)
             .output()
     };
@@ -589,7 +603,7 @@ fn check_game_running_dynamic(
         use std::os::windows::process::CommandExt;
         const CREATE_NO_WINDOW: u32 = 0x08000000;
         Command::new("wmic")
-            .args(&["process", "get", "ProcessId,ExecutablePath,Name", "/format:csv"])
+            .args(["process", "get", "ProcessId,ExecutablePath,Name", "/format:csv"])
             .creation_flags(CREATE_NO_WINDOW)
             .output()
     };
@@ -674,7 +688,7 @@ fn is_process_running(pid: u32) -> bool {
         use std::os::windows::process::CommandExt;
         const CREATE_NO_WINDOW: u32 = 0x08000000;
         Command::new("tasklist")
-            .args(&["/FI", &format!("PID eq {}", pid), "/FO", "CSV", "/NH"])
+            .args(["/FI", &format!("PID eq {}", pid), "/FO", "CSV", "/NH"])
             .creation_flags(CREATE_NO_WINDOW)
             .output()
     };
@@ -706,7 +720,7 @@ pub async fn close_game_process(pid: u32) -> Result<(), String> {
         use std::os::windows::process::CommandExt;
         const CREATE_NO_WINDOW: u32 = 0x08000000;
         Command::new("taskkill")
-            .args(&["/PID", &pid.to_string(), "/T", "/F"])
+            .args(["/PID", &pid.to_string(), "/T", "/F"])
             .creation_flags(CREATE_NO_WINDOW)
             .output()
     };
@@ -730,7 +744,7 @@ pub async fn close_game_process(pid: u32) -> Result<(), String> {
             use std::os::windows::process::CommandExt;
             const CREATE_NO_WINDOW: u32 = 0x08000000;
             let _ = Command::new("taskkill")
-                .args(&["/PID", &pid.to_string(), "/F"])
+                .args(["/PID", &pid.to_string(), "/F"])
                 .creation_flags(CREATE_NO_WINDOW)
                 .output();
         }
@@ -797,7 +811,7 @@ fn is_game_process_running_simple(exe_name: &str) -> bool {
         use std::os::windows::process::CommandExt;
         const CREATE_NO_WINDOW: u32 = 0x08000000;
         Command::new("tasklist")
-            .args(&["/FO", "CSV", "/NH"])
+            .args(["/FO", "CSV", "/NH"])
             .creation_flags(CREATE_NO_WINDOW)
             .output()
     };
@@ -831,6 +845,7 @@ fn is_game_process_running_simple(exe_name: &str) -> bool {
 
 /// 更新游戏数据（用于编辑功能）
 #[tauri::command]
+#[allow(clippy::too_many_arguments)]
 pub async fn update_game_data(
     app: AppHandle,
     game_id: String,

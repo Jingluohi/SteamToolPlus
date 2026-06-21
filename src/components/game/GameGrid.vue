@@ -68,12 +68,13 @@ function handleGamePlay(game: Game) {
 <style scoped>
 .game-grid {
   display: grid;
-  gap: 16px;
 }
 
-/* 网格视图 */
+/* 网格视图 - 固定5列，间距与卡片宽度保持16:220比例 */
 .game-grid.view-grid {
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  grid-template-columns: repeat(5, 1fr);
+  /* gap百分比再减半 ≈ 0.293% */
+  gap: 0.293%;
 }
 
 /* 列表视图 */
@@ -81,36 +82,5 @@ function handleGamePlay(game: Game) {
   display: flex;
   flex-direction: column;
   gap: 8px;
-}
-
-/* 响应式布局 */
-@media (min-width: 1280px) {
-  .game-grid.view-grid {
-    grid-template-columns: repeat(4, 1fr);
-  }
-}
-
-@media (min-width: 1600px) {
-  .game-grid.view-grid {
-    grid-template-columns: repeat(5, 1fr);
-  }
-}
-
-@media (min-width: 1920px) {
-  .game-grid.view-grid {
-    grid-template-columns: repeat(6, 1fr);
-  }
-}
-
-@media (max-width: 1024px) {
-  .game-grid.view-grid {
-    grid-template-columns: repeat(3, 1fr);
-  }
-}
-
-@media (max-width: 768px) {
-  .game-grid.view-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
 }
 </style>

@@ -10,33 +10,27 @@ const BACKGROUND_CONFIG_FILENAME: &str = "background.json";
 /// 背景显示模式
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
+#[derive(Default)]
 pub enum BackgroundMode {
+    #[default]
     Single,
     Slideshow,
     Random,
 }
 
-impl Default for BackgroundMode {
-    fn default() -> Self {
-        BackgroundMode::Single
-    }
-}
 
 /// 切换动画效果
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
+#[derive(Default)]
 pub enum TransitionEffect {
+    #[default]
     Fade,
     Slide,
     Zoom,
     None,
 }
 
-impl Default for TransitionEffect {
-    fn default() -> Self {
-        TransitionEffect::Fade
-    }
-}
 
 /// 页面类型
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -446,34 +440,32 @@ pub async fn scan_background_files() -> Result<Vec<BackgroundFile>, String> {
     let entries = fs::read_dir(&background_dir)
         .map_err(|e| format!("读取背景目录失败: {}", e))?;
 
-    for entry in entries {
-        if let Ok(entry) = entry {
-            let path = entry.path();
-            if path.is_file() {
-                if let Some(ext) = path.extension() {
-                    let ext = ext.to_string_lossy().to_lowercase();
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if path.is_file() {
+            if let Some(ext) = path.extension() {
+                let ext = ext.to_string_lossy().to_lowercase();
 
-                    if image_extensions.contains(&ext.as_str()) {
-                        let filename = path.file_name()
-                            .map(|n| n.to_string_lossy().to_string())
-                            .unwrap_or_default();
+                if image_extensions.contains(&ext.as_str()) {
+                    let filename = path.file_name()
+                        .map(|n| n.to_string_lossy().to_string())
+                        .unwrap_or_default();
 
-                        // 检查是否已存在
-                        let exists = config.files.iter().any(|f| f.filename == filename);
+                    // 检查是否已存在
+                    let exists = config.files.iter().any(|f| f.filename == filename);
 
-                        if !exists {
-                            let id = Uuid::new_v4().to_string();
-                            let file = BackgroundFile {
-                                id: id.clone(),
-                                filename: filename.clone(),
-                                path: path.to_string_lossy().to_string(),
-                                added_time: chrono::Local::now().to_rfc3339(),
-                                enabled: true,
-                                order: config.files.len() as i32 + new_files.len() as i32,
-                            };
+                    if !exists {
+                        let id = Uuid::new_v4().to_string();
+                        let file = BackgroundFile {
+                            id: id.clone(),
+                            filename: filename.clone(),
+                            path: path.to_string_lossy().to_string(),
+                            added_time: chrono::Local::now().to_rfc3339(),
+                            enabled: true,
+                            order: config.files.len() as i32 + new_files.len() as i32,
+                        };
 
-                            new_files.push(file);
-                        }
+                        new_files.push(file);
                     }
                 }
             }

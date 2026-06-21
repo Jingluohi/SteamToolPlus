@@ -1,0 +1,5 @@
+# Placeholder so git tracks this otherwise-empty directory.
+#
+# OSTPlatform is Windows-only today (see ../CMakeLists.txt and the top-level
+# src/CMakeLists.txt, which returns early on non-WIN32). This folder reserves
+# the spot for a future Linux backend; it intentionally holds no stub sources.

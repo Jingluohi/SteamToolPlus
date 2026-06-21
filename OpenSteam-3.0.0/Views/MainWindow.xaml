@@ -1,0 +1,288 @@
+<Window x:Class="OpenSteam.Views.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        Title="OpenSteam Manager" Height="600" Width="950"
+        WindowStartupLocation="CenterScreen" Background="Transparent" 
+        ResizeMode="NoResize" WindowStyle="None"
+        AllowsTransparency="True"
+        TextOptions.TextFormattingMode="Display"
+        TextOptions.TextRenderingMode="ClearType"
+        UseLayoutRounding="True">
+
+    <Window.Resources>
+        <Style x:Key="ExitButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border" Background="{TemplateBinding Background}" CornerRadius="0,20,0,10">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#E81123"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="MenuRadioButton" TargetType="RadioButton">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="#88FFFFFF"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Height" Value="45"/>
+            <Setter Property="Margin" Value="15,5"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Border x:Name="border" Background="{TemplateBinding Background}" CornerRadius="10">
+                            <ContentPresenter VerticalAlignment="Center" Margin="20,0"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#1AFFFFFF"/>
+                                <Setter Property="Foreground" Value="White"/>
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#33007ACC"/>
+                                <Setter Property="Foreground" Value="#007ACC"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Grid Margin="15">
+        <Grid.Effect>
+            <DropShadowEffect BlurRadius="25" ShadowDepth="0" Opacity="0.6" Color="Black"/>
+        </Grid.Effect>
+
+        <Border x:Name="MainBorder" Background="#0F0F0F" CornerRadius="20" BorderThickness="1" BorderBrush="#33FFFFFF">
+            <Border.OpacityMask>
+                <VisualBrush>
+                    <VisualBrush.Visual>
+                        <Border Background="Black" CornerRadius="20" 
+                                Width="{Binding ElementName=MainBorder, Path=ActualWidth}" 
+                                Height="{Binding ElementName=MainBorder, Path=ActualHeight}"/>
+                    </VisualBrush.Visual>
+                </VisualBrush>
+            </Border.OpacityMask>
+
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="230"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <Border Background="#090909" Grid.Column="0" CornerRadius="20,0,0,20" BorderThickness="0,0,1,0" BorderBrush="#1AFFFFFF">
+                    <StackPanel>
+                        <StackPanel Margin="0,30,0,30" HorizontalAlignment="Center">
+                            <TextBlock Text="OPENSTEAM" Foreground="White" FontSize="22" FontWeight="ExtraBold" HorizontalAlignment="Center"/>
+                            <TextBlock Text="MANAGER" Foreground="#007ACC" FontSize="14" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,-2,0,0"/>
+                        </StackPanel>
+
+                        <StackPanel>
+                            <RadioButton Content="Dashboard" IsChecked="True" Style="{StaticResource MenuRadioButton}" GroupName="Menu" Click="NavHome_Click"/>
+                            <RadioButton Content="Online Lua" Style="{StaticResource MenuRadioButton}" GroupName="Menu" Click="NavOnline_Click"/>
+                            <RadioButton Content="Library" Style="{StaticResource MenuRadioButton}" GroupName="Menu" Click="NavLibrary_Click"/>
+                            <RadioButton Content="Online Fix" Style="{StaticResource MenuRadioButton}" GroupName="Menu" Click="NavByPass_Click"/>
+                            <RadioButton Content="Extras" Style="{StaticResource MenuRadioButton}" GroupName="Menu" Click="NavExtra_Click"/>
+                            <RadioButton Content="Settings" Style="{StaticResource MenuRadioButton}" GroupName="Menu" Click="NavSettings_Click"/>
+                            <RadioButton Content="Information" Style="{StaticResource MenuRadioButton}" GroupName="Menu" Click="NavInfo_Click"/>
+                        </StackPanel>
+
+                        <TextBlock x:Name="txtVersion" Text="v2.1 Beta" Foreground="#44FFFFFF" FontSize="11" HorizontalAlignment="Center" Margin="0,100,0,0" VerticalAlignment="Bottom"/>
+                    </StackPanel>
+                </Border>
+
+                <Grid Grid.Column="1">
+                    <Border Height="40" VerticalAlignment="Top" Background="Transparent" MouseDown="Drag_MouseDown" Panel.ZIndex="10">
+                        <Button x:Name="ExitButton" Content="✕" HorizontalAlignment="Right" VerticalAlignment="Top" Width="45" Height="32" Style="{StaticResource ExitButtonStyle}" Click="ExitButton_Click" />
+                    </Border>
+
+                    <ContentControl x:Name="DynamicContent" Margin="0,40,0,0" Visibility="Collapsed"/>
+
+                    <Grid x:Name="HomeGrid" Margin="0,40,0,0">
+                        <Canvas IsHitTestVisible="False"/>
+
+                        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                            <TextBlock Text="DASHBOARD" Foreground="White" FontSize="26" FontWeight="ExtraBold" HorizontalAlignment="Center" Margin="0,0,0,30">
+                                <TextBlock.Effect>
+                                    <DropShadowEffect BlurRadius="8" ShadowDepth="1" Opacity="0.3"/>
+                                </TextBlock.Effect>
+                            </TextBlock>
+
+                            <UniformGrid Columns="2" Width="470">
+                                <Button x:Name="patchButton" Content="Patch Steam" Style="{StaticResource PrimaryAction}" Height="50" Click="patchButton_Click"/>
+                                <Button x:Name="DeletePatchButton" Content="Delete Patch" Style="{StaticResource DangerAction}" Height="50" Click="DeletePatchButton_Click"/>
+                                <Button x:Name="ResetSteam" Content="Restart Steam" Style="{StaticResource ModernButtonStyle}" Background="#1E1E1E" Height="50" Click="ResetSteam_Click"/>
+                                <Button x:Name="Plugins" Content="Millennium + Plugin" Style="{StaticResource ModernButtonStyle}" Background="#1E1E1E" Height="50" Click="Plugins_Click"/>
+                            </UniformGrid>
+
+                            <Button x:Name="ManualLuaButton" Content="Load Custom LuaLoader" Style="{StaticResource ModernButtonStyle}" Background="#1E1E1E" Height="40" Width="458" Margin="6,15,6,0" Click="ManualLua_Click"/>
+
+                            <!-- Version Switch -->
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,20,0,0">
+                                <TextBlock x:Name="DefaultTxt" Text="Default" Foreground="#FF007ACC" FontWeight="ExtraBold" FontSize="11" VerticalAlignment="Center" Margin="0,0,10,0">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding ElementName=VersionToggle, Path=IsChecked}" Value="True">
+                                                    <Setter Property="Foreground" Value="#007ACC"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                                
+                                <CheckBox x:Name="VersionToggle" Style="{StaticResource ToggleSwitchStyle}" IsChecked="False" VerticalAlignment="Center" Width="40" Checked="VersionToggle_Checked" Unchecked="VersionToggle_Checked"/>
+
+                                <TextBlock x:Name="AlternativeTxt" Text="Alternative" Foreground="#3FFFFFFF" FontWeight="ExtraBold" FontSize="11" VerticalAlignment="Center" Margin="10,0,0,0">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding ElementName=VersionToggle, Path=IsChecked}" Value="False">
+                                                    <Setter Property="Foreground" Value="#007ACC"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </StackPanel>
+
+                            <Border Background="#0FFFFFFF" CornerRadius="8" Margin="0,20,0,0" Padding="15,10" HorizontalAlignment="Center">
+                                <StackPanel Orientation="Horizontal">
+                                    <Ellipse x:Name="StatusDot" Fill="#00FF00" Width="10" Height="10" Margin="0,0,10,0" VerticalAlignment="Center"/>
+                                    <TextBlock x:Name="ParcheEstado" Text="Status: System Ready" Foreground="#88FFFFFF" FontSize="12" FontWeight="Medium" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </Grid>
+
+                    <Grid x:Name="SettingsGrid" Margin="0,40,0,0" Visibility="Collapsed">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="20">
+                            <StackPanel Margin="20" HorizontalAlignment="Center" Width="550">
+                                <TextBlock Text="SETTINGS" Foreground="White" FontWeight="Bold" FontSize="26" HorizontalAlignment="Center" Margin="0,0,0,40">
+                                    <TextBlock.Effect>
+                                        <DropShadowEffect BlurRadius="10" Color="#007ACC" ShadowDepth="0" Opacity="0.5"/>
+                                    </TextBlock.Effect>
+                                </TextBlock>
+
+                                <!-- GENERAL SECTION -->
+                                <TextBlock Text="GENERAL" Foreground="#007ACC" FontSize="14" FontWeight="Bold" Margin="0,0,0,15"/>
+
+                                <Border Style="{StaticResource SettingCardStyle}">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel>
+                                            <TextBlock Text="Delete patch on close" Foreground="White" FontWeight="SemiBold" FontSize="14"/>
+                                            <TextBlock Text="Removes applied patches when the application is closed." Foreground="#88FFFFFF" FontSize="11" TextWrapping="Wrap"/>
+                                        </StackPanel>
+                                        <CheckBox x:Name="DeleteAutoPatch_" Style="{StaticResource ToggleSwitchStyle}" Grid.Column="1" VerticalAlignment="Center" Checked="DeleteAutoPatch" Unchecked="DeleteAutoPatch"/>
+                                    </Grid>
+                                </Border>
+
+                                <Border Style="{StaticResource SettingCardStyle}">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel>
+                                            <TextBlock Text="Auto-Patch on Launch" Foreground="White" FontWeight="SemiBold" FontSize="14"/>
+                                            <TextBlock Text="Automatically applies the patch when the manager starts." Foreground="#88FFFFFF" FontSize="11" TextWrapping="Wrap"/>
+                                        </StackPanel>
+                                        <CheckBox x:Name="AutoPatch_" Style="{StaticResource ToggleSwitchStyle}" Grid.Column="1" VerticalAlignment="Center" Checked="AutoPatch" Unchecked="AutoPatch"/>
+                                    </Grid>
+                                </Border>
+
+                                <Border Style="{StaticResource SettingCardStyle}">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel>
+                                            <TextBlock Text="Close Steam before Patching" Foreground="White" FontWeight="SemiBold" FontSize="14"/>
+                                            <TextBlock Text="Ensures Steam is closed before applying any changes." Foreground="#88FFFFFF" FontSize="11" TextWrapping="Wrap"/>
+                                        </StackPanel>
+                                        <CheckBox x:Name="CloseSteamPatch_" Style="{StaticResource ToggleSwitchStyle}" Grid.Column="1" VerticalAlignment="Center" Checked="CloseSteamPatch" Unchecked="CloseSteamPatch"/>
+                                    </Grid>
+                                </Border>
+
+                                <Border Style="{StaticResource SettingCardStyle}">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel>
+                                            <TextBlock Text="Disable NSFW Alert" Foreground="White" FontWeight="SemiBold" FontSize="14"/>
+                                            <TextBlock Text="Prevents warning messages for content marked as NSFW." Foreground="#88FFFFFF" FontSize="11" TextWrapping="Wrap"/>
+                                        </StackPanel>
+                                        <CheckBox x:Name="DisableNFSWAlert_" Style="{StaticResource ToggleSwitchStyle}" Grid.Column="1" VerticalAlignment="Center" Checked="DisableNFSWAlert" Unchecked="DisableNFSWAlert"/>
+                                    </Grid>
+                                </Border>
+
+                                <Border Style="{StaticResource SettingCardStyle}">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel>
+                                            <TextBlock Text="Filter for Online Lua" Foreground="White" FontWeight="SemiBold" FontSize="14"/>
+                                            <TextBlock Text="Enables filtering for games in the Online Lua section." Foreground="#88FFFFFF" FontSize="11" TextWrapping="Wrap"/>
+                                        </StackPanel>
+                                        <CheckBox x:Name="DisableFilter_" Style="{StaticResource ToggleSwitchStyle}" Grid.Column="1" VerticalAlignment="Center" Checked="DisableFilterToOnlineLua" Unchecked="DisableFilterToOnlineLua"/>
+                                    </Grid>
+                                </Border>
+
+                                <!-- STEAM SECTION -->
+                                <TextBlock Text="STEAM" Foreground="#007ACC" FontSize="14" FontWeight="Bold" Margin="0,20,0,15"/>
+
+                                <Border Style="{StaticResource SettingCardStyle}">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel>
+                                            <TextBlock Text="Disable Web Helper" Foreground="White" FontWeight="SemiBold" FontSize="14"/>
+                                            <TextBlock Text="Disables steamwebhelper.exe to save system resources." Foreground="#88FFFFFF" FontSize="11" TextWrapping="Wrap"/>
+                                        </StackPanel>
+                                        <CheckBox x:Name="DisableWebHelper_" Style="{StaticResource ToggleSwitchStyle}" Grid.Column="1" VerticalAlignment="Center" Checked="DisableWebHelper" Unchecked="DisableWebHelper"/>
+                                    </Grid>
+                                </Border>
+
+                                <!-- MAINTENANCE SECTION -->
+                                <TextBlock Text="MAINTENANCE" Foreground="#007ACC" FontSize="14" FontWeight="Bold" Margin="0,20,0,15"/>
+                                
+                                <UniformGrid Columns="2" Margin="0,0,0,30">
+                                    <Button Content="Backup Steam (Recommended)" Style="{StaticResource DangerAction}" Height="40" Margin="5" FontSize="11" Click="SteamBackup_Click" Background="#FF459A20"/>
+                                    <Button Content="Clean Steam Cache" Style="{StaticResource DangerAction}" Height="40" Margin="5" FontSize="11" Click="CleanCache_Click"/>
+                                    <Button Content="Backup Steam Config" Style="{StaticResource DangerAction}" Height="40" Margin="5" FontSize="11" Click="ConfigBackup_Click"/>
+                                    <Button Content="Open Steam Folder" Style="{StaticResource DangerAction}" Height="40" Margin="5" FontSize="11" Click="Folder_Click"/>
+                                </UniformGrid>
+                            </StackPanel>
+                        </ScrollViewer>
+                    </Grid>
+
+                </Grid>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

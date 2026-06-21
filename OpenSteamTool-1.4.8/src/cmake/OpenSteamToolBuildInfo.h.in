@@ -1,0 +1,3 @@
+#pragma once
+
+#define OPENSTEAMTOOL_VERSION "@OPENSTEAMTOOL_VERSION@"

@@ -79,25 +79,32 @@ let unlistenBlurred: EventCallback<void> | null = null
 // 计算属性：是否全屏
 const isFullscreen = computed(() => windowStore.isFullscreen)
 
+// 路由路径到页面类型的映射表
+const PAGE_TYPE_MAP: { keyword: string; pageType: PageType }[] = [
+  { keyword: '/library', pageType: 'library' },
+  { keyword: '/download', pageType: 'download' },
+  { keyword: '/patch', pageType: 'patch' },
+  { keyword: '/settings', pageType: 'settings' },
+  { keyword: '/about', pageType: 'about' },
+  { keyword: '/update-check', pageType: 'about' },
+]
+
 // 计算属性：当前页面类型
 const currentPageType = computed<PageType>(() => {
   const path = route.path
-  
-  // 根据路由路径映射到页面类型
+
+  // 首页或包含 browse 的路由都映射到 browse
   if (path === '/' || path.includes('/browse')) {
     return 'browse'
-  } else if (path.includes('/library')) {
-    return 'library'
-  } else if (path.includes('/download')) {
-    return 'download'
-  } else if (path.includes('/patch')) {
-    return 'patch'
-  } else if (path.includes('/settings')) {
-    return 'settings'
-  } else if (path.includes('/about') || path.includes('/update-check')) {
-    return 'about'
   }
-  
+
+  // 使用映射表进行 O(1) 查找，替代多层 if-else
+  for (const { keyword, pageType } of PAGE_TYPE_MAP) {
+    if (path.includes(keyword)) {
+      return pageType
+    }
+  }
+
   // 默认返回 browse（因为首页是浏览页面）
   return 'browse'
 })

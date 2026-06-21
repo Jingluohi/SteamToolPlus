@@ -517,10 +517,11 @@ const uninstallGame = async (game: GameData | null) => {
   if (!confirmed) return
 
   try {
-    // 调用后端删除游戏目录（保留存档）
+    // 调用后端删除游戏目录（保留存档）并清理下载日志
     await invoke('delete_game_directory', {
       path: game.install_path,
-      savePath: game.save_path
+      savePath: game.save_path,
+      gameId: game.game_id
     })
 
     // 更新游戏状态为未安装，但保留游戏数据

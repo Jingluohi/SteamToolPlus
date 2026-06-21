@@ -105,8 +105,6 @@
       <div class="tabs-content">
         <!-- 游戏下载标签页 -->
         <div v-if="currentTab === 'download'" class="tab-panel">
-          <h3 class="panel-title">游戏下载</h3>
-          
           <!-- 下载状态显示 -->
           <div v-if="existingGameData?.download_status === 'completed'" class="download-completed-notice">
             <div class="success-icon">
@@ -139,31 +137,19 @@
           </div>
 
           <div v-else class="download-info">
-            <!-- 清单文件夹检测状态 -->
-            <div class="info-item" :class="{
-              'success': manifestCheckStatus === 'found',
-              'warning': manifestCheckStatus === 'not_found',
-              'checking': manifestCheckStatus === 'checking'
-            }">
+            <!-- 清单文件夹检测状态，仅未找到时提示 -->
+            <div
+              v-if="manifestCheckStatus === 'not_found'"
+              class="info-item warning"
+            >
               <span class="status-icon">
-                <svg v-if="manifestCheckStatus === 'checking'" class="spin-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/>
-                </svg>
-                <svg v-else-if="manifestCheckStatus === 'found'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-                  <polyline points="22 4 12 14.01 9 11.01"/>
-                </svg>
-                <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <circle cx="12" cy="12" r="10"/>
                   <line x1="15" y1="9" x2="9" y2="15"/>
                   <line x1="9" y1="9" x2="15" y2="15"/>
                 </svg>
               </span>
-              <span>
-                {{ manifestCheckStatus === 'checking' ? '正在检测清单文件夹...' :
-                   manifestCheckStatus === 'found' ? `已找到清单文件夹: ${manifestFolderPath}` :
-                   '未找到清单文件夹，请先下载清单文件' }}
-              </span>
+              <span>未找到清单文件夹，请先下载清单文件</span>
             </div>
 
             <!-- 下载路径显示 -->
@@ -184,6 +170,26 @@
 
           <!-- 下载按钮组 -->
           <div v-if="existingGameData?.download_status !== 'completed'" class="download-btn-group">
+            <!-- 圆形下载进度条，仅下载中显示 -->
+            <div
+              v-if="isDownloading || existingGameData?.download_status === 'downloading'"
+              class="circular-progress"
+              :title="`总进度 ${downloadProgress.overallPercentage}%`"
+            >
+              <svg viewBox="0 0 36 36">
+                <path
+                  class="circle-bg"
+                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                />
+                <path
+                  class="circle-progress"
+                  :stroke-dasharray="`${downloadProgress.overallPercentage}, 100`"
+                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                />
+              </svg>
+              <span class="progress-text">{{ downloadProgress.overallPercentage }}%</span>
+            </div>
+
             <!-- 开始下载按钮 -->
             <button
               class="start-download-btn"
@@ -2081,6 +2087,44 @@ const restartSteam = async () => {
   align-items: center;
   position: relative;
   flex-wrap: wrap;
+}
+
+/* 圆形下载进度条 */
+.circular-progress {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+}
+
+.circular-progress svg {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.circle-bg {
+  fill: none;
+  stroke: var(--steam-border);
+  stroke-width: 3;
+}
+
+.circle-progress {
+  fill: none;
+  stroke: var(--steam-accent-blue);
+  stroke-width: 3;
+  stroke-linecap: round;
+  transition: stroke-dasharray 0.3s ease;
+}
+
+.progress-text {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--steam-text-primary);
 }
 
 /* 暂停下载按钮 */

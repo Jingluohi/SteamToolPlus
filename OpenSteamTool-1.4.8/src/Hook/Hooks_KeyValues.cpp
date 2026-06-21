@@ -1,0 +1,59 @@
+// Hook KeyValues::ReadAsBinary — entry point for KV-tree manipulation.
+// Manifest depot patching has been moved to Hooks_Manifest::BuildDepotDependency.
+
+#include "Hooks_KeyValues.h"
+#include "HookMacros.h"
+#include "dllmain.h"
+#include "OSTPlatform/include/DynamicLibrary.h"
+
+namespace {
+
+    RESOLVE_FUNC(FindOrCreateKey, KeyValues*, KeyValues* parent, const char* name, bool create, KeyValues** out);
+    KeyValues* KV_FindKey(KeyValues* parent, const char* name) {
+        return oFindOrCreateKey ? oFindOrCreateKey(parent, name, false, nullptr) : nullptr;
+    }
+    
+    // ── KeyValuesSystem — symbol ↔ string (from vstdlib_s64.dll) ───
+    IKeyValuesSystem* GetKeyValuesSystem() {
+        static IKeyValuesSystem* sys = []() -> IKeyValuesSystem* {
+            auto vstdlib = OSTPlatform::DynamicLibrary::GetLoaded("vstdlib_s64.dll");
+            if (!vstdlib) return nullptr;
+            auto pfn = reinterpret_cast<KeyValuesSystemSteam_t>(
+                OSTPlatform::DynamicLibrary::GetSymbol(vstdlib, "KeyValuesSystemSteam"));
+            return pfn ? pfn() : nullptr;
+        }();
+        return sys;
+    }
+    
+    const char* GetKeyName(int symbol) {
+        auto* sys = GetKeyValuesSystem();
+        auto name = sys->GetStringForSymbol(symbol);
+        LOG_KEYVALUE_TRACE("GetKeyName: symbol={} -> name={}", symbol, name);
+        return name ? name : nullptr;
+    }
+    
+    HOOK_FUNC(ReadAsBinary, bool, KeyValues* root, void* buf, int depth,
+              bool textMode, void* symTable) {
+        bool ok = oReadAsBinary(root, buf, depth, textMode, symTable);
+        return ok;
+    }
+
+} // anonymous namespace
+
+namespace Hooks_KeyValues {
+
+    void Install() {
+        RESOLVE_C(FindOrCreateKey);
+        
+        HOOK_BEGIN();
+        INSTALL_HOOK_C(ReadAsBinary);
+        HOOK_END();
+    }
+
+    void Uninstall() {
+        UNHOOK_BEGIN();
+        UNINSTALL_HOOK_C(ReadAsBinary);
+        UNHOOK_END();
+    }
+
+} // namespace Hooks_KeyValues

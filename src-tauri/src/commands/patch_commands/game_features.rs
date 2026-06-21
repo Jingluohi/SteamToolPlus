@@ -3,7 +3,7 @@
 
 use crate::models::steam_config::*;
 use std::path::Path;
-use super::common::{ConfigSaveResult, ConfigLoadResult, ImportResult, ExportResult};
+use super::common::{ConfigSaveResult, ConfigLoadResult, ImportResult, ExportResult, load_steam_settings_json, save_steam_settings_json};
 
 // ============================================
 // 成就配置
@@ -15,24 +15,7 @@ pub async fn save_achievements_config(
     game_path: String,
     config: AchievementsConfig,
 ) -> Result<ConfigSaveResult, String> {
-    use tokio::fs;
-    use tokio::io::AsyncWriteExt;
-
-    let steam_settings_dir = Path::new(&game_path).join("steam_settings");
-    fs::create_dir_all(&steam_settings_dir)
-        .await
-        .map_err(|e| format!("创建 steam_settings 目录失败: {}", e))?;
-
-    let achievements_path = steam_settings_dir.join("achievements.json");
-    let achievements_json = serde_json::to_string_pretty(&config)
-        .map_err(|e| format!("序列化成就配置失败: {}", e))?;
-
-    let mut file = fs::File::create(&achievements_path)
-        .await
-        .map_err(|e| format!("创建 achievements.json 失败: {}", e))?;
-    file.write_all(achievements_json.as_bytes())
-        .await
-        .map_err(|e| format!("写入 achievements.json 失败: {}", e))?;
+    save_steam_settings_json(&game_path, "achievements.json", &config).await?;
 
     Ok(ConfigSaveResult {
         success: true,
@@ -45,27 +28,11 @@ pub async fn save_achievements_config(
 pub async fn load_achievements_config(
     game_path: String,
 ) -> Result<ConfigLoadResult<AchievementsConfig>, String> {
-    use tokio::fs;
-
-    let achievements_path = Path::new(&game_path).join("steam_settings").join("achievements.json");
-
-    if !achievements_path.exists() {
-        return Ok(ConfigLoadResult {
-            exists: false,
-            config: None,
-        });
-    }
-
-    let content = fs::read_to_string(&achievements_path)
-        .await
-        .map_err(|e| format!("读取 achievements.json 失败: {}", e))?;
-
-    let config: AchievementsConfig = serde_json::from_str(&content)
-        .map_err(|e| format!("解析 achievements.json 失败: {}", e))?;
+    let config = load_steam_settings_json(&game_path, "achievements.json").await?;
 
     Ok(ConfigLoadResult {
-        exists: true,
-        config: Some(config),
+        exists: config.is_some(),
+        config,
     })
 }
 
@@ -131,24 +98,7 @@ pub async fn save_stats_config(
     game_path: String,
     config: StatsConfig,
 ) -> Result<ConfigSaveResult, String> {
-    use tokio::fs;
-    use tokio::io::AsyncWriteExt;
-
-    let steam_settings_dir = Path::new(&game_path).join("steam_settings");
-    fs::create_dir_all(&steam_settings_dir)
-        .await
-        .map_err(|e| format!("创建 steam_settings 目录失败: {}", e))?;
-
-    let stats_path = steam_settings_dir.join("stats.json");
-    let stats_json = serde_json::to_string_pretty(&config)
-        .map_err(|e| format!("序列化统计配置失败: {}", e))?;
-
-    let mut file = fs::File::create(&stats_path)
-        .await
-        .map_err(|e| format!("创建 stats.json 失败: {}", e))?;
-    file.write_all(stats_json.as_bytes())
-        .await
-        .map_err(|e| format!("写入 stats.json 失败: {}", e))?;
+    save_steam_settings_json(&game_path, "stats.json", &config).await?;
 
     Ok(ConfigSaveResult {
         success: true,
@@ -161,27 +111,11 @@ pub async fn save_stats_config(
 pub async fn load_stats_config(
     game_path: String,
 ) -> Result<ConfigLoadResult<StatsConfig>, String> {
-    use tokio::fs;
-
-    let stats_path = Path::new(&game_path).join("steam_settings").join("stats.json");
-
-    if !stats_path.exists() {
-        return Ok(ConfigLoadResult {
-            exists: false,
-            config: None,
-        });
-    }
-
-    let content = fs::read_to_string(&stats_path)
-        .await
-        .map_err(|e| format!("读取 stats.json 失败: {}", e))?;
-
-    let config: StatsConfig = serde_json::from_str(&content)
-        .map_err(|e| format!("解析 stats.json 失败: {}", e))?;
+    let config = load_steam_settings_json(&game_path, "stats.json").await?;
 
     Ok(ConfigLoadResult {
-        exists: true,
-        config: Some(config),
+        exists: config.is_some(),
+        config,
     })
 }
 
@@ -195,24 +129,7 @@ pub async fn save_items_config(
     game_path: String,
     config: ItemsConfig,
 ) -> Result<ConfigSaveResult, String> {
-    use tokio::fs;
-    use tokio::io::AsyncWriteExt;
-
-    let steam_settings_dir = Path::new(&game_path).join("steam_settings");
-    fs::create_dir_all(&steam_settings_dir)
-        .await
-        .map_err(|e| format!("创建 steam_settings 目录失败: {}", e))?;
-
-    let items_path = steam_settings_dir.join("items.json");
-    let items_json = serde_json::to_string_pretty(&config)
-        .map_err(|e| format!("序列化物品配置失败: {}", e))?;
-
-    let mut file = fs::File::create(&items_path)
-        .await
-        .map_err(|e| format!("创建 items.json 失败: {}", e))?;
-    file.write_all(items_json.as_bytes())
-        .await
-        .map_err(|e| format!("写入 items.json 失败: {}", e))?;
+    save_steam_settings_json(&game_path, "items.json", &config).await?;
 
     Ok(ConfigSaveResult {
         success: true,
@@ -225,27 +142,11 @@ pub async fn save_items_config(
 pub async fn load_items_config(
     game_path: String,
 ) -> Result<ConfigLoadResult<ItemsConfig>, String> {
-    use tokio::fs;
-
-    let items_path = Path::new(&game_path).join("steam_settings").join("items.json");
-
-    if !items_path.exists() {
-        return Ok(ConfigLoadResult {
-            exists: false,
-            config: None,
-        });
-    }
-
-    let content = fs::read_to_string(&items_path)
-        .await
-        .map_err(|e| format!("读取 items.json 失败: {}", e))?;
-
-    let config: ItemsConfig = serde_json::from_str(&content)
-        .map_err(|e| format!("解析 items.json 失败: {}", e))?;
+    let config = load_steam_settings_json(&game_path, "items.json").await?;
 
     Ok(ConfigLoadResult {
-        exists: true,
-        config: Some(config),
+        exists: config.is_some(),
+        config,
     })
 }
 
@@ -259,24 +160,7 @@ pub async fn save_mods_config(
     game_path: String,
     config: ModsConfig,
 ) -> Result<ConfigSaveResult, String> {
-    use tokio::fs;
-    use tokio::io::AsyncWriteExt;
-
-    let steam_settings_dir = Path::new(&game_path).join("steam_settings");
-    fs::create_dir_all(&steam_settings_dir)
-        .await
-        .map_err(|e| format!("创建 steam_settings 目录失败: {}", e))?;
-
-    let mods_path = steam_settings_dir.join("mods.json");
-    let mods_json = serde_json::to_string_pretty(&config)
-        .map_err(|e| format!("序列化模组配置失败: {}", e))?;
-
-    let mut file = fs::File::create(&mods_path)
-        .await
-        .map_err(|e| format!("创建 mods.json 失败: {}", e))?;
-    file.write_all(mods_json.as_bytes())
-        .await
-        .map_err(|e| format!("写入 mods.json 失败: {}", e))?;
+    save_steam_settings_json(&game_path, "mods.json", &config).await?;
 
     Ok(ConfigSaveResult {
         success: true,
@@ -289,27 +173,11 @@ pub async fn save_mods_config(
 pub async fn load_mods_config(
     game_path: String,
 ) -> Result<ConfigLoadResult<ModsConfig>, String> {
-    use tokio::fs;
-
-    let mods_path = Path::new(&game_path).join("steam_settings").join("mods.json");
-
-    if !mods_path.exists() {
-        return Ok(ConfigLoadResult {
-            exists: false,
-            config: None,
-        });
-    }
-
-    let content = fs::read_to_string(&mods_path)
-        .await
-        .map_err(|e| format!("读取 mods.json 失败: {}", e))?;
-
-    let config: ModsConfig = serde_json::from_str(&content)
-        .map_err(|e| format!("解析 mods.json 失败: {}", e))?;
+    let config = load_steam_settings_json(&game_path, "mods.json").await?;
 
     Ok(ConfigLoadResult {
-        exists: true,
-        config: Some(config),
+        exists: config.is_some(),
+        config,
     })
 }
 

@@ -1,0 +1,76 @@
+﻿<UserControl x:Class="OpenSteam.Views.InitialMessage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             mc:Ignorable="d" 
+             d:DesignHeight="500" d:DesignWidth="600"
+             TextOptions.TextFormattingMode="Display"
+             TextOptions.TextRenderingMode="ClearType"
+             UseLayoutRounding="True">
+    <Grid>
+        <Canvas IsHitTestVisible="False"/>
+        <StackPanel Margin="30">
+            <TextBlock Text="OpenSteam Framework" Foreground="White" FontSize="28" FontWeight="ExtraBold" Margin="0,0,0,5">
+                <TextBlock.Effect>
+                    <DropShadowEffect BlurRadius="8" Color="#007ACC" ShadowDepth="0" Opacity="0.4"/>
+                </TextBlock.Effect>
+            </TextBlock>
+            <TextBlock x:Name="InfoVersion" Text="Version 2.1 Beta" Foreground="#66FFFFFF" FontSize="12" Margin="0,0,0,25"/>
+            <StackPanel>
+                <TextBlock TextWrapping="Wrap" Foreground="#CCCCCC" FontSize="24" LineHeight="22" Margin="0,0,0,20" Text="Welcome to OpenSteam"/>
+                <Border Background="#15FFFFFF" CornerRadius="10" Padding="15" BorderThickness="1" BorderBrush="#1AFFFFFF">
+                    <StackPanel>
+                        <TextBlock Foreground="#007ACC" FontWeight="Bold" FontSize="20" Margin="0,0,0,5" Text="important :D"/>
+                        <TextBlock TextWrapping="Wrap" Foreground="#AAAAAA" FontSize="12" Text="This is a third-party program that modifies the Steam platform in various ways. For your security, it is recommended that you back up your Steam folder. To do this, go to Settings > Create a Backup."/>
+                        <TextBlock TextWrapping="Wrap" Foreground="#AAAAAA" FontSize="12" Text="Thanks for using it, and we'll be adding new features soon. Good luck on your pirate adventure! 🏴‍☠️"/>
+                        <TextBlock TextWrapping="Wrap" Foreground="Red" FontSize="20" Text="VERY IMPORTANT. If any patch doesn't work, try switching between &quot;Default&quot; and &quot;Alternative&quot;."/>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+            <Button x:Name="BtnDontShow" 
+        Content="Don't show again" 
+        Width="220" 
+        Height="42" 
+        Margin="0,25,0,0" 
+        HorizontalAlignment="Center"
+        Cursor="Hand" Click="BtnDontShow_Click">
+                <Button.Style>
+                    <Style TargetType="Button">
+                        <Setter Property="Foreground" Value="White"/>
+                        <Setter Property="FontSize" Value="14"/>
+                        <Setter Property="FontWeight" Value="SemiBold"/>
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="Button">
+                                    <Border x:Name="border" CornerRadius="10" BorderThickness="1" BorderBrush="#33FFFFFF">
+                                        <Border.Background>
+                                            <LinearGradientBrush EndPoint="1,0" StartPoint="0,0">
+                                                <GradientStop Color="#252525" Offset="0"/>
+                                                <GradientStop Color="#1A1A1A" Offset="1"/>
+                                            </LinearGradientBrush>
+                                        </Border.Background>
+                                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="border" Property="Background" Value="#333333"/>
+                                            <Setter TargetName="border" Property="BorderBrush" Value="#007ACC"/>
+                                        </Trigger>
+                                        <Trigger Property="IsPressed" Value="True">
+                                            <Setter TargetName="border" Property="RenderTransform">
+                                                <Setter.Value>
+                                                    <ScaleTransform ScaleX="0.97" ScaleY="0.97"/>
+                                                </Setter.Value>
+                                            </Setter>
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                    </Style>
+                </Button.Style>
+            </Button>
+        </StackPanel>
+    </Grid>
+</UserControl>

@@ -2,14 +2,14 @@
   <!--
     Browse.vue - 浏览页面
     程序主界面，显示游戏库浏览视图
-    使用分页加载，每页16张卡片，控制内存占用
+    使用分页加载，每页20张卡片，控制内存占用
   -->
   <div class="browse-page">
     <!-- 页面标题 -->
     <div class="page-header">
       <div class="header-left">
         <h1 class="page-title">浏览</h1>
-        <p class="page-desc">这些是经过验证的游戏，更多游戏从【游戏】->【本体下载】用清单文件下载本体，去【游戏】->【免Steam补丁】打启动补丁</p>
+        <p class="page-desc">这些是经过验证的游戏，更多游戏从【工具】->【本体下载】用清单文件下载本体，去【工具】->【免Steam补丁】打启动补丁或加QQ群：1095428733 反馈</p>
       </div>
       <!-- 搜索栏移到标题右侧 -->
       <div class="search-section">
@@ -187,7 +187,7 @@ import GameCard from '../../components/game/GameCard.vue'
 const router = useRouter()
 
 // 分页配置
-const PAGE_SIZE = 16 // 每页16张卡片
+const PAGE_SIZE = 25 // 每页25张卡片，固定5列×5行
 
 // 状态
 const loading = ref(false)
@@ -550,11 +550,12 @@ function handleJumpToPage() {
   opacity: 0.5;
 }
 
-/* 游戏网格 */
+/* 游戏网格 - 固定5列，间距与卡片宽度保持16:220比例 */
 .games-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
-  gap: 19px;
+  grid-template-columns: repeat(5, 1fr);
+  /* gap百分比再减半 ≈ 0.293% */
+  gap: 0.293%;
   overflow-y: auto;
   flex: 1;
   min-height: 0;
@@ -562,7 +563,7 @@ function handleJumpToPage() {
   align-content: start;
 }
 
-/* 限制卡片最大高度为160px */
+/* 限制卡片最大高度 */
 .games-grid :deep(.game-card) {
   max-height: 160px;
 }

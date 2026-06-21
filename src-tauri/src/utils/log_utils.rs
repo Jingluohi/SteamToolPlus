@@ -80,7 +80,7 @@ pub fn log_to_json(level: LogLevel, message: &str, source: &str) {
         // 简单处理：直接追加，不处理格式
     }
 
-    let log_line = format!("  {},\n", log_entry.to_string());
+    let log_line = format!("  {},\n", log_entry);
     let _ = file.write_all(log_line.as_bytes());
 }
 

@@ -1,0 +1,29 @@
+#pragma once
+#include "Steam/Types.h"
+#include <string_view>
+
+// ─────────────────────────────────────────────────────────────────
+//  ManifestClient — HTTP client for depot manifest request codes.
+//  Provider table is internal (see kProviders in ManifestClient.cpp);
+//  adding a new provider only requires one row there.
+//
+//  Thread-safe — serialises access to the underlying WinHTTP connection.
+// ─────────────────────────────────────────────────────────────────
+namespace ManifestClient {
+
+    // Select the active provider by its string name (matches kProviders[i].name).
+    // Returns false if no provider matches; the previous selection is kept.
+    bool SetProvider(std::string_view name);
+
+    // Name of the currently active provider (for logging / diagnostics).
+    const char* ActiveProviderName();
+
+    // Resolve a manifest GID to its request code. Tries Lua first
+    // (fetch_manifest_code_ex, then fetch_manifest_code), then the
+    // active provider. Returns true and sets *outRequestCode on success.
+    bool FetchManifestRequestCode(uint64_t manifestGid, uint64_t* outRequestCode,
+                                  AppId_t appId = 0, AppId_t depotId = 0);
+
+    // Tear down the cached WinHTTP connection (call at unload).
+    void Shutdown();
+}

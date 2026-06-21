@@ -7,7 +7,6 @@ import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import App from './App.vue'
 import router from './router'
-import i18n from './i18n'
 import { setupGlobalErrorHandler } from './utils/logger'
 
 // 导入全局样式
@@ -34,11 +33,6 @@ app.use(pinia)
  * 注册Vue Router
  */
 app.use(router)
-
-/**
- * 注册i18n国际化
- */
-app.use(i18n)
 
 /**
  * 挂载应用到DOM

@@ -56,18 +56,12 @@ impl GameService {
 
     /// 从文件加载游戏数据
     fn load_games(path: &str) -> Vec<Game> {
-        match file_utils::read_json_file::<Vec<Game>>(path) {
-            Ok(games) => games,
-            Err(_) => {
-                // 文件不存在或读取失败，返回空列表
-                Vec::new()
-            }
-        }
+        file_utils::read_json_file::<Vec<Game>>(path).unwrap_or_default()
     }
 
     /// 保存游戏数据到文件
     fn save_games_internal(&self, games: &[Game]) -> Result<(), String> {
-        file_utils::write_json_file(&self.data_path, &games.to_vec())
+        file_utils::write_json_file(&self.data_path, games)
     }
 }
 
@@ -75,7 +69,9 @@ impl GameServiceTrait for GameService {
     /// 获取所有游戏，支持筛选和排序
     fn get_games(&self, filter: Option<GameFilter>, sort: Option<GameSortBy>) -> GameListResponse {
         let games = self.games.lock().unwrap();
-        let mut filtered: Vec<Game> = games.clone();
+
+        // 先收集引用进行筛选和排序，避免一开始就克隆全部数据
+        let mut filtered: Vec<&Game> = games.iter().collect();
 
         // 应用筛选条件
         if let Some(filter) = filter {
@@ -122,9 +118,11 @@ impl GameServiceTrait for GameService {
             }
         }
 
-        let total = filtered.len();
+        // 筛选排序完成后再克隆最终结果
+        let filtered_games: Vec<Game> = filtered.into_iter().cloned().collect();
+        let total = filtered_games.len();
         GameListResponse {
-            games: filtered,
+            games: filtered_games,
             total,
         }
     }
@@ -161,53 +159,60 @@ impl GameServiceTrait for GameService {
             return Err("游戏可执行文件不存在".to_string());
         }
 
+        let game_id = game.id.clone();
+
         // 保存到列表
         let mut games = self.games.lock().unwrap();
-        games.push(game.clone());
+        games.push(game);
 
         // 持久化到文件
         drop(games);
         self.save_games()?;
 
-        Ok(game)
+        // 从列表重新读取返回，避免不必要的克隆
+        self.get_game_by_id(&game_id)
+            .ok_or("添加游戏后读取失败".to_string())
     }
 
     /// 更新游戏信息
     fn update_game(&self, request: UpdateGameRequest) -> Result<Game, String> {
-        let mut games = self.games.lock().unwrap();
-        let game = games
-            .iter_mut()
-            .find(|g| g.id == request.id)
-            .ok_or("游戏不存在")?;
+        let game_id = request.id.clone();
 
-        // 更新字段
-        if let Some(name) = request.name {
-            game.name = name;
-        }
-        if let Some(cover) = request.cover_path {
-            game.cover_path = Some(cover);
-        }
-        if let Some(params) = request.launch_params {
-            game.launch_params = params;
-        }
-        if let Some(publisher) = request.publisher {
-            game.publisher = publisher;
-        }
-        if let Some(release_date) = request.release_date {
-            game.release_date = release_date;
-        }
-        if let Some(tags) = request.tags {
-            game.tags = tags;
-        }
-        if let Some(is_favorite) = request.is_favorite {
-            game.is_favorite = is_favorite;
+        {
+            let mut games = self.games.lock().unwrap();
+            let game = games
+                .iter_mut()
+                .find(|g| g.id == game_id)
+                .ok_or("游戏不存在")?;
+
+            // 更新字段
+            if let Some(name) = request.name {
+                game.name = name;
+            }
+            if let Some(cover) = request.cover_path {
+                game.cover_path = Some(cover);
+            }
+            if let Some(params) = request.launch_params {
+                game.launch_params = params;
+            }
+            if let Some(publisher) = request.publisher {
+                game.publisher = publisher;
+            }
+            if let Some(release_date) = request.release_date {
+                game.release_date = release_date;
+            }
+            if let Some(tags) = request.tags {
+                game.tags = tags;
+            }
+            if let Some(is_favorite) = request.is_favorite {
+                game.is_favorite = is_favorite;
+            }
         }
 
-        let game_clone = game.clone();
-        drop(games);
         self.save_games()?;
 
-        Ok(game_clone)
+        self.get_game_by_id(&game_id)
+            .ok_or("更新游戏后读取失败".to_string())
     }
 
     /// 删除游戏
@@ -255,41 +260,38 @@ impl GameServiceTrait for GameService {
 
     /// 扫描游戏目录
     fn scan_games_directory(&self, request: ScanGamesRequest) -> Result<Vec<Game>, String> {
-        let path = std::path::Path::new(&request.directory);
-        if !path.exists() || !path.is_dir() {
+        let root = std::path::Path::new(&request.directory);
+        if !root.exists() || !root.is_dir() {
             return Err("目录不存在或不是有效目录".to_string());
         }
 
         let mut found_games = Vec::new();
+        let mut dir_stack: Vec<std::path::PathBuf> = vec![root.to_path_buf()];
 
-        // 扫描目录中的exe文件
-        let entries = std::fs::read_dir(path).map_err(|e| e.to_string())?;
+        while let Some(current_dir) = dir_stack.pop() {
+            let entries = std::fs::read_dir(&current_dir).map_err(|e| e.to_string())?;
 
-        for entry in entries.flatten() {
-            let file_path = entry.path();
-            if file_path.is_file() {
-                if let Some(ext) = file_path.extension() {
-                    if ext.eq_ignore_ascii_case("exe") {
-                        let file_name = file_path
-                            .file_stem()
-                            .and_then(|s| s.to_str())
-                            .unwrap_or("Unknown");
+            for entry in entries.flatten() {
+                let file_path = entry.path();
 
-                        let game = Game::new(
-                            file_name.to_string(),
-                            file_path.to_string_lossy().to_string(),
-                        );
-                        found_games.push(game);
+                if file_path.is_file() {
+                    if let Some(ext) = file_path.extension() {
+                        if ext.eq_ignore_ascii_case("exe") {
+                            let file_name = file_path
+                                .file_stem()
+                                .and_then(|s| s.to_str())
+                                .unwrap_or("Unknown");
+
+                            let game = Game::new(
+                                file_name.to_string(),
+                                file_path.to_string_lossy().to_string(),
+                            );
+                            found_games.push(game);
+                        }
                     }
-                }
-            } else if request.recursive && file_path.is_dir() {
-                // 递归扫描子目录
-                let sub_request = ScanGamesRequest {
-                    directory: file_path.to_string_lossy().to_string(),
-                    recursive: true,
-                };
-                if let Ok(sub_games) = self.scan_games_directory(sub_request) {
-                    found_games.extend(sub_games);
+                } else if request.recursive && file_path.is_dir() {
+                    // 使用显式栈代替递归，避免深层目录栈溢出
+                    dir_stack.push(file_path);
                 }
             }
         }
@@ -352,17 +354,25 @@ impl GameServiceTrait for GameService {
     }
 }
 
-/// 在目录中查找游戏exe文件
+/// 在目录中查找游戏exe文件，最多搜索两层子目录
 fn find_game_exe(dir: &std::path::Path) -> Result<String, String> {
-    let entries = std::fs::read_dir(dir).map_err(|e| e.to_string())?;
+    let mut dirs_to_scan: Vec<(std::path::PathBuf, usize)> = vec![(dir.to_path_buf(), 0)];
 
-    for entry in entries.flatten() {
-        let path = entry.path();
-        if path.is_file() {
-            if let Some(ext) = path.extension() {
-                if ext.eq_ignore_ascii_case("exe") {
-                    return Ok(path.to_string_lossy().to_string());
+    while let Some((current_dir, depth)) = dirs_to_scan.pop() {
+        let entries = std::fs::read_dir(&current_dir).map_err(|e| e.to_string())?;
+
+        for entry in entries.flatten() {
+            let path = entry.path();
+
+            if path.is_file() {
+                if let Some(ext) = path.extension() {
+                    if ext.eq_ignore_ascii_case("exe") {
+                        return Ok(path.to_string_lossy().to_string());
+                    }
                 }
+            } else if path.is_dir() && depth < 2 {
+                // 限制搜索深度，避免在大型目录树中耗时过长
+                dirs_to_scan.push((path, depth + 1));
             }
         }
     }

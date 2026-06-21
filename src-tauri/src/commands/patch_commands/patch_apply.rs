@@ -127,7 +127,7 @@ pub async fn apply_steam_patch_basic(
     if mode == 0 {
         // 标准模式: 替换 steam_api.dll
         let api_dll_name = if is_64bit { "steam_api64.dll" } else { "steam_api.dll" };
-        let original_api_path = game_dir.join(&api_dll_name);
+        let original_api_path = game_dir.join(api_dll_name);
 
         if !original_api_path.exists() {
             return Err(format!(
@@ -145,7 +145,7 @@ pub async fn apply_steam_patch_basic(
         }
 
         // 生成 steam_interfaces.txt
-        super::tools::generate_interfaces(&resource_dir, &original_api_path, &game_dir, &steam_settings_dir).await?;
+        super::tools::generate_interfaces(&resource_dir, &original_api_path, game_dir, &steam_settings_dir).await?;
 
         // 替换 steam_api.dll
         let source_dll = if is_64bit {
@@ -154,12 +154,10 @@ pub async fn apply_steam_patch_basic(
             } else {
                 "gbe_fork/regular/x64/steam_api64.dll"
             }
+        } else if use_experimental {
+            "gbe_fork/experimental/x32/steam_api.dll"
         } else {
-            if use_experimental {
-                "gbe_fork/experimental/x32/steam_api.dll"
-            } else {
-                "gbe_fork/regular/x32/steam_api.dll"
-            }
+            "gbe_fork/regular/x32/steam_api.dll"
         };
 
         let source_path = Path::new(&resource_dir).join(source_dll);
@@ -174,7 +172,7 @@ pub async fn apply_steam_patch_basic(
         // 高级模式: 替换 steamclient.dll + steam_api.dll
 
         let client_dll_name = if is_64bit { "steamclient64.dll" } else { "steamclient.dll" };
-        let original_client_path = game_dir.join(&client_dll_name);
+        let original_client_path = game_dir.join(client_dll_name);
 
         if !original_client_path.exists() {
             return Err(format!(
@@ -214,7 +212,7 @@ pub async fn apply_steam_patch_basic(
         };
 
         let api_source_path = Path::new(&resource_dir).join(api_source);
-        let api_target_path = game_dir.join(&api_dll_name);
+        let api_target_path = game_dir.join(api_dll_name);
 
         if api_source_path.exists() {
             if api_target_path.exists() {
@@ -351,7 +349,7 @@ pub async fn apply_steam_patch_basic(
         };
 
         let overlay_source_path = Path::new(&resource_dir).join(overlay_source);
-        let overlay_target_path = game_dir.join(&overlay_dll_name);
+        let overlay_target_path = game_dir.join(overlay_dll_name);
 
         if overlay_source_path.exists() {
             if overlay_target_path.exists() {

@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 /// 应用程序配置
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[derive(Default)]
 pub struct AppConfig {
     /// 窗口配置
     pub window: WindowConfig,
@@ -17,16 +18,6 @@ pub struct AppConfig {
     pub launch: LaunchConfig,
 }
 
-impl Default for AppConfig {
-    fn default() -> Self {
-        Self {
-            window: WindowConfig::default(),
-            theme: ThemeConfig::default(),
-            game_dirs: GameDirConfig::default(),
-            launch: LaunchConfig::default(),
-        }
-    }
-}
 
 /// 窗口配置
 #[derive(Debug, Clone, Serialize, Deserialize)]

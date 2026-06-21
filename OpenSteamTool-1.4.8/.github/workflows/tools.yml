@@ -1,0 +1,36 @@
+name: Tools
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ilammy/msvc-dev-cmd@v1
+
+      # Configure the src tree (same as the product build); the tools live there
+      # via add_subdirectory and land in build/tools/<config>/.
+      - name: Configure
+        run: cmake -S src -B build -G "Ninja Multi-Config"
+
+      # Build only the host tool targets, not the OpenSteamTool DLL.
+      - name: Build Release
+        run: cmake --build build --config Release --target ipc_codegen extract_tickets
+
+      - name: Build Debug
+        run: cmake --build build --config Debug --target ipc_codegen extract_tickets
+
+      - name: Upload Release artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: OpenSteamTool-Tools-Release
+          path: build/tools/Release/
+
+      - name: Upload Debug artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: OpenSteamTool-Tools-Debug
+          path: build/tools/Debug/

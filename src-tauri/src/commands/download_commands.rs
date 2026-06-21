@@ -100,6 +100,12 @@ pub async fn start_game_download(
 
                 log::info!("检测到 ddv20.exe 进程已退出，游戏ID: {}", game_id_clone);
 
+                // 检查是否是用户主动停止的下载
+                if crate::take_download_stopped(&game_id_clone) {
+                    log::info!("游戏 {} 被用户主动停止，不再自动续传", game_id_clone);
+                    break;
+                }
+
                 // 检查游戏是否全部下载完成
                 let app_check = app_handle.clone();
                 let game_id_check = game_id_clone.clone();
@@ -120,7 +126,7 @@ pub async fn start_game_download(
                     let game_id_complete = game_id_clone.clone();
                     let rt = tokio::runtime::Runtime::new();
                     if let Ok(rt) = rt {
-                        let _ = rt.block_on(async {
+                        rt.block_on(async {
                             let _ = game_data_service::update_download_status(
                                 app_complete,
                                 game_id_complete,
@@ -141,7 +147,7 @@ pub async fn start_game_download(
                     let game_id_error = game_id_clone.clone();
                     let rt = tokio::runtime::Runtime::new();
                     if let Ok(rt) = rt {
-                        let _ = rt.block_on(async {
+                        rt.block_on(async {
                             if let Ok(Some(game)) = game_data_service::get_game(app_error.clone(), game_id_error.clone()).await {
                                 if game.download_status == "downloading" {
                                     let _ = game_data_service::update_download_status(
@@ -234,6 +240,9 @@ pub fn check_and_cleanup_completed_downloads(app: AppHandle, game_id: Option<Str
 /// 终止 ddv20.exe 进程，并将游戏状态设置为 idle（未下载）
 #[tauri::command]
 pub async fn stop_download(app: AppHandle, game_id: String) -> Result<(), String> {
+    // 标记该游戏ID为用户主动停止，防止监控线程自动续传
+    crate::mark_download_stopped(&game_id);
+
     // 尝试终止 ddv20.exe 进程（如果存在）
     let service = DownloadService::new();
     let _ = service.stop_download(); // 忽略错误，因为进程可能不存在

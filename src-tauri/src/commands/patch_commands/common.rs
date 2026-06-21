@@ -71,6 +71,38 @@ pub struct ApplyPatchResult {
 }
 
 // ============================================
+// 通用配置读写辅助函数
+// ============================================
+
+use crate::utils::file_utils;
+use serde::{de::DeserializeOwned, Serialize};
+
+/// 保存 steam_settings 目录下的 JSON 配置文件
+pub async fn save_steam_settings_json<T: Serialize>(
+    game_path: &str,
+    file_name: &str,
+    config: &T,
+) -> Result<(), String> {
+    let path = Path::new(game_path).join("steam_settings").join(file_name);
+    file_utils::write_json_file_async(&path, config).await
+}
+
+/// 加载 steam_settings 目录下的 JSON 配置文件
+pub async fn load_steam_settings_json<T: DeserializeOwned>(
+    game_path: &str,
+    file_name: &str,
+) -> Result<Option<T>, String> {
+    let path = Path::new(game_path).join("steam_settings").join(file_name);
+
+    if !path.exists() {
+        return Ok(None);
+    }
+
+    let config = file_utils::read_json_file_async(&path).await?;
+    Ok(Some(config))
+}
+
+// ============================================
 // 基础命令
 // ============================================
 

@@ -477,7 +477,7 @@ impl DownloadServiceTrait for DownloadService {
             const CREATE_NO_WINDOW: u32 = 0x08000000;
 
             Command::new("shutdown")
-                .args(&["/s", "/t", "0"])
+                .args(["/s", "/t", "0"])
                 .creation_flags(CREATE_NO_WINDOW)
                 .spawn()
                 .map_err(|e| format!("执行关机命令失败: {}", e))?;
@@ -590,7 +590,7 @@ impl DownloadServiceTrait for DownloadService {
 
             // 使用 taskkill 命令终止 ddv20.exe 进程
             let output = Command::new("taskkill")
-                .args(&["/F", "/IM", "ddv20.exe"])
+                .args(["/F", "/IM", "ddv20.exe"])
                 .creation_flags(CREATE_NO_WINDOW)
                 .output()
                 .map_err(|e| format!("执行终止进程命令失败: {}", e))?;

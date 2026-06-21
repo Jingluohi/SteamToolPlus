@@ -136,10 +136,7 @@ fn get_extra_install_paths(app: &tauri::AppHandle) -> Vec<String> {
     
     match std::fs::read_to_string(&config_path) {
         Ok(content) => {
-            match serde_json::from_str::<Vec<String>>(&content) {
-                Ok(paths) => paths,
-                Err(_) => Vec::new(),
-            }
+            serde_json::from_str::<Vec<String>>(&content).unwrap_or_default()
         }
         Err(_) => Vec::new(),
     }
@@ -169,14 +166,12 @@ pub async fn check_game_installed(
         let entries = std::fs::read_dir(&game_install_dir)
             .map_err(|e| format!("读取游戏目录失败: {}", e))?;
         
-        for entry in entries {
-            if let Ok(entry) = entry {
-                let path = entry.path();
-                if path.is_file() {
-                    if let Some(ext) = path.extension() {
-                        if ext == "exe" {
-                            return Ok(true);
-                        }
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_file() {
+                if let Some(ext) = path.extension() {
+                    if ext == "exe" {
+                        return Ok(true);
                     }
                 }
             }
@@ -191,14 +186,12 @@ pub async fn check_game_installed(
             let entries = std::fs::read_dir(&path)
                 .map_err(|e| format!("读取游戏目录失败: {}", e))?;
             
-            for entry in entries {
-                if let Ok(entry) = entry {
-                    let file_path = entry.path();
-                    if file_path.is_file() {
-                        if let Some(ext) = file_path.extension() {
-                            if ext == "exe" {
-                                return Ok(true);
-                            }
+            for entry in entries.flatten() {
+                let file_path = entry.path();
+                if file_path.is_file() {
+                    if let Some(ext) = file_path.extension() {
+                        if ext == "exe" {
+                            return Ok(true);
                         }
                     }
                 }
@@ -234,15 +227,13 @@ pub async fn launch_game(game_id: String, app: tauri::AppHandle) -> Result<(), S
         let entries = std::fs::read_dir(&game_install_dir)
             .map_err(|e| format!("读取游戏目录失败: {}", e))?;
         
-        for entry in entries {
-            if let Ok(entry) = entry {
-                let path = entry.path();
-                if path.is_file() {
-                    if let Some(ext) = path.extension() {
-                        if ext == "exe" {
-                            exe_path = Some(path);
-                            break;
-                        }
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_file() {
+                if let Some(ext) = path.extension() {
+                    if ext == "exe" {
+                        exe_path = Some(path);
+                        break;
                     }
                 }
             }
@@ -258,15 +249,13 @@ pub async fn launch_game(game_id: String, app: tauri::AppHandle) -> Result<(), S
                 let entries = std::fs::read_dir(&path)
                     .map_err(|e| format!("读取游戏目录失败: {}", e))?;
                 
-                for entry in entries {
-                    if let Ok(entry) = entry {
-                        let file_path = entry.path();
-                        if file_path.is_file() {
-                            if let Some(ext) = file_path.extension() {
-                                if ext == "exe" {
-                                    exe_path = Some(file_path);
-                                    break;
-                                }
+                for entry in entries.flatten() {
+                    let file_path = entry.path();
+                    if file_path.is_file() {
+                        if let Some(ext) = file_path.extension() {
+                            if ext == "exe" {
+                                exe_path = Some(file_path);
+                                break;
                             }
                         }
                     }
@@ -374,8 +363,8 @@ pub async fn get_game_library_image(app: tauri::AppHandle, game_id: String) -> R
     }
     
     // 检查ID是否合法：纯数字 或 custom_开头后跟数字
-    let is_valid = if game_id.starts_with("custom_") {
-        game_id[7..].chars().all(|c| c.is_ascii_digit())
+    let is_valid = if let Some(suffix) = game_id.strip_prefix("custom_") {
+        suffix.chars().all(|c| c.is_ascii_digit())
     } else {
         game_id.chars().all(|c| c.is_ascii_digit())
     };

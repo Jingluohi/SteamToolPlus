@@ -11,7 +11,7 @@
           <img src="../../../src-tauri/icons/128x128.png" alt="Steam Tool Plus" />
         </div>
         <h1 class="app-name">Steam Tool Plus</h1>
-        <p class="app-version">版本 v1.25.1</p>
+        <p class="app-version">版本 v1.25.2</p>
       </div>
 
       <!-- 作者信息区域（来自旧版设置） -->
@@ -19,6 +19,7 @@
         <p class="app-author">
           作者：<a href="#" class="author-link" @click.prevent="openBilibili">B站：鲸落_hi</a>
         </p>
+        <p class="app-qq-group">QQ交流群：1095428733</p>
         <p class="app-github">
           <a href="#" class="github-link" @click.prevent="openGithub">
             <svg class="github-icon" viewBox="0 0 24 24" fill="currentColor">
@@ -247,6 +248,12 @@ async function openGithub() {
 .author-link:hover {
   opacity: 0.8;
   text-decoration: underline;
+}
+
+.app-qq-group {
+  font-size: 16px;
+  color: var(--steam-text-secondary);
+  margin: 0 0 12px 0;
 }
 
 .app-license {

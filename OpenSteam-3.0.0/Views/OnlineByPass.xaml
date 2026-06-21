@@ -1,0 +1,95 @@
+<UserControl x:Class="OpenSteam.Views.OnlineByPass"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:local="clr-namespace:OpenSteam.Views"
+             mc:Ignorable="d" 
+             d:DesignHeight="500" d:DesignWidth="600"
+             TextOptions.TextFormattingMode="Display"
+             TextOptions.TextRenderingMode="ClearType"
+             UseLayoutRounding="True">
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0" Margin="0,0,0,15">
+            <TextBlock Text="STEAM LIBRARY" Foreground="White" FontSize="28" FontWeight="ExtraBold" HorizontalAlignment="Center">
+                <TextBlock.Effect>
+                    <DropShadowEffect BlurRadius="10" Color="#007ACC" ShadowDepth="0" Opacity="0.5"/>
+                </TextBlock.Effect>
+            </TextBlock>
+            <TextBlock Text="Select a game to search on Online-Fix" Foreground="#007ACC" FontSize="13" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,2,0,0"/>
+        </StackPanel>
+
+        <Border Grid.Row="1" Background="#0D1117" CornerRadius="15" BorderThickness="1" BorderBrush="#1AFFFFFF" Padding="5">
+            <ListBox x:Name="GamesListBox" Background="Transparent" BorderThickness="0" 
+                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                     VirtualizingStackPanel.IsVirtualizing="True"
+                     VirtualizingStackPanel.VirtualizationMode="Recycling">
+                <ListBox.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <WrapPanel HorizontalAlignment="Center"/>
+                    </ItemsPanelTemplate>
+                </ListBox.ItemsPanel>
+                <ListBox.ItemContainerStyle>
+                    <Style TargetType="ListBoxItem">
+                        <Setter Property="Padding" Value="5"/>
+                        <Setter Property="Margin" Value="5"/>
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="ListBoxItem">
+                                    <Border x:Name="ItemBorder" CornerRadius="8" Background="#1A1D23" BorderThickness="2" BorderBrush="Transparent" Width="130" Height="200" ClipToBounds="True">
+                                        <Grid>
+                                            <Image Source="{Binding CoverUrl}" 
+                                                   Stretch="UniformToFill" 
+                                                   RenderOptions.BitmapScalingMode="HighQuality"/>
+                                            <Border VerticalAlignment="Bottom" Background="#CC000000" Padding="5">
+                                                <TextBlock Text="{Binding name}" Foreground="White" FontSize="10" TextAlignment="Center" TextWrapping="Wrap" MaxHeight="40"/>
+                                            </Border>
+                                        </Grid>
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsSelected" Value="True">
+                                            <Setter TargetName="ItemBorder" Property="BorderBrush" Value="#007ACC"/>
+                                            <Setter TargetName="ItemBorder" Property="Background" Value="#22007ACC"/>
+                                        </Trigger>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="ItemBorder" Property="BorderBrush" Value="#44FFFFFF"/>
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                    </Style>
+                </ListBox.ItemContainerStyle>
+            </ListBox>
+        </Border>
+
+        <Button x:Name="BtnSearchOnlineFix" Grid.Row="2" Content="Search OnlineFix" Height="48" Margin="0,15,0,0" Cursor="Hand" Click="BtnSearchOnlineFix_Click">
+            <Button.Template>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="b" CornerRadius="12" BorderThickness="1" BorderBrush="#33FFFFFF">
+                        <Border.Background>
+                            <LinearGradientBrush EndPoint="1,0" StartPoint="0,0">
+                                <GradientStop Color="#1E1E1E" Offset="0"/>
+                                <GradientStop Color="#2D2D30" Offset="1"/>
+                            </LinearGradientBrush>
+                        </Border.Background>
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" Content="{TemplateBinding Content}"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="b" Property="BorderBrush" Value="#007ACC"/>
+                            <Setter TargetName="b" Property="Background" Value="#33FFFFFF"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Button.Template>
+            <Button.Foreground>White</Button.Foreground>
+        </Button>
+    </Grid>
+</UserControl>

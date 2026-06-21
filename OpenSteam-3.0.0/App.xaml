@@ -1,0 +1,115 @@
+<Application x:Class="OpenSteam.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:OpenSteam"
+             StartupUri="Views/MainWindow.xaml">
+    <Application.Resources>
+        <Style x:Key="ModernButtonStyle" TargetType="Button">
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Margin" Value="6"/>
+            <Setter Property="SnapsToDevicePixels" Value="True"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border" Background="{TemplateBinding Background}" CornerRadius="10" BorderThickness="1" BorderBrush="#33FFFFFF" RenderTransformOrigin="0.5,0.5">
+                            <Border.RenderTransform>
+                                <ScaleTransform ScaleX="1" ScaleY="1"/>
+                            </Border.RenderTransform>
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#44FFFFFF"/>
+                                <Setter TargetName="border" Property="BorderBrush" Value="#007ACC"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="border" Property="RenderTransform">
+                                    <Setter.Value>
+                                        <ScaleTransform ScaleX="0.96" ScaleY="0.96"/>
+                                    </Setter.Value>
+                                </Setter>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="PrimaryAction" TargetType="Button" BasedOn="{StaticResource ModernButtonStyle}">
+            <Setter Property="Background">
+                <Setter.Value>
+                    <LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
+                        <GradientStop Color="#007ACC" Offset="0"/>
+                        <GradientStop Color="#005A9E" Offset="1"/>
+                    </LinearGradientBrush>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="DangerAction" TargetType="Button" BasedOn="{StaticResource ModernButtonStyle}">
+            <Setter Property="Background" Value="#2D2D30"/>
+            <Setter Property="BorderBrush" Value="#44FF4444"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#4D2B2B"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="ToggleSwitchStyle" TargetType="CheckBox">
+            <Setter Property="Background" Value="#3E3E42"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Padding" Value="10,0,0,0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="CheckBox">
+                        <BulletDecorator Background="Transparent" Cursor="Hand">
+                            <BulletDecorator.Bullet>
+                                <Grid Width="40" Height="20">
+                                    <Border x:Name="BackgroundBorder" Background="{TemplateBinding Background}" CornerRadius="10"/>
+                                    <Ellipse x:Name="Thumb" Fill="White" Width="14" Height="14" HorizontalAlignment="Left" Margin="3,0">
+                                        <Ellipse.RenderTransform>
+                                            <TranslateTransform X="0"/>
+                                        </Ellipse.RenderTransform>
+                                    </Ellipse>
+                                </Grid>
+                            </BulletDecorator.Bullet>
+                            <ContentPresenter Margin="{TemplateBinding Padding}" VerticalAlignment="Center"/>
+                        </BulletDecorator>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="BackgroundBorder" Property="Background" Value="#007ACC"/>
+                                <Trigger.EnterActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="Thumb" Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.X)" To="20" Duration="0:0:0.1"/>
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.EnterActions>
+                                <Trigger.ExitActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="Thumb" Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.X)" To="0" Duration="0:0:0.1"/>
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.ExitActions>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="SettingCardStyle" TargetType="Border">
+            <Setter Property="Background" Value="#0FFFFFFF"/>
+            <Setter Property="CornerRadius" Value="12"/>
+            <Setter Property="Padding" Value="15,12"/>
+            <Setter Property="Margin" Value="0,0,0,10"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="BorderBrush" Value="#1AFFFFFF"/>
+        </Style>
+    </Application.Resources>
+</Application>

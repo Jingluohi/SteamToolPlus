@@ -1,0 +1,148 @@
+// IPCMessages.steamd - Steam IPC wire schema for OpenSteamTool.
+//
+// This file is the source of truth for IPC enums, transport envelopes, and
+// per-method bodies. Generated Req/Resp facades hide the envelope split from
+// handlers while preserving the exact packed wire layout.
+
+enum EIPCCommand : uint8 {
+    InterfaceCall  = 1;
+    FlushCallbacks = 2;
+    Destroy        = 5;
+    Heartbeat      = 6;
+    Handshake      = 9;
+};
+
+enum EIPCResult : uint8 {
+    OK     = 0x0B;
+    Failed = 0x0C;
+};
+
+enum EIPCInterface : uint8 {
+    IClientUser                        = 1;
+    IClientGameServer                  = 2;
+    IClientFriends                     = 3;
+    IClientUtils                       = 4;
+    IClientBilling                     = 5;
+    IClientMatchmaking                 = 6;
+    IClientApps                        = 8;
+    IClientUserStats                   = 11;
+    IClientNetworking                  = 12;
+    IClientRemoteStorage               = 13;
+    IClientDepotBuilder                = 16;
+    IClientAppManager                  = 17;
+    IClientConfigStore                 = 18;
+    IClientGameCoordinator             = 19;
+    IClientGameServerStats             = 20;
+    IClientGameStats                   = 21;
+    IClientHTTP                        = 22;
+    IClientScreenshots                 = 23;
+    IClientAudio                       = 24;
+    IClientUnifiedMessages             = 25;
+    IClientStreamLauncher              = 26;
+    IClientParentalSettings            = 27;
+    IClientNetworkDeviceManager        = 29;
+    IClientMusic                       = 30;
+    IClientRemoteClientManager         = 31;
+    IClientUGC                         = 32;
+    IClientStreamClient                = 33;
+    IClientProductBuilder              = 34;
+    IClientShortcuts                   = 35;
+    IClientGameNotifications           = 37;
+    IClientVideo                       = 38;
+    IClientInventory                   = 39;
+    IClientVR                          = 40;
+    IClientControllerSerialized        = 41;
+    IClientAppDisableUpdate            = 42;
+    IClientSharedConnection            = 44;
+    IClientShader                      = 45;
+    IClientNetworkingSocketsSerialized = 46;
+    IClientCompat                      = 48;
+    IClientParties                     = 49;
+    IClientNetworkingUtilsSerialized   = 50;
+    IClientRemotePlay                  = 52;
+    IClientGameServerPacketHandler     = 53;
+    IClientSystemManager               = 54;
+    IClientSystemPerfManager           = 57;
+    IClientSystemDockManager           = 58;
+    IClientSystemAudioManager          = 59;
+    IClientSystemDisplayManager        = 60;
+    IClientTimeline                    = 61;
+};
+
+struct IPCRequestHeader {
+    EIPCCommand command;
+};
+
+struct IPCInterfaceCallHeader {
+    EIPCInterface interfaceID;
+    uint32 hSteamUser;
+    uint32 funcHash;
+};
+
+struct IPCResponseHeader {
+    EIPCResult result;
+};
+
+protocol IPC {
+    request IPCRequestHeader;
+
+    command IPCHandshake = EIPCCommand::Handshake {
+        request {
+            uint32 version;
+            uint32 pid;
+            uint32 tid;
+        }
+
+        response none;
+    }
+
+    command IPCInterfaceCall = EIPCCommand::InterfaceCall {
+        request {
+            IPCInterfaceCallHeader header;
+            payload body;
+            uint32 fencepost;
+        }
+
+        response {
+            IPCResponseHeader header;
+            payload body;
+        }
+    }
+}
+
+interface IClientUser {
+    CSteamID GetSteamID();
+
+    uint32 GetAppOwnershipTicketExtendedData(
+        in  uint32 unAppID,
+        in  int32  cbMaxTicket,
+        out bytes  pTicket[cbMaxTicket],
+        out uint32 piAppId,
+        out uint32 piSteamId,
+        out uint32 piSignature,
+        out uint32 pcbSignature
+    );
+
+    SteamAPICall_t RequestEncryptedAppTicket(
+        in int32 cbData,
+        in bytes pData[cbData]
+    );
+
+    bool GetEncryptedAppTicket(
+        in  uint32 cbMaxTicket,
+        out uint32 pcbTicket,
+        out bytes  pTicket[pcbTicket]
+    );
+}
+
+interface IClientUtils {
+    AppId_t GetAppID();
+
+    bool GetAPICallResult(
+        in  uint64 hSteamAPICall,
+        in  uint32 cubCallback,
+        in  uint32 iCallbackExpected,
+        out bytes  pCallback[cubCallback],
+        out bool   pbFailed
+    );
+}

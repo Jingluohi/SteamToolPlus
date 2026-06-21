@@ -1,0 +1,8 @@
+{
+  "$schema": "https://raw.githubusercontent.com/SteamClientHomebrew/Millennium/main/src/sys/plugin-schema.json",
+  "name": "luamanager",
+  "common_name": "LuaManager",
+  "description": "Download games",
+  "version": "1.0.0",
+  "author": "LIBERTAD"
+}

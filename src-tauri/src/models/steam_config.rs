@@ -1261,19 +1261,12 @@ impl Default for ControllerRumble {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Default)]
 pub struct CustomGlyphs {
     pub enabled: bool,
     pub path: Option<String>,
 }
 
-impl Default for CustomGlyphs {
-    fn default() -> Self {
-        Self {
-            enabled: false,
-            path: None,
-        }
-    }
-}
 
 /// controller配置
 #[derive(Debug, Clone, Serialize, Deserialize)]

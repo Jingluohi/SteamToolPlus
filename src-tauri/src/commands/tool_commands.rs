@@ -2,7 +2,6 @@
  * tool_commands.rs - 工具命令模块
  * 提供Lua转VDF和Steam封面下载功能的命令
  */
-
 use std::fs;
 use std::path::Path;
 use regex::Regex;
@@ -200,11 +199,13 @@ pub fn convert_vdf_to_lua(file_path: String) -> Result<serde_json::Value, String
 fn parse_vdf_content(content: &str) -> Vec<(String, String)> {
     let mut depots = Vec::new();
     let mut current_depot: Option<String> = None;
-    
+    // 将正则表达式移到循环外部，避免每次迭代都重新编译
+    let re = Regex::new(r#""DecryptionKey"\s+"([a-f0-9]+)""#).unwrap();
+
     // 按行解析VDF
     for line in content.lines() {
         let trimmed = line.trim();
-        
+
         // 匹配 depot_id 行: "123456" 或 "depot_id"
         if trimmed.starts_with('"') && !trimmed.contains("DecryptionKey") && !trimmed.contains("depots") {
             if let Some(end_quote) = trimmed[1..].find('"') {
@@ -215,10 +216,9 @@ fn parse_vdf_content(content: &str) -> Vec<(String, String)> {
                 }
             }
         }
-        
+
         // 匹配 DecryptionKey 行: "DecryptionKey" "key"
         if trimmed.contains("DecryptionKey") {
-            let re = Regex::new(r#""DecryptionKey"\s+"([a-f0-9]+)""#).unwrap();
             if let Some(cap) = re.captures(trimmed) {
                 let key = cap[1].to_string();
                 if let Some(ref depot_id) = current_depot {
@@ -228,7 +228,7 @@ fn parse_vdf_content(content: &str) -> Vec<(String, String)> {
             }
         }
     }
-    
+
     depots
 }
 

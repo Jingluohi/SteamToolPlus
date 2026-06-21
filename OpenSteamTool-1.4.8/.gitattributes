@@ -1,0 +1,35 @@
+# Default: normalize line endings to LF in repo, leave working tree as-is
+* text=auto eol=lf
+
+# Source code (force LF)
+*.c       text eol=lf
+*.h       text eol=lf
+*.cpp     text eol=lf
+*.hpp     text eol=lf
+*.cc      text eol=lf
+*.def     text eol=lf
+*.lua     text eol=lf
+*.proto   text eol=lf
+*.toml    text eol=lf
+*.yml     text eol=lf
+*.yaml    text eol=lf
+*.md      text eol=lf
+*.txt     text eol=lf
+*.json    text eol=lf
+*.cmake   text eol=lf
+CMakeLists.txt text eol=lf
+
+# Windows scripts must keep CRLF
+*.bat     text eol=crlf
+*.cmd     text eol=crlf
+*.ps1     text eol=crlf
+
+# Binary files
+*.dll     binary
+*.exe     binary
+*.lib     binary
+*.pdb     binary
+*.ico     binary
+*.png     binary
+*.jpg     binary
+*.zip     binary

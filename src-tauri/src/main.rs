@@ -10,8 +10,10 @@ mod services;
 mod utils;
 
 use commands::{background_commands, config_commands, download_commands, game_commands, game_data_commands, help_commands, log_commands, manifest_commands, patch_commands, window_commands};
+use once_cell::sync::Lazy;
 use services::{ConfigService, ConfigServiceTrait, GameService, GameServiceTrait};
-use std::sync::Arc;
+use std::collections::HashSet;
+use std::sync::{Arc, Mutex};
 use tauri::{Manager, Emitter};
 use tauri::tray::{TrayIconBuilder, TrayIconEvent, MouseButton};
 use tauri::menu::{Menu, MenuItem};
@@ -71,7 +73,7 @@ pub fn check_ddv20_running() -> bool {
     const CREATE_NO_WINDOW: u32 = 0x08000000;
 
     let output = Command::new("tasklist")
-        .args(&["/FI", "IMAGENAME eq ddv20.exe", "/NH"])
+        .args(["/FI", "IMAGENAME eq ddv20.exe", "/NH"])
         .creation_flags(CREATE_NO_WINDOW)
         .output();
 
@@ -86,6 +88,28 @@ pub fn check_ddv20_running() -> bool {
 #[cfg(not(target_os = "windows"))]
 pub fn check_ddv20_running() -> bool {
     false
+}
+
+/// 用户主动停止的下载游戏ID集合
+/// 用于防止暂停下载后监控线程自动重启 ddv20.exe
+static STOPPED_DOWNLOADS: Lazy<Mutex<HashSet<String>>> =
+    Lazy::new(|| Mutex::new(HashSet::new()));
+
+/// 标记指定游戏ID为用户主动停止
+pub fn mark_download_stopped(game_id: &str) {
+    if let Ok(mut set) = STOPPED_DOWNLOADS.lock() {
+        set.insert(game_id.to_string());
+    }
+}
+
+/// 检查并移除指定游戏ID的停止标记
+/// 返回是否曾被标记为用户主动停止
+pub fn take_download_stopped(game_id: &str) -> bool {
+    if let Ok(mut set) = STOPPED_DOWNLOADS.lock() {
+        set.remove(game_id)
+    } else {
+        false
+    }
 }
 
 /// 重置所有正在下载的游戏状态
@@ -220,12 +244,9 @@ fn main() {
             // 处理托盘图标事件（双击）
             let app_handle_clone = app.handle().clone();
             tray_icon.on_tray_icon_event(move |_tray, event| {
-                match event {
-                    TrayIconEvent::DoubleClick { button: MouseButton::Left, .. } => {
-                        // 双击托盘图标显示窗口
-                        show_main_window(&app_handle_clone);
-                    }
-                    _ => {}
+                if let TrayIconEvent::DoubleClick { button: MouseButton::Left, .. } = event {
+                    // 双击托盘图标显示窗口
+                    show_main_window(&app_handle_clone);
                 }
             });
 
@@ -235,39 +256,39 @@ fn main() {
                 match event.id().as_ref() {
                     "open" => {
                         // 点击"打开主窗口"，显示窗口
-                        show_main_window(&app_handle);
+                        show_main_window(app_handle);
                     }
                     "browse" => {
                         // 跳转到浏览页面
-                        show_main_window(&app_handle);
+                        show_main_window(app_handle);
                         if let Some(window) = app_handle.get_webview_window("main") {
                             let _ = window.eval("setTimeout(() => { window.location.href = '/'; }, 200);");
                         }
                     }
                     "library" => {
                         // 跳转到游戏库页面
-                        show_main_window(&app_handle);
+                        show_main_window(app_handle);
                         if let Some(window) = app_handle.get_webview_window("main") {
                             let _ = window.eval("setTimeout(() => { window.location.href = '/library'; }, 200);");
                         }
                     }
                     "download" => {
                         // 跳转到下载页面
-                        show_main_window(&app_handle);
+                        show_main_window(app_handle);
                         if let Some(window) = app_handle.get_webview_window("main") {
                             let _ = window.eval("setTimeout(() => { window.location.href = '/download'; }, 200);");
                         }
                     }
                     "patch" => {
                         // 跳转到免Steam补丁页面
-                        show_main_window(&app_handle);
+                        show_main_window(app_handle);
                         if let Some(window) = app_handle.get_webview_window("main") {
                             let _ = window.eval("setTimeout(() => { window.location.href = '/patch'; }, 200);");
                         }
                     }
                     "manifest" => {
                         // 跳转到清单入库页面
-                        show_main_window(&app_handle);
+                        show_main_window(app_handle);
                         if let Some(window) = app_handle.get_webview_window("main") {
                             let _ = window.eval("setTimeout(() => { window.location.href = '/manifest-import'; }, 200);");
                         }
@@ -374,42 +395,37 @@ fn main() {
             // 处理文件拖放事件
             let window_clone = window.clone();
             window.on_window_event(move |event| {
-                if let WindowEvent::DragDrop(drag_event) = event {
-                    match drag_event {
-                        tauri::DragDropEvent::Drop { paths, .. } => {
-                            // 过滤出Lua文件
-                            let lua_files: Vec<String> = paths
-                                .iter()
-                                .filter(|p| {
-                                    p.extension()
-                                        .map(|e| e.to_string_lossy().to_lowercase() == "lua")
-                                        .unwrap_or(false)
-                                })
-                                .map(|p| p.to_string_lossy().to_string())
-                                .collect();
+                if let WindowEvent::DragDrop(tauri::DragDropEvent::Drop { paths, .. }) = event {
+                    // 过滤出Lua文件
+                    let lua_files: Vec<String> = paths
+                        .iter()
+                        .filter(|p| {
+                            p.extension()
+                                .map(|e| e.to_string_lossy().to_lowercase() == "lua")
+                                .unwrap_or(false)
+                        })
+                        .map(|p| p.to_string_lossy().to_string())
+                        .collect();
 
-                            if !lua_files.is_empty() {
-                                // 发送事件给前端
-                                let _ = window_clone.emit("lua-files-dropped", lua_files);
-                            }
+                    if !lua_files.is_empty() {
+                        // 发送事件给前端
+                        let _ = window_clone.emit("lua-files-dropped", lua_files);
+                    }
 
-                            // 过滤出VDF文件
-                            let vdf_files: Vec<String> = paths
-                                .iter()
-                                .filter(|p| {
-                                    p.extension()
-                                        .map(|e| e.to_string_lossy().to_lowercase() == "vdf")
-                                        .unwrap_or(false)
-                                })
-                                .map(|p| p.to_string_lossy().to_string())
-                                .collect();
+                    // 过滤出VDF文件
+                    let vdf_files: Vec<String> = paths
+                        .iter()
+                        .filter(|p| {
+                            p.extension()
+                                .map(|e| e.to_string_lossy().to_lowercase() == "vdf")
+                                .unwrap_or(false)
+                        })
+                        .map(|p| p.to_string_lossy().to_string())
+                        .collect();
 
-                            if !vdf_files.is_empty() {
-                                // 发送事件给前端
-                                let _ = window_clone.emit("vdf-files-dropped", vdf_files);
-                            }
-                        }
-                        _ => {}
+                    if !vdf_files.is_empty() {
+                        // 发送事件给前端
+                        let _ = window_clone.emit("vdf-files-dropped", vdf_files);
                     }
                 }
             });
