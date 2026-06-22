@@ -1,0 +1,55 @@
+name: Build
+
+on:
+  push:
+    #branches: [ main, master ]
+    #paths-ignore:
+    #  - "**/*.md"
+    #  - ".gitignore"
+  pull_request:
+    #branches: [ main, master ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Setup Rust (stable)
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            src-tauri -> target
+
+      - name: Run build.bat (CI version without pause)
+        shell: pwsh
+        run: |
+          Copy-Item -LiteralPath ".\build.bat" -Destination ".\build.ci.bat" -Force
+          # 删除整行是 pause 的语句（忽略前后空格、大小写）
+          (Get-Content -LiteralPath ".\build.ci.bat") |
+            Where-Object { $_ -notmatch '^\s*pause\s*$' } |
+            Set-Content -LiteralPath ".\build.ci.bat" -Encoding utf8
+
+          cmd /c ".\build.ci.bat"
+
+      - name: Upload artifact (PublicOut)
+        uses: actions/upload-artifact@v4
+        with:
+          name: SteamToolPlus-PublicOut-windows
+          path: PublicOut
+          if-no-files-found: error
