@@ -360,9 +360,9 @@ defineExpose({
 /* 可下载标记 */
 .downloadable-badge {
   position: absolute;
-  top: 8px;
-  right: 8px;
-  padding: 4px 8px;
+  top: 3px;
+  right: 3px;
+  padding: 1px 3px;
   background-color: var(--steam-accent-blue);
   color: white;
   font-size: 12px;

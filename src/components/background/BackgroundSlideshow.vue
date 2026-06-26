@@ -1,7 +1,10 @@
 <template>
   <div class="background-slideshow">
-    <!-- 背景层（图片） -->
-    <div class="background-layers">
+    <!-- 纯色兜底层：始终存在，确保图片缺失或纯色模式下背景不透明 -->
+    <div class="solid-background-layer" :style="solidLayerStyle"></div>
+
+    <!-- 背景层（图片）：纯色模式下不渲染 -->
+    <div v-if="!isSolidMode" class="background-layers">
       <transition
         v-for="(item, index) in displayItems"
         :key="index"
@@ -30,17 +33,22 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { useThemeStore } from '../../store/theme.store'
 import type { BackgroundConfig, PageType } from '../../types/background.types'
 import {
   getBackgroundConfig,
   getPageBackgroundFiles,
-  getNextBackgroundIndex
+  getNextBackgroundIndex,
+  getBackgroundFileUrl
 } from '../../api/background.api'
 
 // Props
 const props = defineProps<{
   pageType: PageType
 }>()
+
+// 主题 Store
+const themeStore = useThemeStore()
 
 // 背景项类型
 interface BackgroundItem {
@@ -54,9 +62,14 @@ const currentIndex = ref(0)
 const isLoading = ref(true)
 let intervalId: number | null = null
 
-// 计算属性：是否有背景
-const hasBackground = computed(() => {
-  return displayItems.value.length > 0
+// 计算属性：是否为纯色背景模式
+const isSolidMode = computed(() => themeStore.isSolid)
+
+// 计算属性：纯色背景层样式
+const solidLayerStyle = computed(() => {
+  return {
+    backgroundColor: themeStore.solidBgColor
+  }
 })
 
 // 计算属性：过渡动画名称
@@ -99,10 +112,16 @@ async function loadBackgroundConfig() {
     config.value = await getBackgroundConfig()
 
     if (config.value) {
-      await loadBackgroundItems()
+      // 纯色模式下不加载图片，直接清空列表
+      if (isSolidMode.value) {
+        displayItems.value = []
+        currentIndex.value = 0
+      } else {
+        await loadBackgroundItems()
 
-      // 启动轮播
-      startSlideshow()
+        // 启动轮播
+        startSlideshow()
+      }
     }
   } catch (err) {
     // 加载失败时静默处理
@@ -113,7 +132,7 @@ async function loadBackgroundConfig() {
 
 // 加载背景图片列表
 async function loadBackgroundItems() {
-  if (!config.value) return
+  if (!config.value || isSolidMode.value) return
 
   // 获取程序当前实际使用的主题（从DOM读取，与用户设置一致）
   const currentTheme = document.documentElement.getAttribute('data-theme') as 'light' | 'dark' | null
@@ -127,7 +146,6 @@ async function loadBackgroundItems() {
 
   for (const file of pageFiles) {
     try {
-      const { getBackgroundFileUrl } = await import('../../api/background.api')
       const url = await getBackgroundFileUrl(file.path)
       items.push({ url })
     } catch (err) {
@@ -189,19 +207,22 @@ function switchToNext() {
 onMounted(() => {
   loadBackgroundConfig()
 
-  // 监听程序主题变化（通过观察data-theme属性）
+  // 监听程序主题变化（通过观察data-theme与data-bg-mode属性）
   const observer = new MutationObserver((mutations) => {
     mutations.forEach((mutation) => {
       if (mutation.attributeName === 'data-theme') {
         // 主题切换时重新加载背景图片
         loadBackgroundItems()
+      } else if (mutation.attributeName === 'data-bg-mode') {
+        // 图片/纯色模式切换时重新加载背景配置
+        loadBackgroundConfig()
       }
     })
   })
 
   observer.observe(document.documentElement, {
     attributes: true,
-    attributeFilter: ['data-theme']
+    attributeFilter: ['data-theme', 'data-bg-mode']
   })
 })
 
@@ -253,7 +274,6 @@ async function refreshItems() {
     refreshTimer = null
 
     // 先清空旧 URL，确保浏览器不会缓存失效的 asset:// URL
-    const oldItems = [...displayItems.value]
     displayItems.value = []
     currentIndex.value = 0
 
@@ -283,6 +303,13 @@ defineExpose({
   bottom: 0;
   z-index: 0;
   overflow: hidden;
+}
+
+/* 纯色兜底层：位于最底层，始终可见 */
+.solid-background-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
 }
 
 /* 背景层 */

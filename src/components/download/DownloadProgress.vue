@@ -93,7 +93,7 @@
  * 显示游戏下载的总体进度和各个Depot的详细进度
  */
 
-import type { DownloadProgress } from '../../types'
+import type { DownloadProgress } from '../../types/download.types'
 
 /**
  * 组件属性定义

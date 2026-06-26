@@ -14,6 +14,8 @@ export interface AppConfig {
   gameDirs: GameDirConfig
   /** 启动配置 */
   launch: LaunchConfig
+  /** OpenSteamTool内核配置 */
+  opensteamtool: OpenSteamToolConfig
 }
 
 /**
@@ -38,8 +40,16 @@ export interface WindowConfig {
  * 主题配置
  */
 export interface ThemeConfig {
-  /** 主题模式：dark/light/auto */
-  mode: 'dark' | 'light' | 'auto'
+  /**
+   * 主题模式：
+   * - dark: 深色（图片）
+   * - light: 浅色（图片）
+   * - black: 黑色（纯色）
+   * - white: 白色（纯色）
+   * - auto: 跟随系统（图片）
+   * - auto-solid: 跟随系统（纯色）
+   */
+  mode: 'dark' | 'light' | 'black' | 'white' | 'auto' | 'auto-solid'
   /** 是否使用系统主题 */
   followSystem: boolean
   /** 自定义主题变量 */
@@ -52,6 +62,8 @@ export interface ThemeConfig {
 export interface GameDirConfig {
   /** Steam安装路径 */
   steamPath?: string
+  /** 游戏默认下载路径 */
+  defaultDownloadPath?: string
   /** 封面图存储路径 */
   coversPath: string
 }
@@ -71,6 +83,16 @@ export interface LaunchConfig {
 }
 
 /**
+ * OpenSteamTool内核配置
+ */
+export interface OpenSteamToolConfig {
+  /** 内核DLL是否已安装到Steam目录 */
+  kernelInstalled: boolean
+  /** 是否启用高级模式（写注册表等） */
+  advancedMode: boolean
+}
+
+/**
  * 更新配置请求
  */
 export interface UpdateConfigRequest {
@@ -82,4 +104,6 @@ export interface UpdateConfigRequest {
   gameDirs?: GameDirConfig
   /** 启动配置更新 */
   launch?: LaunchConfig
+  /** OpenSteamTool内核配置更新 */
+  opensteamtool?: OpenSteamToolConfig
 }

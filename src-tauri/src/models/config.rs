@@ -16,6 +16,8 @@ pub struct AppConfig {
     pub game_dirs: GameDirConfig,
     /// 启动配置
     pub launch: LaunchConfig,
+    /// OpenSteamTool内核配置
+    pub opensteamtool: OpenSteamToolConfig,
 }
 
 
@@ -54,7 +56,7 @@ impl Default for WindowConfig {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ThemeConfig {
-    /// 主题模式：dark/light/auto
+    /// 主题模式：dark/light/black/white/auto/auto-solid
     pub mode: String,
     /// 是否使用系统主题
     pub follow_system: bool,
@@ -78,6 +80,8 @@ impl Default for ThemeConfig {
 pub struct GameDirConfig {
     /// Steam安装路径
     pub steam_path: Option<String>,
+    /// 游戏默认下载路径
+    pub default_download_path: Option<String>,
     /// 封面图存储路径
     pub covers_path: String,
 }
@@ -86,6 +90,7 @@ impl Default for GameDirConfig {
     fn default() -> Self {
         Self {
             steam_path: None,
+            default_download_path: None,
             covers_path: "data/covers".to_string(),
         }
     }
@@ -116,6 +121,25 @@ impl Default for LaunchConfig {
     }
 }
 
+/// OpenSteamTool内核配置
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OpenSteamToolConfig {
+    /// 内核DLL是否已安装到Steam目录
+    pub kernel_installed: bool,
+    /// 是否启用高级模式（写注册表等）
+    pub advanced_mode: bool,
+}
+
+impl Default for OpenSteamToolConfig {
+    fn default() -> Self {
+        Self {
+            kernel_installed: false,
+            advanced_mode: false,
+        }
+    }
+}
+
 /// 更新配置请求
 /// 使用 Option 包装各个字段，允许部分更新
 /// 如果字段为 Some，则更新对应配置；如果为 None，则保持原值不变
@@ -130,6 +154,8 @@ pub struct UpdateConfigRequest {
     pub game_dirs: Option<GameDirConfig>,
     /// 启动配置更新
     pub launch: Option<LaunchConfig>,
+    /// OpenSteamTool内核配置更新
+    pub opensteamtool: Option<OpenSteamToolConfig>,
 }
 
 /// 部分更新游戏目录配置
@@ -139,6 +165,8 @@ pub struct UpdateConfigRequest {
 pub struct PartialGameDirConfig {
     /// Steam安装路径
     pub steam_path: Option<String>,
+    /// 游戏默认下载路径
+    pub default_download_path: Option<String>,
     /// 封面图存储路径
     pub covers_path: Option<String>,
 }

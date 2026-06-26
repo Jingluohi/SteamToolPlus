@@ -284,8 +284,7 @@ function performSearch() {
     const walker = document.createTreeWalker(
       contentDiv,
       NodeFilter.SHOW_TEXT,
-      null,
-      false
+      null
     )
 
     const textNodes: Text[] = []

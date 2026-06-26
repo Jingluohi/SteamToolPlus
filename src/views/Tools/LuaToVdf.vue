@@ -16,7 +16,6 @@
           <p class="hint">拖拽文件到下方区域，或点击添加按钮</p>
 
           <div
-            ref="dropZone"
             class="drop-zone"
             :class="{ 'drag-over': isDragging }"
             @dragenter.prevent="isDragging = true"
@@ -186,7 +185,6 @@ const isDragging = ref(false)
 const progressPercent = ref(0)
 const stats = ref({ total: 0, success: 0, fail: 0 })
 
-const dropZone = ref<HTMLDivElement>()
 const logArea = ref<HTMLDivElement>()
 
 const hasSelected = computed(() => fileList.value.some(f => f.selected))

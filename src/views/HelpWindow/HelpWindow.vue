@@ -72,18 +72,19 @@ async function initTheme() {
     // 如果没有 localStorage 主题，从配置读取
     const config = await getConfig()
     const themeMode = config.theme?.mode || 'auto'
-    const followSystem = config.theme?.followSystem ?? true
 
     // 检测系统主题
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
     const systemIsDark = mediaQuery.matches
 
-    // 确定当前主题
+    // 确定当前主题：dark/black/auto/auto-solid（系统深色）为深色；light/white为浅色
     let isDark = true
-    if (themeMode === 'auto' || followSystem) {
+    if (themeMode === 'auto' || themeMode === 'auto-solid') {
       isDark = systemIsDark
+    } else if (themeMode === 'light' || themeMode === 'white') {
+      isDark = false
     } else {
-      isDark = themeMode === 'dark'
+      isDark = true
     }
 
     applyTheme(isDark)
@@ -111,27 +112,31 @@ function applyTheme(isDark: boolean) {
   }
 }
 
-// 配置 marked 选项
+// 配置 marked 插件和选项
+marked.use({
+  renderer: {
+    code({ text, lang }) {
+      if (lang && hljs.getLanguage(lang)) {
+        try {
+          return `<pre><code class="hljs language-${lang}">${hljs.highlight(text, { language: lang }).value}</code></pre>`
+        } catch (e) {
+          // 代码高亮失败时使用自动高亮
+        }
+      }
+      return `<pre><code class="hljs">${hljs.highlightAuto(text).value}</code></pre>`
+    },
+    heading({ text, depth, raw }) {
+      const id = raw.toLowerCase().replace(/[^\w]+/g, '-')
+      return `<h${depth} id="${id}">${text}</h${depth}>`
+    }
+  }
+})
+
 marked.setOptions({
   // 启用 GitHub 风格的换行
   breaks: true,
   // 启用 GitHub 风格的 Markdown
-  gfm: true,
-  // 代码高亮
-  highlight: function(code: string, lang: string | undefined) {
-    if (lang && hljs.getLanguage(lang)) {
-      try {
-        return hljs.highlight(code, { language: lang }).value
-      } catch (e) {
-        // 代码高亮失败时使用自动高亮
-      }
-    }
-    return hljs.highlightAuto(code).value
-  },
-  // 标题渲染，添加锚点
-  headerIds: true,
-  // 允许 HTML 标签
-  sanitize: false,
+  gfm: true
 })
 
 // 渲染后的内容

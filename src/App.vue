@@ -54,7 +54,7 @@
 
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { RouterView, useRoute } from 'vue-router'
-import { listen, type EventCallback } from '@tauri-apps/api/event'
+import { listen } from '@tauri-apps/api/event'
 import { useWindowStore } from './store/window.store'
 import { useThemeStore } from './store/theme.store'
 import { useConfigStore } from './store/config.store'
@@ -73,8 +73,8 @@ const route = useRoute()
 const backgroundRef = ref<InstanceType<typeof BackgroundSlideshow> | null>(null)
 
 // 事件监听器句柄，用于卸载时清理
-let unlistenFocused: EventCallback<void> | null = null
-let unlistenBlurred: EventCallback<void> | null = null
+let unlistenFocused: (() => void) | null = null
+let unlistenBlurred: (() => void) | null = null
 
 // 计算属性：是否全屏
 const isFullscreen = computed(() => windowStore.isFullscreen)
@@ -173,7 +173,8 @@ onUnmounted(() => {
   flex-direction: column;
   overflow: hidden;
   position: relative;
-  background: transparent;
+  /* 使用主题对应的兜底背景色，避免图片缺失或透明窗口时透出异常 */
+  background: var(--app-bg-color);
 }
 
 /* 全局背景层 */

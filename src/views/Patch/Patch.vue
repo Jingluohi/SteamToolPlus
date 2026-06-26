@@ -425,7 +425,7 @@
     <LanMultiplayerConfig
       v-if="showLanMultiplayerModal"
       :game-path="gamePath"
-      game-id=""
+      :game-id="steamAppId"
       @close="showLanMultiplayerModal = false"
       @saved="onConfigSaved('lanMultiplayer')"
     />
@@ -433,7 +433,7 @@
     <OverlayConfig
       v-if="showOverlayModal"
       :game-path="gamePath"
-      game-id=""
+      :game-id="steamAppId"
       :is-experimental="useExperimental"
       @close="showOverlayModal = false"
       @saved="onConfigSaved('overlay')"
@@ -442,7 +442,7 @@
     <AchievementsConfig
       v-if="showAchievementsModal"
       :game-path="gamePath"
-      game-id=""
+      :game-id="steamAppId"
       @close="showAchievementsModal = false"
       @saved="onConfigSaved('achievements')"
     />
@@ -450,7 +450,7 @@
     <ItemsConfig
       v-if="showItemsModal"
       :game-path="gamePath"
-      game-id=""
+      :game-id="steamAppId"
       @close="showItemsModal = false"
       @saved="onConfigSaved('items')"
     />
@@ -458,7 +458,7 @@
     <ControllerConfig
       v-if="showControllerModal"
       :game-path="gamePath"
-      game-id=""
+      :game-id="steamAppId"
       @close="showControllerModal = false"
       @saved="onConfigSaved('controller')"
     />
@@ -466,7 +466,7 @@
     <UserConfig
       v-if="showUserModal"
       :game-path="gamePath"
-      game-id=""
+      :game-id="steamAppId"
       @close="showUserModal = false"
       @saved="onConfigSaved('user')"
     />
@@ -474,7 +474,7 @@
     <LeaderboardsConfig
       v-if="showLeaderboardsModal"
       :game-path="gamePath"
-      game-id=""
+      :game-id="steamAppId"
       @close="showLeaderboardsModal = false"
       @saved="onConfigSaved('leaderboards')"
     />
@@ -482,7 +482,7 @@
     <StatsConfig
       v-if="showStatsModal"
       :game-path="gamePath"
-      game-id=""
+      :game-id="steamAppId"
       @close="showStatsModal = false"
       @saved="onConfigSaved('stats')"
     />
@@ -490,7 +490,7 @@
     <DlcConfig
       v-if="showDlcModal"
       :game-path="gamePath"
-      game-id=""
+      :game-id="steamAppId"
       @close="showDlcModal = false"
       @saved="onConfigSaved('dlc')"
     />
@@ -498,7 +498,7 @@
     <MainConfig
       v-if="showMainModal"
       :game-path="gamePath"
-      game-id=""
+      :game-id="steamAppId"
       @close="showMainModal = false"
       @saved="onConfigSaved('main')"
     />
@@ -506,6 +506,7 @@
     <CompleteConfigManager
       v-if="showCompleteConfigManager"
       :game-path="gamePath"
+      :game-id="steamAppId"
       @close="showCompleteConfigManager = false"
     />
   </div>
@@ -567,6 +568,8 @@ const configStatus = ref({
   leaderboards: false,
   stats: false,
   other: false,
+  dlc: false,
+  main: false,
 })
 
 /** 弹窗显示状态 */
@@ -756,6 +759,7 @@ const resetAllConfig = () => {
     user: false,
     leaderboards: false,
     stats: false,
+    other: false,
     dlc: false,
     main: false,
   }
@@ -806,14 +810,6 @@ const openLeaderboardsConfig = () => {
 
 const openStatsConfig = () => {
   showStatsModal.value = true
-}
-
-const openDlcConfig = () => {
-  showDlcModal.value = true
-}
-
-const openMainConfig = () => {
-  showMainModal.value = true
 }
 
 const openCompleteConfigManager = () => {

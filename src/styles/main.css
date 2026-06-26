@@ -4,9 +4,10 @@
  * Steam风格灰黑色调 - 沉浸式玻璃态设计
  */
 
-@import 'tailwindcss/base';
-@import 'tailwindcss/components';
-@import 'tailwindcss/utilities';
+@import 'tailwindcss';
+
+/* 使用 data-theme="dark" 作为深色模式切换条件 */
+@custom-variant dark (&:where([data-theme="dark"] *));
 
 /**
  * CSS变量定义
@@ -95,6 +96,11 @@
   --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
   --transition-normal: 250ms cubic-bezier(0.4, 0, 0.2, 1);
   --transition-slow: 350ms cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* 应用程序背景兜底色（由 JS 根据主题模式动态设置） */
+  --app-bg-color: #363636;
+  --app-solid-black: #28324a;
+  --app-solid-white: #f2f2f2;
 }
 
 /**
@@ -173,7 +179,8 @@ html {
 
 body {
   font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  background: transparent;
+  /* 兜底背景色，防止窗口初始化或主题未加载时透明 */
+  background: var(--app-bg-color);
   color: var(--steam-text-primary);
   line-height: 1.5;
   overflow: hidden;

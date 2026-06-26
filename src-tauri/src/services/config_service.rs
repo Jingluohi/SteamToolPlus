@@ -109,6 +109,9 @@ impl ConfigServiceTrait for ConfigService {
         if let Some(launch) = request.launch {
             config.launch = launch;
         }
+        if let Some(opensteamtool) = request.opensteamtool {
+            config.opensteamtool = opensteamtool;
+        }
 
         let config_clone = config.clone();
         drop(config);

@@ -9,8 +9,14 @@ import type { ThemeConfig } from '../types'
 
 /**
  * 主题模式类型
+ * - dark / light / auto：使用背景图片
+ * - black / white / auto-solid：使用纯色背景
  */
-type ThemeMode = 'dark' | 'light' | 'auto'
+type ThemeMode = 'dark' | 'light' | 'black' | 'white' | 'auto' | 'auto-solid'
+
+/** 纯色背景色值（非纯白/纯黑） */
+const SOLID_BLACK_BG = '#28324a'
+const SOLID_WHITE_BG = '#f2f2f2'
 
 /**
  * 检测系统主题是否为深色
@@ -33,17 +39,31 @@ export const useThemeStore = defineStore('theme', () => {
   const systemIsDark = ref(detectSystemTheme())
 
   // ==================== Getters ====================
-  /** 当前是否为深色主题 */
+  /** 当前是否为深色主题（dark / black / auto / auto-solid 在系统深色时） */
   const isDark = computed(() => {
-    if (themeMode.value === 'auto') {
+    const mode = themeMode.value
+    if (mode === 'auto' || mode === 'auto-solid') {
       return systemIsDark.value
     }
-    return themeMode.value === 'dark'
+    return mode === 'dark' || mode === 'black'
   })
 
-  /** 当前主题名称 */
+  /** 当前是否为纯色背景模式 */
+  const isSolid = computed(() => {
+    return themeMode.value === 'black' || themeMode.value === 'white' || themeMode.value === 'auto-solid'
+  })
+
+  /** 当前是否为图片背景模式 */
+  const isPicture = computed(() => !isSolid.value)
+
+  /** 当前主题名称（仅 dark / light，用于 CSS 变量切换控件/文字颜色） */
   const currentTheme = computed(() => {
     return isDark.value ? 'dark' : 'light'
+  })
+
+  /** 当前纯色背景色 */
+  const solidBgColor = computed(() => {
+    return isDark.value ? SOLID_BLACK_BG : SOLID_WHITE_BG
   })
 
   // ==================== Actions ====================
@@ -69,11 +89,14 @@ export const useThemeStore = defineStore('theme', () => {
 
   /**
    * 应用主题到DOM
+   * data-theme 仅控制控件/文字颜色（dark/light），
+   * data-bg-mode 区分图片模式与纯色模式。
    */
   function applyTheme() {
     const html = document.documentElement
     const body = document.body
 
+    // 控件与文字颜色统一按 dark/light 处理
     if (isDark.value) {
       html.setAttribute('data-theme', 'dark')
       body.classList.remove('light-theme')
@@ -83,6 +106,17 @@ export const useThemeStore = defineStore('theme', () => {
       body.classList.remove('dark-theme')
       body.classList.add('light-theme')
     }
+
+    // 标记当前是图片模式还是纯色模式
+    html.setAttribute('data-bg-mode', isSolid.value ? 'solid' : 'picture')
+
+    // 同步纯色背景色到 CSS 变量
+    if (isSolid.value) {
+      html.style.setProperty('--app-bg-color', solidBgColor.value)
+    } else {
+      // 图片模式下使用主题主背景色兜底
+      html.style.setProperty('--app-bg-color', isDark.value ? '#363636' : '#f8f9fa')
+    }
   }
 
   /**
@@ -90,40 +124,45 @@ export const useThemeStore = defineStore('theme', () => {
    */
   function setThemeMode(mode: ThemeMode) {
     themeMode.value = mode
-    if (mode !== 'auto') {
-      followSystem.value = false
-    }
+    // auto 与 auto-solid 均视为跟随系统
+    followSystem.value = mode === 'auto' || mode === 'auto-solid'
     applyTheme()
   }
 
   /**
    * 切换深色/浅色主题
+   * 若当前为图片模式则切换为 dark/light；若为纯色模式则切换为 black/white。
    */
   function toggleTheme() {
-    if (isDark.value) {
-      setThemeMode('light')
+    if (isSolid.value) {
+      setThemeMode(isDark.value ? 'white' : 'black')
     } else {
-      setThemeMode('dark')
+      setThemeMode(isDark.value ? 'light' : 'dark')
     }
   }
 
   /**
    * 设置是否跟随系统主题
+   * @param follow 是否跟随
+   * @param solid 跟随系统时是否使用纯色背景
    */
-  function setFollowSystem(follow: boolean) {
+  function setFollowSystem(follow: boolean, solid: boolean = false) {
     followSystem.value = follow
     if (follow) {
-      themeMode.value = 'auto'
+      themeMode.value = solid ? 'auto-solid' : 'auto'
     }
     applyTheme()
   }
 
   /**
    * 从配置加载主题设置
+   * 兼容旧配置：若 mode 不在新枚举中则回退到 auto。
    */
   function loadFromConfig(config: ThemeConfig) {
-    themeMode.value = config.mode as ThemeMode
-    followSystem.value = config.followSystem
+    const validModes: ThemeMode[] = ['dark', 'light', 'black', 'white', 'auto', 'auto-solid']
+    const mode = config.mode as ThemeMode
+    themeMode.value = validModes.includes(mode) ? mode : 'auto'
+    followSystem.value = themeMode.value === 'auto' || themeMode.value === 'auto-solid'
     applyTheme()
   }
 
@@ -151,7 +190,10 @@ export const useThemeStore = defineStore('theme', () => {
     systemIsDark,
     // Getters
     isDark,
+    isSolid,
+    isPicture,
     currentTheme,
+    solidBgColor,
     // Actions
     initTheme,
     applyTheme,

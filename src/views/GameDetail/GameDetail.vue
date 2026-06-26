@@ -408,9 +408,25 @@
               <p class="import-note">注意：部分游戏入库下载后需要配合补丁才能正常游玩。</p>
             </div>
 
-            <!-- 入库Steam按钮 -->
+            <!-- OpenSteamTool内核入库按钮（推荐） -->
             <button
-              class="import-steam-btn-large"
+              class="import-opensteamtool-btn-large"
+              :class="{ disabled: !manifestExists, loading: isImportingWithOpenSteamTool }"
+              :disabled="!manifestExists || isImportingWithOpenSteamTool"
+              @click="importWithOpenSteamTool"
+            >
+              <svg v-if="isImportingWithOpenSteamTool" class="loading-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/>
+              </svg>
+              <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+              </svg>
+              {{ isImportingWithOpenSteamTool ? 'OpenSteamTool入库中...' : 'opensteamtool入库（推荐）' }}
+            </button>
+
+            <!-- SteamTools传统入库按钮 -->
+            <button
+              class="import-steamtools-btn-large"
               :class="{ disabled: !canImportToSteam, loading: isImportingToSteam }"
               :disabled="!canImportToSteam || isImportingToSteam"
               @click="importToSteam"
@@ -421,7 +437,7 @@
               <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
               </svg>
-              {{ isImportingToSteam ? '入库中...' : '入库Steam' }}
+              {{ isImportingToSteam ? '入库中...' : 'steamtools入库' }}
             </button>
 
             <p v-if="!manifestExists" class="import-error">
@@ -524,8 +540,8 @@ import { open } from '@tauri-apps/plugin-dialog'
 import { convertFileSrc } from '@tauri-apps/api/core'
 import DownloadProgress from '../../components/download/DownloadProgress.vue'
 import QRCodeModal from '../../components/common/QRCodeModal.vue'
-import type { DownloadProgress as DownloadProgressType, DepotProgress } from '../../types/download.types'
-import type { GameConfigData, GameTagConfig } from '../../types'
+import type { DownloadProgress as DownloadProgressType } from '../../types/download.types'
+import type { GameConfigData } from '../../types'
 import { getPatchSourcePath } from '../../types'
 import { loadGamesConfigFromFile } from '../../api/game.api'
 import { getCachedCoverImage } from '../../services/imageCache.service'
@@ -622,6 +638,7 @@ let monitorInterval: number | null = null
 
 // 入库Steam状态
 const isImportingToSteam = ref(false)
+const isImportingWithOpenSteamTool = ref(false)
 const manifestExists = ref(false)
 const showFirstTimeSetup = ref(false)
 
@@ -688,12 +705,6 @@ const handleQRCodeClose = () => {
 const canImportToSteam = computed(() => {
   return manifestExists.value && !isImportingToSteam.value
 })
-const importSteamTooltip = computed(() => {
-  if (isImportingToSteam.value) return '正在入库...'
-  if (!manifestExists.value) return '未找到清单文件'
-  return '将游戏清单导入Steam'
-})
-
 // 首次使用配置 - 关闭
 function handleFirstTimeSetupClose() {
   showFirstTimeSetup.value = false
@@ -705,7 +716,9 @@ async function handleFirstTimeSetupConfirm() {
     // 保存标志到 config.json
     await configStore.updateConfig({
       launch: {
-        ...configStore.config?.launch,
+        startMinimizedToTray: configStore.config?.launch?.startMinimizedToTray ?? false,
+        hideToTrayOnClose: configStore.config?.launch?.hideToTrayOnClose ?? false,
+        verifyBeforeLaunch: configStore.config?.launch?.verifyBeforeLaunch ?? false,
         manifestImportInitialized: true
       }
     })
@@ -889,6 +902,8 @@ const startDownload = async () => {
       game_type: 'downloaded',
       install_path: downloadPath.value,
       exe_path: '', // 下载完成后需要用户设置
+      is_favorite: false,
+      is_installed: false,
       play_time: 0,
       added_date: new Date().toISOString(),
       download_status: 'downloading',
@@ -962,22 +977,6 @@ const parseProgressFileName = (fileName: string): { depotId: string; percentage:
     }
   }
   return null
-}
-
-/**
- * 获取depot总数（通过读取manifest文件夹中的.manifest文件数量）
- */
-const getTotalDepots = async (): Promise<number> => {
-  try {
-    const result = await invoke<{
-      jsonFiles: string[]
-      vdfFiles: string[]
-      manifestFiles: string[]
-    }>('read_manifest_folder', { folderPath: manifestFolderPath.value })
-    return result.manifestFiles.length
-  } catch (error) {
-    return 0
-  }
 }
 
 /**
@@ -1239,15 +1238,6 @@ const openDownloadUrl = async (url: string) => {
   }
 }
 
-// 打开外部链接（用于解压即玩等）
-const openExternalLink = async (url: string) => {
-  try {
-    await invoke('open_external_link', { url })
-  } catch (error) {
-    alert('打开链接失败: ' + error)
-  }
-}
-
 // 打开虚拟化环境配置教程视频
 const openVirtualizationTutorial = async () => {
   try {
@@ -1258,7 +1248,7 @@ const openVirtualizationTutorial = async () => {
 }
 
 // 选择本地补丁文件并直接应用
-const selectAndApplyPatch = async (tab: any) => {
+const selectAndApplyPatch = async (_tab: any) => {
   if (!gamePath.value) {
     alert('请先选择游戏路径')
     return
@@ -1415,8 +1405,14 @@ onMounted(async () => {
     }
 
     existingGameData.value = gameData
-    // 恢复下载路径
-    if (gameData.download_path) {
+    // 恢复下载路径：如果游戏已下载且目录仍存在，使用保存的路径；否则优先使用全局默认下载路径
+    const defaultPath = configStore.config?.gameDirs?.defaultDownloadPath
+    if (gameData.download_status === 'completed' && isGameDirExists && gameData.download_path) {
+      downloadPath.value = gameData.download_path
+    } else if (defaultPath) {
+      const folderName = sanitizeFolderName(gameData.game_name || gameId.value)
+      downloadPath.value = `${defaultPath}\\${folderName}`
+    } else if (gameData.download_path) {
       downloadPath.value = gameData.download_path
     }
     if (gameData.install_path) {
@@ -1526,8 +1522,8 @@ const checkManifestFolder = async () => {
 
 /**
  * 自动设置下载路径
- * 优先使用用户设置的自定义路径，否则使用默认路径（D盘优先，没有D盘则用C盘）
- * 路径格式：自定义路径\游戏英文名 或 D:\SteamGame\游戏英文名
+ * 如果游戏已下载且未卸载，使用保存的路径；否则优先使用全局配置的默认下载路径
+ * 路径格式：默认路径\游戏英文名 或 D:\SteamGame\游戏英文名
  * 仅当游戏可下载时设置
  */
 const autoSetDownloadPath = async () => {
@@ -1537,22 +1533,21 @@ const autoSetDownloadPath = async () => {
     return
   }
 
-  // 如果已有游戏数据且已设置下载路径，使用已保存的路径
-  if (existingGameData.value?.download_path) {
-    downloadPath.value = existingGameData.value.download_path
-    return
-  }
-
   try {
     // 构建下载路径，使用游戏英文名作为文件夹名（清理非法字符）
     const rawFolderName = game.value?.game_name || gameId.value
     const folderName = sanitizeFolderName(rawFolderName)
-    
-    // 检查是否有用户设置的自定义下载路径
-    const customPath = localStorage.getItem('customDownloadPath')
-    if (customPath) {
-      // 使用用户设置的自定义路径 + 游戏文件夹名
-      const path = `${customPath}\\${folderName}`
+
+    // 如果游戏已下载且未卸载，使用保存的路径
+    if (existingGameData.value?.download_status === 'completed' && existingGameData.value?.download_path) {
+      downloadPath.value = existingGameData.value.download_path
+      return
+    }
+
+    // 优先使用全局配置中的默认下载路径
+    const defaultPath = configStore.config?.gameDirs?.defaultDownloadPath
+    if (defaultPath) {
+      const path = `${defaultPath}\\${folderName}`
       downloadPath.value = path
     } else {
       // 获取可用的游戏盘符（优先D盘，其次C盘）
@@ -1674,6 +1669,98 @@ const importToSteam = async () => {
     alert(`入库失败: ${error}`)
   } finally {
     isImportingToSteam.value = false
+  }
+}
+
+/**
+ * 使用OpenSteamTool内核导入游戏到Steam
+ */
+const importWithOpenSteamTool = async () => {
+  if (isImportingWithOpenSteamTool.value) return
+
+  if (!game.value) {
+    alert('游戏数据未加载')
+    return
+  }
+
+  // 解析AppID
+  const appId = parseInt(game.value.game_id, 10)
+  if (isNaN(appId) || appId <= 0) {
+    alert('游戏ID无效，无法作为Steam AppID使用')
+    return
+  }
+
+  // 检查Steam路径
+  let steamPath = configStore.config?.gameDirs?.steamPath
+  if (!steamPath) {
+    const selected = await open({
+      directory: true,
+      title: '请选择Steam安装目录'
+    })
+
+    if (!selected) {
+      return
+    }
+
+    steamPath = selected
+    await configStore.updateConfig({
+      gameDirs: {
+        steamPath: selected,
+        coversPath: configStore.config?.gameDirs?.coversPath || 'data/covers'
+      }
+    })
+  }
+
+  // 高级模式确认
+  const advancedMode = configStore.config?.opensteamtool?.advancedMode ?? false
+  if (advancedMode) {
+    const confirmAdvanced = confirm(
+      '高级模式已启用，将写入Windows注册表。\n\n' +
+      '这通常用于Denuvo/在线游戏，但也可能带来风险。\n\n' +
+      '是否继续？'
+    )
+    if (!confirmAdvanced) {
+      return
+    }
+  }
+
+  isImportingWithOpenSteamTool.value = true
+
+  try {
+    const result = await invoke<{
+      success: boolean
+      message: string
+      kernelInstalled: boolean
+      luaWritten: boolean
+      manifestCopied: number
+      steamRestarted: boolean
+      advancedEnabled: boolean
+    }>('import_game_with_opensteamtool', {
+      steamPath: steamPath,
+      gameId: gameId.value,
+      gameName: game.value.chinese_name || game.value.game_name || gameId.value,
+      appId: appId,
+      advancedMode: advancedMode
+    })
+
+    if (result.success) {
+      const message =
+        `OpenSteamTool入库成功！\n\n` +
+        `游戏: ${game.value.chinese_name || game.value.game_name}\n` +
+        `AppID: ${appId}\n` +
+        `内核DLL: ${result.kernelInstalled ? '已安装' : '未安装'}\n` +
+        `Lua文件: ${result.luaWritten ? '已写入' : '未写入'}\n` +
+        `Manifest文件: ${result.manifestCopied}个\n` +
+        `Steam: ${result.steamRestarted ? '已重启' : '未重启'}\n` +
+        `${result.advancedEnabled ? '高级模式: 已启用（写入注册表）' : ''}`
+      alert(message)
+    } else {
+      alert(`OpenSteamTool入库失败: ${result.message}`)
+    }
+  } catch (error) {
+    alert(`OpenSteamTool入库失败: ${error}`)
+  } finally {
+    isImportingWithOpenSteamTool.value = false
   }
 }
 
@@ -2694,7 +2781,7 @@ const restartSteam = async () => {
   font-style: italic;
 }
 
-.import-steam-btn-large {
+.import-opensteamtool-btn-large {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -2708,23 +2795,59 @@ const restartSteam = async () => {
   font-weight: 600;
   cursor: pointer;
   transition: background-color 0.15s ease;
+  margin-bottom: 12px;
 }
 
-.import-steam-btn-large:hover:not(.disabled) {
+.import-opensteamtool-btn-large:hover:not(.disabled) {
   background-color: #059669;
 }
 
-.import-steam-btn-large.disabled {
+.import-opensteamtool-btn-large.disabled {
   background-color: var(--steam-text-secondary);
   cursor: not-allowed;
   opacity: 0.5;
 }
 
-.import-steam-btn-large.loading {
+.import-opensteamtool-btn-large.loading {
   cursor: wait;
 }
 
-.import-steam-btn-large svg {
+.import-opensteamtool-btn-large svg {
+  width: 20px;
+  height: 20px;
+}
+
+.import-steamtools-btn-large {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 16px 32px;
+  border: none;
+  border-radius: 8px;
+  background-color: #3b82f6;
+  color: white;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.import-steamtools-btn-large:hover:not(.disabled) {
+  background-color: #2563eb;
+}
+
+.import-steamtools-btn-large.disabled {
+  background-color: var(--steam-text-secondary);
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.import-steamtools-btn-large.loading {
+  cursor: wait;
+}
+
+.import-steamtools-btn-large svg {
   width: 20px;
   height: 20px;
 }

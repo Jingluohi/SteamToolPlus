@@ -180,7 +180,6 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter, onBeforeRouteLeave } from 'vue-router'
 import type { GameConfigData } from '../../types'
 import { loadGamesConfigFromFile } from '../../api/game.api'
-import { PATCH_TYPE_MAP } from '../../types'
 import GameCard from '../../components/game/GameCard.vue'
 
 // 路由
@@ -309,7 +308,7 @@ watch(searchKeyword, () => {
 })
 
 // 在离开路由前保存页码和搜索关键词
-onBeforeRouteLeave((to, from, next) => {
+onBeforeRouteLeave((_to, _from, next) => {
   sessionStorage.setItem('browse_current_page', String(currentPage.value))
   sessionStorage.setItem('browse_search_keyword', searchKeyword.value)
   next()
@@ -369,7 +368,7 @@ function handleJumpToPage() {
   height: 100%;
   display: flex;
   flex-direction: column;
-  padding: 16px 24px;
+  padding: 16px 14px 11px 19px;
   overflow: hidden;
 }
 
@@ -554,8 +553,8 @@ function handleJumpToPage() {
 .games-grid {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
-  /* gap百分比再减半 ≈ 0.293% */
-  gap: 0.293%;
+  /* 行间距1.110%(增大2倍)，列间距0.666%(增大20%) */
+  gap: 1.20% 0.750%;
   overflow-y: auto;
   flex: 1;
   min-height: 0;
@@ -597,7 +596,7 @@ function handleJumpToPage() {
   padding: 4px 0;
   border-top: 1px solid var(--steam-border);
   flex-shrink: 0;
-  margin-top: 8px;
+  margin-top: 5px;
 }
 
 .page-btn {

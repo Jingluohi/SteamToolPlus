@@ -127,7 +127,7 @@ const routes: RouteRecordRaw[] = [
 const router = createRouter({
   history: createWebHistory(),
   routes,
-  scrollBehavior(to, from, savedPosition) {
+  scrollBehavior(_to, _from, savedPosition) {
     // 如果有保存的滚动位置（如点击浏览器后退按钮），则恢复到该位置
     if (savedPosition) {
       return savedPosition

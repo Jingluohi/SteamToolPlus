@@ -9,6 +9,7 @@ pub mod game_data_commands;
 pub mod help_commands;
 pub mod log_commands;
 pub mod manifest_commands;
+pub mod opensteamtool_commands;
 pub mod patch_commands;
 pub mod tool_commands;
 pub mod window_commands;

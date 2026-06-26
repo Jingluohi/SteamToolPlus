@@ -11,7 +11,7 @@
  */
 export async function safeAsync<T>(
   fn: () => Promise<T>,
-  errorMessage: string
+  _errorMessage: string
 ): Promise<T | null> {
   try {
     return await fn()
@@ -30,7 +30,7 @@ export async function safeAsync<T>(
 export async function safeAsyncWithDefault<T>(
   fn: () => Promise<T>,
   defaultValue: T,
-  errorMessage: string
+  _errorMessage: string
 ): Promise<T> {
   try {
     return await fn()

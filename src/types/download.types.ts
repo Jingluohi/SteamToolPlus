@@ -4,6 +4,22 @@
  */
 
 /**
+ * 通用下载任务信息
+ */
+export interface DownloadTask {
+  /** 任务ID */
+  id: string
+  /** 下载URL */
+  url: string
+  /** 保存路径 */
+  savePath: string
+  /** 任务状态 */
+  status: 'pending' | 'downloading' | 'paused' | 'completed' | 'error'
+  /** 下载进度（0-100） */
+  progress: number
+}
+
+/**
  * 单个depot的下载进度信息
  */
 export interface DepotProgress {

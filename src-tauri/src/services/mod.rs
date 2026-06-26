@@ -5,6 +5,7 @@ pub mod config_service;
 pub mod download_service;
 pub mod game_data_service;
 pub mod game_service;
+pub mod opensteamtool_service;
 pub mod window_service;
 
 pub use config_service::*;

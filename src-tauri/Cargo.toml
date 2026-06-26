@@ -1,54 +1,57 @@
 [package]
 name = "steam-tool-plus"
-version = "1.25.2"
+version = "1.26.0"
 description = "Steam Tool Plus - 本地游戏管理系统"
 authors = ["Steam Tool Plus"]
 edition = "2021"
 rust-version = "1.77.0"
 
 [build-dependencies]
-tauri-build = { version = "2.0.0", features = [] }
+tauri-build = { version = "2.6.3", features = [] }
 
 [dependencies]
 # Tauri核心依赖
-tauri = { version = "2.0.0", features = ["protocol-asset", "tray-icon", "image-png"] }
-tauri-plugin-shell = "2.0.0"
-tauri-plugin-dialog = "2.0.0"
-tauri-plugin-fs = "2.0.0"
-tauri-plugin-single-instance = "2.0.0"
+tauri = { version = "2.11.3", features = ["protocol-asset", "tray-icon", "image-png"] }
+tauri-plugin-shell = "2.3.5"
+tauri-plugin-dialog = "2.7.1"
+tauri-plugin-fs = "2.5.1"
+tauri-plugin-single-instance = "2.4.2"
 
 # 序列化/反序列化
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
+serde = { version = "1.0.228", features = ["derive"] }
+serde_json = "1.0.150"
 
 # 异步运行时（仅启用必要特性）
-tokio = { version = "1.0", features = ["rt", "rt-multi-thread", "sync", "time"] }
+tokio = { version = "1.52.3", features = ["rt", "rt-multi-thread", "sync", "time"] }
 
 # 单例管理
-once_cell = "1.19"
+once_cell = "1.21.4"
 
 # 7z解压
-sevenz-rust = "0.6"
+sevenz-rust = "0.6.1"
 
 # 日志
-log = "0.4"
-env_logger = "0.11"
+log = "0.4.33"
+env_logger = "0.11.10"
 
 # UUID生成
-uuid = { version = "1.0", features = ["v4", "serde"] }
+uuid = { version = "1.23.3", features = ["v4", "serde"] }
 
 # 时间处理
-chrono = { version = "0.4", features = ["serde"] }
+chrono = { version = "0.4.45", features = ["serde"] }
 
 # Base64编码（游戏封面图片处理）
-base64 = "0.22"
+base64 = "0.22.1"
 
 # HTTP客户端（Steam封面图下载）
-reqwest = { version = "0.12", features = ["json"] }
-bytes = "1.0"
+reqwest = { version = "0.13.4", features = ["json"] }
+bytes = "1.12.0"
 
 # 正则表达式（Lua/VDF转换、清单文件解析）
-regex = "1.10"
+regex = "1.12.4"
+
+# Windows注册表操作（Steam路径检测、高级入库功能）
+winreg = "0.55.0"
 
 [features]
 default = ["custom-protocol"]

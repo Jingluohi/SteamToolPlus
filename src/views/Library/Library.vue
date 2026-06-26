@@ -671,7 +671,7 @@ const startGameMonitoring = () => {
     
     try {
       const elapsedSecs = Math.floor((Date.now() - gameStartTime.value!.getTime()) / 1000)
-      const [isRunning, minutes] = await checkGameProcessStatus(
+      const [isRunning, _minutes] = await checkGameProcessStatus(
         runningGameId.value,
         elapsedSecs
       )
@@ -727,13 +727,6 @@ const closeGame = async () => {
     await stopGameMonitoring()
   } catch (error) {
     alert('关闭游戏失败: ' + error)
-  }
-}
-
-// 跳转
-const goToGameDetail = () => {
-  if (selectedGame.value && selectedGame.value.game_type === 'downloaded') {
-    router.push(`/game/${selectedGame.value.game_id}`)
   }
 }
 
@@ -798,11 +791,6 @@ const confirmImport = async () => {
   } catch (error) {
     alert('导入游戏失败: ' + error)
   }
-}
-
-const handleImageError = (e: Event) => {
-  const img = e.target as HTMLImageElement
-  img.style.display = 'none'
 }
 
 onMounted(() => loadGames())

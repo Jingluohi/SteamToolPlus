@@ -369,8 +369,12 @@ import { ref, computed, watch, nextTick, onUnmounted } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 import { open } from '@tauri-apps/plugin-dialog'
 import { open as openShell } from '@tauri-apps/plugin-shell'
+import { useConfigStore } from '../../store/config.store'
 import DownloadProgress from '../../components/download/DownloadProgress.vue'
-import type { DownloadProgress as DownloadProgressType, DepotProgress } from '../../types/download.types'
+import type { DownloadProgress as DownloadProgressType } from '../../types/download.types'
+
+// Store
+const configStore = useConfigStore()
 
 /**
  * 在系统默认浏览器中打开外部链接
@@ -693,20 +697,19 @@ const sanitizeFolderName = (name: string): string => {
 
 /**
  * 自动设置下载路径
- * 优先使用用户设置的自定义路径，否则使用默认路径（D盘优先）
+ * 优先使用全局配置中的默认下载路径，否则使用默认路径（D盘优先）
  */
 const autoSetDownloadPath = async () => {
   try {
     const rawFolderName = gameName.value || gameId.value
     const folderName = sanitizeFolderName(rawFolderName)
-    
-    // 检查是否有用户设置的自定义下载路径
-    const customPath = localStorage.getItem('customDownloadPath')
-    if (customPath) {
-      // 使用用户设置的自定义路径 + 游戏文件夹名
-      const path = `${customPath}\\${folderName}`
+
+    // 优先使用全局配置中的默认下载路径
+    const defaultPath = configStore.config?.gameDirs?.defaultDownloadPath
+    if (defaultPath) {
+      const path = `${defaultPath}\\${folderName}`
       downloadPath.value = path
-      addLog(`已使用自定义下载路径: ${path}`, 'info')
+      addLog(`已使用默认下载路径: ${path}`, 'info')
     } else {
       // 使用默认路径（D盘优先，没有D盘则用C盘）
       const drive = await invoke<string>('get_available_drive')
@@ -823,11 +826,11 @@ const scanBatchGames = async (parentPath: string) => {
 
     // 自动设置批量下载基础路径
     if (batchGames.value.length > 0) {
-      // 检查是否有用户设置的自定义下载路径
-      const customPath = localStorage.getItem('customDownloadPath')
-      if (customPath) {
-        batchDownloadBasePath.value = customPath
-        addLog(`已使用自定义批量下载基础路径: ${batchDownloadBasePath.value}`, 'info')
+      // 优先使用全局配置中的默认下载路径
+      const defaultPath = configStore.config?.gameDirs?.defaultDownloadPath
+      if (defaultPath) {
+        batchDownloadBasePath.value = defaultPath
+        addLog(`已使用默认批量下载基础路径: ${batchDownloadBasePath.value}`, 'info')
       } else {
         const drive = await invoke<string>('get_available_drive')
         batchDownloadBasePath.value = `${drive}\\SteamGame`
@@ -1000,7 +1003,7 @@ const startBatchDownload = async () => {
 /**
  * 等待游戏下载完成
  */
-const waitForGameDownload = async (game: BatchGame): Promise<void> => {
+const waitForGameDownload = async (_game: BatchGame): Promise<void> => {
   return new Promise((resolve) => {
     let timeout: number | null = null
 

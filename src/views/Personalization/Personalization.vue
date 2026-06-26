@@ -65,9 +65,12 @@ const settings = ref({
 
 // 主题选项
 const themeOptions = [
-  { value: 'dark', label: '深色' },
-  { value: 'light', label: '浅色' },
-  { value: 'auto', label: '跟随系统' }
+  { value: 'dark', label: '深色（图片）' },
+  { value: 'light', label: '浅色（图片）' },
+  { value: 'black', label: '黑色（纯色）' },
+  { value: 'white', label: '白色（纯色）' },
+  { value: 'auto', label: '跟随系统（图片）' },
+  { value: 'auto-solid', label: '跟随系统（纯色）' }
 ]
 
 // 生命周期
@@ -89,15 +92,15 @@ function loadSettings() {
 
 // 处理主题变更
 async function handleThemeChange(value: string) {
-  themeStore.setThemeMode(value as 'dark' | 'light' | 'auto')
-  
+  themeStore.setThemeMode(value as 'dark' | 'light' | 'black' | 'white' | 'auto' | 'auto-solid')
+
   // 立即保存主题设置到配置文件
   const currentConfig = configStore.config
   if (currentConfig) {
     const updateData = {
       theme: {
-        mode: value as 'dark' | 'light' | 'auto',
-        followSystem: value === 'auto',
+        mode: value as 'dark' | 'light' | 'black' | 'white' | 'auto' | 'auto-solid',
+        followSystem: value === 'auto' || value === 'auto-solid',
         customVars: currentConfig.theme.customVars || {}
       }
     }

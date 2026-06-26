@@ -54,6 +54,30 @@
           </div>
         </div>
 
+        <!-- OpenSteamTool内核开关 -->
+        <div class="section">
+          <h3>入库方式</h3>
+          <div class="setting-item">
+            <div class="setting-info">
+              <h4 class="setting-name">使用OpenSteamTool内核入库（推荐）</h4>
+              <p class="setting-desc">启用后使用OpenSteamTool内核注入方式入库，兼容性更好，不需要manifest文件也可入库</p>
+            </div>
+            <div class="setting-control">
+              <Toggle v-model="useOpenSteamTool" />
+            </div>
+          </div>
+
+          <div v-if="useOpenSteamTool" class="setting-item">
+            <div class="setting-info">
+              <h4 class="setting-name">高级模式</h4>
+              <p class="setting-desc">启用后会写入Windows注册表，通常用于Denuvo/在线游戏（需要二次确认）</p>
+            </div>
+            <div class="setting-control">
+              <Toggle v-model="advancedMode" />
+            </div>
+          </div>
+        </div>
+
         <!-- 文件选择 -->
         <div class="section">
           <h3>选择清单文件</h3>
@@ -73,7 +97,7 @@
               <span class="source-type">{{ sourceTypeText }}</span>
               <span class="source-path" :title="selectedSource">{{ selectedSource }}</span>
             </div>
-            <Button variant="secondary" size="small" @click="clearSource">
+            <Button variant="secondary" size="sm" @click="clearSource">
               清除
             </Button>
           </div>
@@ -149,7 +173,7 @@
             :loading="isImporting"
             @click="startImport"
           >
-            {{ isImporting ? '入库中...' : '开始清单入库' }}
+            {{ isImporting ? '入库中...' : (useOpenSteamTool ? '开始OpenSteamTool内核入库' : '开始清单入库') }}
           </Button>
           <Button
             variant="secondary"
@@ -237,6 +261,7 @@ import { invoke } from '@tauri-apps/api/core'
 import { open } from '@tauri-apps/plugin-dialog'
 import { open as openShell } from '@tauri-apps/plugin-shell'
 import Button from '../../components/common/Button.vue'
+import Toggle from '../GlobalSettings/components/Toggle.vue'
 import FirstTimeSetupModal from '../../components/manifest/FirstTimeSetupModal.vue'
 import { useConfigStore } from '../../store/config.store'
 
@@ -279,17 +304,27 @@ const logArea = ref<HTMLDivElement>()
 const showFirstTimeSetup = ref(false)
 const isFirstTimeSetup = ref(false)
 
+// OpenSteamTool内核模式开关
+const useOpenSteamTool = ref(false)
+// 高级模式开关（写入注册表等）
+const advancedMode = ref(false)
+
 // 计算属性
 const sourceTypeText = computed(() => {
   return sourceType.value === 'folder' ? '文件夹' : '压缩包'
 })
 
 const canImport = computed(() => {
-  return steamPath.value &&
-         selectedSource.value &&
-         (scanResults.value.luaFiles.length > 0 || scanResults.value.vdfFiles.length > 0) &&
-         scanResults.value.manifestFiles.length > 0 &&
-         !isImporting.value
+  if (!steamPath.value || !selectedSource.value || isImporting.value) {
+    return false
+  }
+  // OpenSteamTool内核模式只需要Lua或VDF文件（manifest可选）
+  if (useOpenSteamTool.value) {
+    return scanResults.value.luaFiles.length > 0 || scanResults.value.vdfFiles.length > 0
+  }
+  // 传统steamtools模式需要Lua/VDF和manifest
+  return (scanResults.value.luaFiles.length > 0 || scanResults.value.vdfFiles.length > 0) &&
+         scanResults.value.manifestFiles.length > 0
 })
 
 // 监听Steam路径变化（从全局配置读取）
@@ -309,6 +344,11 @@ onMounted(async () => {
   if (configStore.config?.gameDirs?.steamPath) {
     steamPath.value = configStore.config.gameDirs.steamPath
   }
+  // 从全局配置读取OpenSteamTool设置
+  if (configStore.config?.opensteamtool) {
+    useOpenSteamTool.value = configStore.config.opensteamtool.kernelInstalled || false
+    advancedMode.value = configStore.config.opensteamtool.advancedMode || false
+  }
 })
 
 // 首次使用配置 - 关闭
@@ -322,7 +362,9 @@ async function handleFirstTimeSetupConfirm() {
     // 保存标志到 config.json
     await configStore.updateConfig({
       launch: {
-        ...configStore.config?.launch,
+        startMinimizedToTray: configStore.config?.launch?.startMinimizedToTray ?? false,
+        hideToTrayOnClose: configStore.config?.launch?.hideToTrayOnClose ?? false,
+        verifyBeforeLaunch: configStore.config?.launch?.verifyBeforeLaunch ?? false,
         manifestImportInitialized: true
       }
     })
@@ -460,40 +502,85 @@ async function startImport() {
     return
   }
 
+  // OpenSteamTool高级模式二次确认
+  if (useOpenSteamTool.value && advancedMode.value) {
+    const confirmAdvanced = confirm(
+      '高级模式已启用，将写入Windows注册表。\n\n' +
+      '这通常用于Denuvo/在线游戏，但也可能带来风险。\n\n' +
+      '是否继续？'
+    )
+    if (!confirmAdvanced) {
+      return
+    }
+  }
+
   isImporting.value = true
   importStats.value = { total: 0, success: 0, fail: 0 }
   progressPercent.value = 0
 
   addLog('='.repeat(60), 'info')
-  addLog('开始清单入库操作', 'info')
+  addLog(useOpenSteamTool.value ? '开始OpenSteamTool内核入库操作' : '开始清单入库操作', 'info')
   addLog('='.repeat(60), 'info')
 
   try {
-    const result = await invoke<{
-      success: boolean
-      message: string
-      importedLua: number
-      importedManifest: number
-      convertedVdf: number
-    }>('import_manifest_to_steam', {
-      steamPath: steamPath.value,
-      luaFiles: scanResults.value.luaFiles,
-      manifestFiles: scanResults.value.manifestFiles,
-      vdfFiles: scanResults.value.vdfFiles
-    })
+    if (useOpenSteamTool.value) {
+      // 使用OpenSteamTool内核模式入库
+      const result = await invoke<{
+        success: boolean
+        message: string
+        kernelInstalled: boolean
+        luaWritten: boolean
+        manifestCopied: number
+        steamRestarted: boolean
+        advancedEnabled: boolean
+      }>('import_manifest_with_opensteamtool', {
+        steamPath: steamPath.value,
+        folderPath: selectedSource.value,
+        advancedMode: advancedMode.value
+      })
 
-    if (result.success) {
-      addLog('', 'info')
-      addLog('入库操作完成！', 'success')
-      addLog(`  - Lua文件: ${result.importedLua}个`, 'success')
-      addLog(`  - Manifest文件: ${result.importedManifest}个`, 'success')
-      if (result.convertedVdf > 0) {
-        addLog(`  - VDF转换: ${result.convertedVdf}个`, 'success')
+      if (result.success) {
+        addLog('', 'info')
+        addLog('OpenSteamTool入库操作完成！', 'success')
+        addLog(`  - 内核DLL: ${result.kernelInstalled ? '已安装' : '未安装'}`, 'success')
+        addLog(`  - Lua文件: ${result.luaWritten ? '已写入' : '未写入'}`, 'success')
+        addLog(`  - Manifest文件: ${result.manifestCopied}个`, 'success')
+        addLog(`  - Steam: ${result.steamRestarted ? '已重启' : '未重启'}`, 'success')
+        if (result.advancedEnabled) {
+          addLog('  - 高级模式: 已启用（写入注册表）', 'info')
+        }
+        addLog('', 'info')
+      } else {
+        addLog(`OpenSteamTool入库失败: ${result.message}`, 'error')
       }
-      addLog('', 'info')
-      addLog('提示: 请重启Steam以查看导入的游戏', 'info')
     } else {
-      addLog(`入库失败: ${result.message}`, 'error')
+      // 使用传统steamtools模式入库
+      const result = await invoke<{
+        success: boolean
+        message: string
+        importedLua: number
+        importedManifest: number
+        convertedVdf: number
+      }>('import_manifest_to_steam', {
+        steamPath: steamPath.value,
+        luaFiles: scanResults.value.luaFiles,
+        manifestFiles: scanResults.value.manifestFiles,
+        vdfFiles: scanResults.value.vdfFiles
+      })
+
+      if (result.success) {
+        addLog('', 'info')
+        addLog('入库操作完成！', 'success')
+        addLog(`  - Lua文件: ${result.importedLua}个`, 'success')
+        addLog(`  - Manifest文件: ${result.importedManifest}个`, 'success')
+        if (result.convertedVdf > 0) {
+          addLog(`  - VDF转换: ${result.convertedVdf}个`, 'success')
+        }
+        addLog('', 'info')
+        addLog('提示: 请重启Steam以查看导入的游戏', 'info')
+      } else {
+        addLog(`入库失败: ${result.message}`, 'error')
+      }
     }
   } catch (error) {
     addLog(`入库操作失败: ${error}`, 'error')
@@ -639,6 +726,50 @@ async function openExternalLink(url: string) {
   color: var(--steam-text-secondary);
   font-weight: 500;
   margin-bottom: 8px;
+}
+
+/* 设置项样式（用于OpenSteamTool开关） */
+.setting-item {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  gap: 16px;
+}
+
+.setting-item:last-child {
+  border-bottom: none;
+}
+
+.setting-info {
+  flex: 1;
+  min-width: 0;
+  padding-right: 16px;
+}
+
+.setting-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--steam-text-primary);
+  margin: 0 0 4px 0;
+  line-height: 1.4;
+}
+
+.setting-desc {
+  font-size: 12px;
+  color: var(--steam-text-muted);
+  line-height: 1.5;
+  word-wrap: break-word;
+  margin: 0;
+}
+
+.setting-control {
+  min-width: 44px;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  padding-top: 2px;
 }
 
 .hint {

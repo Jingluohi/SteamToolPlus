@@ -61,22 +61,29 @@ const error = ref('')
 // README 原始内容
 const readmeContent = ref('')
 
-// 配置 marked 选项
+// 配置 marked 插件和选项
+marked.use({
+  renderer: {
+    code({ text, lang }) {
+      if (lang && hljs.getLanguage(lang)) {
+        try {
+          return `<pre><code class="hljs language-${lang}">${hljs.highlight(text, { language: lang }).value}</code></pre>`
+        } catch (e) {
+          // 代码高亮失败时使用自动高亮
+        }
+      }
+      return `<pre><code class="hljs">${hljs.highlightAuto(text).value}</code></pre>`
+    },
+    heading({ text, depth, raw }) {
+      const id = raw.toLowerCase().replace(/[^\w]+/g, '-')
+      return `<h${depth} id="${id}">${text}</h${depth}>`
+    }
+  }
+})
+
 marked.setOptions({
   breaks: true,
-  gfm: true,
-  highlight: function(code: string, lang: string | undefined) {
-    if (lang && hljs.getLanguage(lang)) {
-      try {
-        return hljs.highlight(code, { language: lang }).value
-      } catch (e) {
-        // 代码高亮失败时使用自动高亮
-      }
-    }
-    return hljs.highlightAuto(code).value
-  },
-  headerIds: true,
-  sanitize: false,
+  gfm: true
 })
 
 // 渲染后的内容

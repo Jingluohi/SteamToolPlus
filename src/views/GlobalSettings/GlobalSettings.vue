@@ -30,7 +30,28 @@
                 placeholder="选择Steam安装路径"
                 readonly
               />
-              <Button variant="secondary" size="small" @click="selectSteamPath">
+              <Button variant="secondary" size="sm" @click="selectSteamPath">
+                浏览
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        <div class="setting-item">
+          <div class="setting-info">
+            <h3 class="setting-name">游戏默认下载路径</h3>
+            <p class="setting-desc">设置游戏下载的默认保存路径，留空则使用系统默认盘符的SteamGame文件夹</p>
+          </div>
+          <div class="setting-control">
+            <div class="input-with-btn">
+              <input
+                v-model="settings.defaultDownloadPath"
+                type="text"
+                class="form-input"
+                placeholder="选择游戏默认下载路径"
+                readonly
+              />
+              <Button variant="secondary" size="sm" @click="selectDefaultDownloadPath">
                 浏览
               </Button>
             </div>
@@ -43,7 +64,7 @@
         <h2 class="section-title">
           启动
         </h2>
-        
+
         <div class="setting-item">
           <div class="setting-info">
             <h3 class="setting-name">启动后最小化到托盘</h3>
@@ -64,13 +85,71 @@
           </div>
         </div>
       </section>
-      
+
+      <!-- OpenSteamTool内核设置 -->
+      <section class="settings-section">
+        <h2 class="section-title">
+          OpenSteamTool内核
+        </h2>
+
+        <div class="setting-item">
+          <div class="setting-info">
+            <h3 class="setting-name">内核状态</h3>
+            <p class="setting-desc">OpenSteamTool内核DLL是否已安装到Steam目录，首次使用会自动安装</p>
+          </div>
+          <div class="setting-control">
+            <span class="status-badge" :class="kernelStatus.installed ? 'success' : 'warning'">
+              {{ kernelStatus.checking ? '检测中...' : (kernelStatus.installed ? '已安装' : '未安装') }}
+            </span>
+          </div>
+        </div>
+
+        <div class="setting-item">
+          <div class="setting-info">
+            <h3 class="setting-name">安装/卸载内核</h3>
+            <p class="setting-desc">手动安装或卸载OpenSteamTool内核DLL到Steam目录</p>
+          </div>
+          <div class="setting-control">
+            <Button
+              v-if="!kernelStatus.installed"
+              variant="primary"
+              size="sm"
+              :loading="kernelStatus.operating"
+              :disabled="!settings.steamPath || kernelStatus.checking"
+              @click="installKernel"
+            >
+              安装内核
+            </Button>
+            <Button
+              v-else
+              variant="danger"
+              size="sm"
+              :loading="kernelStatus.operating"
+              :disabled="!settings.steamPath"
+              @click="uninstallKernel"
+            >
+              卸载内核
+            </Button>
+          </div>
+        </div>
+
+        <div class="setting-item">
+          <div class="setting-info">
+            <h3 class="setting-name">高级模式</h3>
+            <p class="setting-desc">启用后会写入Windows注册表，通常用于Denuvo/在线游戏（需要二次确认）</p>
+          </div>
+          <div class="setting-control">
+            <Toggle v-model="settings.openSteamToolAdvancedMode" />
+          </div>
+        </div>
+      </section>
+
       <!-- 操作按钮 -->
       <div class="settings-actions">
-        <Button variant="ghost" size="small" @click="resetSettings">
+        <Button variant="ghost" size="sm" @click="resetSettings">
           恢复默认
         </Button>
-        <Button variant="primary" size="small" @click="saveSettings">
+        <Button variant="primary" size="sm" @click="saveSettings">
           保存设置
         </Button>
       </div>
@@ -84,8 +163,9 @@
  * 用于配置应用程序的各项设置
  */
 
-import { ref, onMounted, nextTick } from 'vue'
+import { ref, onMounted, nextTick, watch } from 'vue'
 import { open } from '@tauri-apps/plugin-dialog'
+import { invoke } from '@tauri-apps/api/core'
 import { useConfigStore } from '../../store/config.store'
 import Button from '../../components/common/Button.vue'
 import Toggle from './components/Toggle.vue'
@@ -96,8 +176,24 @@ const configStore = useConfigStore()
 // 本地设置状态
 const settings = ref({
   steamPath: '',
+  defaultDownloadPath: '',
   startMinimizedToTray: false,
-  hideToTrayOnClose: true
+  hideToTrayOnClose: true,
+  openSteamToolAdvancedMode: false
+})
+
+// OpenSteamTool内核状态
+const kernelStatus = ref({
+  installed: false,
+  checking: false,
+  operating: false
+})
+
+// 监听Steam路径变化，重新检测内核状态
+watch(() => settings.value.steamPath, async (newPath, oldPath) => {
+  if (newPath && newPath !== oldPath) {
+    await checkKernelStatus()
+  }
 })
 
 // 生命周期
@@ -107,8 +203,9 @@ onMounted(async () => {
     await configStore.loadConfig()
   }
   // 使用 nextTick 确保响应式数据已更新
-  nextTick(() => {
+  nextTick(async () => {
     loadSettings()
+    await checkKernelStatus()
   })
 })
 
@@ -117,8 +214,85 @@ function loadSettings() {
   const config = configStore.config
   if (config) {
     settings.value.steamPath = config.gameDirs.steamPath || ''
+    settings.value.defaultDownloadPath = config.gameDirs.defaultDownloadPath || ''
     settings.value.startMinimizedToTray = config.launch.startMinimizedToTray ?? false
     settings.value.hideToTrayOnClose = config.launch.hideToTrayOnClose ?? true
+    settings.value.openSteamToolAdvancedMode = config.opensteamtool?.advancedMode ?? false
+  }
+}
+
+// 检查OpenSteamTool内核安装状态
+async function checkKernelStatus() {
+  if (!settings.value.steamPath) {
+    kernelStatus.value.installed = false
+    return
+  }
+
+  kernelStatus.value.checking = true
+  try {
+    const result = await invoke<{ installed: boolean }>('check_opensteamtool_kernel_installed', {
+      steamPath: settings.value.steamPath
+    })
+    kernelStatus.value.installed = result.installed
+  } catch {
+    kernelStatus.value.installed = false
+  } finally {
+    kernelStatus.value.checking = false
+  }
+}
+
+// 安装OpenSteamTool内核
+async function installKernel() {
+  if (!settings.value.steamPath) {
+    alert('请先配置Steam路径')
+    return
+  }
+
+  kernelStatus.value.operating = true
+  try {
+    const result = await invoke<{ success: boolean; message: string }>('install_opensteamtool_kernel', {
+      steamPath: settings.value.steamPath
+    })
+    if (result.success) {
+      kernelStatus.value.installed = true
+      alert(result.message)
+    } else {
+      alert(result.message)
+    }
+  } catch (error) {
+    alert(`安装内核失败: ${error}`)
+  } finally {
+    kernelStatus.value.operating = false
+  }
+}
+
+// 卸载OpenSteamTool内核
+async function uninstallKernel() {
+  if (!settings.value.steamPath) {
+    alert('请先配置Steam路径')
+    return
+  }
+
+  const confirmUninstall = confirm('确定要卸载OpenSteamTool内核吗？\n\n这将移除Steam目录中的内核DLL并尝试恢复原始文件。')
+  if (!confirmUninstall) {
+    return
+  }
+
+  kernelStatus.value.operating = true
+  try {
+    const result = await invoke<{ success: boolean; message: string }>('uninstall_opensteamtool_kernel', {
+      steamPath: settings.value.steamPath
+    })
+    if (result.success) {
+      kernelStatus.value.installed = false
+      alert(result.message)
+    } else {
+      alert(result.message)
+    }
+  } catch (error) {
+    alert(`卸载内核失败: ${error}`)
+  } finally {
+    kernelStatus.value.operating = false
   }
 }
 
@@ -129,9 +303,26 @@ async function selectSteamPath() {
       directory: true,
       multiple: false
     })
-    
+
     if (selected && typeof selected === 'string') {
       settings.value.steamPath = selected
+    }
+  } catch (err) {
+    // 选择路径失败时静默处理
+  }
+}
+
+// 选择游戏默认下载路径
+async function selectDefaultDownloadPath() {
+  try {
+    const selected = await open({
+      directory: true,
+      multiple: false,
+      title: '选择游戏默认下载路径'
+    })
+
+    if (selected && typeof selected === 'string') {
+      settings.value.defaultDownloadPath = selected
     }
   } catch (err) {
     // 选择路径失败时静默处理
@@ -150,10 +341,12 @@ async function saveSettings() {
 
     // 确保 steamPath 有值
     const steamPathValue = settings.value.steamPath?.trim() || ''
+    const defaultDownloadPathValue = settings.value.defaultDownloadPath?.trim() || ''
 
     const updateData = {
       gameDirs: {
         steamPath: steamPathValue !== '' ? steamPathValue : currentConfig.gameDirs.steamPath,
+        defaultDownloadPath: defaultDownloadPathValue !== '' ? defaultDownloadPathValue : undefined,
         coversPath: currentConfig.gameDirs.coversPath || 'data/covers'
       },
       launch: {
@@ -161,6 +354,10 @@ async function saveSettings() {
         hideToTrayOnClose: settings.value.hideToTrayOnClose,
         verifyBeforeLaunch: currentConfig.launch.verifyBeforeLaunch || false,
         manifestImportInitialized: currentConfig.launch.manifestImportInitialized || false
+      },
+      opensteamtool: {
+        kernelInstalled: currentConfig.opensteamtool?.kernelInstalled || kernelStatus.value.installed,
+        advancedMode: settings.value.openSteamToolAdvancedMode
       }
     }
 
@@ -309,6 +506,25 @@ async function resetSettings() {
 
 .form-input::placeholder {
   color: var(--steam-text-muted);
+}
+
+/* 状态标签 */
+.status-badge {
+  font-size: 12px;
+  font-weight: 500;
+  padding: 4px 8px;
+  border-radius: 4px;
+  display: inline-block;
+}
+
+.status-badge.success {
+  color: var(--steam-accent-green);
+  background: rgba(76, 175, 80, 0.1);
+}
+
+.status-badge.warning {
+  color: var(--steam-accent-orange);
+  background: rgba(255, 152, 0, 0.1);
 }
 
 /* 操作按钮 */

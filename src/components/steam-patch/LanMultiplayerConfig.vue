@@ -74,7 +74,7 @@ friend.example.com</pre>
           <label class="config-label">自定义广播 IP / 域名</label>
           <p class="config-desc">添加自定义 IP 地址或域名，模拟器将向这些地址发送广播包</p>
           <div class="ip-list">
-            <div v-for="(ip, index) in config.customBroadcasts" :key="index" class="ip-item">
+            <div v-for="(_ip, index) in config.customBroadcasts" :key="index" class="ip-item">
               <input
                 v-model="config.customBroadcasts[index]"
                 type="text"

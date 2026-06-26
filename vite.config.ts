@@ -43,17 +43,26 @@ export default defineConfig({
     },
     rollupOptions: {
       output: {
-        manualChunks: {
-          'vendor': ['vue', 'vue-router', 'pinia'],
-          'tauri': ['@tauri-apps/api', '@tauri-apps/plugin-shell', '@tauri-apps/plugin-dialog', '@tauri-apps/plugin-fs']
-        },
-        compact: true
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            if (/node_modules\/(vue|vue-router|pinia)/.test(id)) {
+              return 'vendor'
+            }
+            if (/node_modules\/(@tauri-apps\/api|@tauri-apps\/plugin-(shell|dialog|fs))/.test(id)) {
+              return 'tauri'
+            }
+          }
+          return undefined
+        }
       }
     },
     assetsInlineLimit: 4096,
     chunkSizeWarningLimit: 500,
     sourcemap: false,
-    reportCompressedSize: false
+    reportCompressedSize: false,
+    // Tailwind CSS v4 使用 @theme/@custom-variant 等 at-rule，
+    // Vite 8 默认使用 lightningcss 压缩 CSS 会报错，改用 esbuild 压缩 CSS
+    cssMinify: 'esbuild'
   },
   css: {
     devSourcemap: false

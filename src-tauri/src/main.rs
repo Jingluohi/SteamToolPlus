@@ -9,7 +9,7 @@ mod models;
 mod services;
 mod utils;
 
-use commands::{background_commands, config_commands, download_commands, game_commands, game_data_commands, help_commands, log_commands, manifest_commands, patch_commands, window_commands};
+use commands::{background_commands, config_commands, download_commands, game_commands, game_data_commands, help_commands, log_commands, manifest_commands, opensteamtool_commands, patch_commands, window_commands};
 use once_cell::sync::Lazy;
 use services::{ConfigService, ConfigServiceTrait, GameService, GameServiceTrait};
 use std::collections::HashSet;
@@ -632,6 +632,16 @@ fn main() {
             manifest_commands::setup_manifest_import_first_time,
             manifest_commands::open_steamtools,
             manifest_commands::open_example_folder,
+            // OpenSteamTool内核命令
+            opensteamtool_commands::get_steam_path,
+            opensteamtool_commands::detect_steam_path_auto,
+            opensteamtool_commands::install_opensteamtool_kernel,
+            opensteamtool_commands::uninstall_opensteamtool_kernel,
+            opensteamtool_commands::check_opensteamtool_kernel_installed,
+            opensteamtool_commands::get_opensteamtool_dll_info,
+            opensteamtool_commands::import_with_opensteamtool_command,
+            opensteamtool_commands::import_game_with_opensteamtool,
+            opensteamtool_commands::import_manifest_with_opensteamtool,
         ])
         .run(tauri::generate_context!())
         .expect("应用程序启动失败");

@@ -10,7 +10,7 @@
   >
     <GameCard
       v-for="game in games"
-      :key="game.id"
+      :key="game.game_id"
       :game="game"
       :view-type="viewType"
       @click="handleGameClick"
@@ -25,7 +25,7 @@
  * 响应式网格布局展示游戏列表
  */
 
-import type { Game } from '../../types'
+import type { GameConfigData } from '../../types'
 import GameCard from './GameCard.vue'
 
 /**
@@ -33,7 +33,7 @@ import GameCard from './GameCard.vue'
  */
 interface Props {
   /** 游戏列表 */
-  games: Game[]
+  games: GameConfigData[]
   /** 视图类型 */
   viewType?: 'grid' | 'list'
 }
@@ -46,21 +46,21 @@ withDefaults(defineProps<Props>(), {
  * 组件事件定义
  */
 const emit = defineEmits<{
-  (e: 'click', game: Game): void
-  (e: 'play', game: Game): void
+  (e: 'click', game: GameConfigData): void
+  (e: 'play', game: GameConfigData): void
 }>()
 
 /**
  * 处理游戏卡片点击
  */
-function handleGameClick(game: Game) {
+function handleGameClick(game: GameConfigData) {
   emit('click', game)
 }
 
 /**
  * 处理开始游戏
  */
-function handleGamePlay(game: Game) {
+function handleGamePlay(game: GameConfigData) {
   emit('play', game)
 }
 </script>
@@ -73,8 +73,8 @@ function handleGamePlay(game: Game) {
 /* 网格视图 - 固定5列，间距与卡片宽度保持16:220比例 */
 .game-grid.view-grid {
   grid-template-columns: repeat(5, 1fr);
-  /* gap百分比再减半 ≈ 0.293% */
-  gap: 0.293%;
+  /* 行间距1.110%(增大2倍)，列间距0.666%(增大20%) */
+  gap: 1.20% 0.750%;
 }
 
 /* 列表视图 */

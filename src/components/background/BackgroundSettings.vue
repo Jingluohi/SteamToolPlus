@@ -1,11 +1,11 @@
 <template>
   <div class="background-settings">
-    <!-- 文件管理区域 -->
-    <div class="file-management">
+    <!-- 文件管理区域：纯色模式下隐藏 -->
+    <div v-if="!isSolidMode" class="file-management">
       <div class="upload-section">
         <h3 class="section-subtitle">文件库</h3>
         <div class="upload-buttons">
-          <Button variant="secondary" size="small" @click="uploadImages">
+          <Button variant="secondary" size="sm" @click="uploadImages">
             添加图片
           </Button>
         </div>
@@ -54,14 +54,21 @@
     </div>
 
     <!-- 主题模式选择提示 -->
-    <div v-if="currentPageConfig" class="theme-mode-notice">
+    <div v-if="currentPageConfig && !isSolidMode" class="theme-mode-notice">
       <div class="notice-content">
         <span class="notice-text">当前正在为 <strong>{{ currentThemeMode === 'light' ? '浅色' : '深色' }}模式</strong> 设置背景图片</span>
       </div>
     </div>
 
-    <!-- 页面配置区域 -->
-    <div class="page-configs">
+    <!-- 纯色模式提示 -->
+    <div v-if="isSolidMode" class="solid-mode-notice">
+      <div class="notice-content">
+        <span class="notice-text">当前为<strong>纯色背景模式</strong>，背景图片功能已禁用</span>
+      </div>
+    </div>
+
+    <!-- 页面配置区域：纯色模式下隐藏 -->
+    <div v-if="!isSolidMode" class="page-configs">
       <h3 class="section-subtitle">页面背景配置</h3>
       <p class="section-desc">为不同页面设置专属背景，点击页面卡片进行配置</p>
 
@@ -213,10 +220,10 @@
 
     <!-- 底部操作按钮 -->
     <div class="bottom-actions">
-      <Button variant="secondary" size="small" @click="resetPersonalization">
+      <Button variant="secondary" size="sm" @click="resetPersonalization">
         重置个性化
       </Button>
-      <Button variant="primary" size="small" @click="saveConfiguration">
+      <Button variant="primary" size="sm" @click="saveConfiguration">
         保存配置
       </Button>
     </div>
@@ -226,6 +233,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { open } from '@tauri-apps/plugin-dialog'
+import { useThemeStore } from '../../store/theme.store'
 import Button from '../common/Button.vue'
 import Toggle from '../../views/GlobalSettings/components/Toggle.vue'
 import type {
@@ -255,6 +263,12 @@ import {
 const emit = defineEmits<{
   refresh: []
 }>()
+
+// 主题 Store
+const themeStore = useThemeStore()
+
+// 计算属性：是否为纯色背景模式
+const isSolidMode = computed(() => themeStore.isSolid)
 
 const config = ref<BackgroundConfig>({ ...DEFAULT_BACKGROUND_CONFIG })
 const isLoading = ref(false)
@@ -310,11 +324,6 @@ function getFileUrl(file: BackgroundFile): string {
 
 function getFileById(fileId: string): BackgroundFile | undefined {
   return config.value.files.find(f => f.id === fileId)
-}
-
-function getFirstFile(pageConfig: PageBackgroundConfig): BackgroundFile | undefined {
-  if (pageConfig.fileIds.length === 0) return undefined
-  return getFileById(pageConfig.fileIds[0])
 }
 
 function getThemeFileIds(pageConfig: PageBackgroundConfig): string[] {
@@ -1030,6 +1039,15 @@ function saveConfiguration() {
 
 .notice-text strong {
   color: var(--steam-accent);
+}
+
+/* 纯色模式提示 */
+.solid-mode-notice {
+  background: linear-gradient(135deg, rgba(27, 159, 255, 0.1), rgba(138, 43, 226, 0.1));
+  border: 1px solid var(--steam-accent);
+  border-radius: 10px;
+  padding: 12px 16px;
+  margin: 0;
 }
 
 /* 主题模式切换标签 */
