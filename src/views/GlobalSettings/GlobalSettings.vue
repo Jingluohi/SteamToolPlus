@@ -144,6 +144,32 @@
         </div>
       </section>
 
+      <!-- 清除缓存 -->
+      <section class="settings-section">
+        <h2 class="section-title">
+          清除缓存
+        </h2>
+
+        <div class="setting-item">
+          <div class="setting-info">
+            <h3 class="setting-name">导入过的清单文件</h3>
+            <p class="setting-desc">
+              清理通过下载界面手动导入的清单文件缓存，将删除 resources/manifest 下对应的文件夹
+            </p>
+          </div>
+          <div class="setting-control">
+            <Button
+              variant="danger"
+              size="sm"
+              :loading="cacheClearStatus.loading"
+              @click="clearImportedManifestCache"
+            >
+              清除
+            </Button>
+          </div>
+        </div>
+      </section>
+
       <!-- 操作按钮 -->
       <div class="settings-actions">
         <Button variant="ghost" size="sm" @click="resetSettings">
@@ -187,6 +213,11 @@ const kernelStatus = ref({
   installed: false,
   checking: false,
   operating: false
+})
+
+// 缓存清除状态
+const cacheClearStatus = ref({
+  loading: false
 })
 
 // 监听Steam路径变化，重新检测内核状态
@@ -376,6 +407,23 @@ async function resetSettings() {
   }
 }
 
+// 清除导入过的清单文件缓存
+async function clearImportedManifestCache() {
+  const confirmClear = confirm('确定要清除导入过的清单文件缓存吗？\n\n这将删除 resources/manifest 下所有手动导入的清单文件夹，且无法恢复。')
+  if (!confirmClear) {
+    return
+  }
+
+  cacheClearStatus.value.loading = true
+  try {
+    const deletedCount = await invoke<number>('clear_imported_manifest_cache')
+    alert(`已清除 ${deletedCount} 个导入过的清单文件夹`)
+  } catch (error) {
+    alert(`清除缓存失败: ${error}`)
+  } finally {
+    cacheClearStatus.value.loading = false
+  }
+}
 
 </script>
 

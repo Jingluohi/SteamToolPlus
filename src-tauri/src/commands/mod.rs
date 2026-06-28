@@ -2,6 +2,7 @@
 // 定义所有IPC命令，仅接收调用、调用service、返回结果
 
 pub mod background_commands;
+pub mod cache_commands;
 pub mod config_commands;
 pub mod download_commands;
 pub mod game_commands;

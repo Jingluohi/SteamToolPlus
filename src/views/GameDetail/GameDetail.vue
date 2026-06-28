@@ -137,19 +137,81 @@
           </div>
 
           <div v-else class="download-info">
-            <!-- 清单文件夹检测状态，仅未找到时提示 -->
+            <!-- 清单文件夹检测状态，未找到时显示下载引导和文件选择 -->
             <div
               v-if="manifestCheckStatus === 'not_found'"
-              class="info-item warning"
+              class="import-no-files"
             >
-              <span class="status-icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <circle cx="12" cy="12" r="10"/>
-                  <line x1="15" y1="9" x2="9" y2="15"/>
-                  <line x1="9" y1="9" x2="15" y2="15"/>
-                </svg>
-              </span>
-              <span>未找到清单文件夹，请先下载清单文件</span>
+              <!-- 下载引导 -->
+              <div class="download-guide">
+                <button
+                  class="download-link-btn"
+                  @click="openDownloadUrl('https://pan.xunlei.com/s/VOw3jTAGHqYFsm49n2t_AeVGA1?pwd=3r6n')"
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                    <polyline points="7 10 12 15 17 10"/>
+                    <line x1="12" y1="15" x2="12" y2="3"/>
+                  </svg>
+                  点击下载对应清单文件7z，id：{{ gameId }}
+                </button>
+                <p class="password-hint">密码：3r6n</p>
+              </div>
+
+              <!-- 清单文件选择 -->
+              <div class="import-source-select">
+                <h4 class="source-select-title">清单文件选择</h4>
+
+                <div class="radio-group">
+                  <label class="radio-label">
+                    <input
+                      type="radio"
+                      v-model="downloadManifestSourceMode"
+                      value="7z"
+                      name="download-manifest-source-mode"
+                    />
+                    <span>7z文件</span>
+                  </label>
+                  <label class="radio-label">
+                    <input
+                      type="radio"
+                      v-model="downloadManifestSourceMode"
+                      value="folder"
+                      name="download-manifest-source-mode"
+                    />
+                    <span>.vdf / .lua 和 .manifest所在文件夹</span>
+                  </label>
+                </div>
+
+                <div class="source-select-actions">
+                  <button
+                    v-if="downloadManifestSourceMode === '7z'"
+                    class="select-source-btn"
+                    :disabled="isPreparingDownloadManifest"
+                    @click="selectDownloadManifestArchive"
+                  >
+                    <svg v-if="isPreparingDownloadManifest" class="loading-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/>
+                    </svg>
+                    {{ isPreparingDownloadManifest ? '处理中...' : '选择7z文件' }}
+                  </button>
+                  <button
+                    v-else
+                    class="select-source-btn"
+                    :disabled="isPreparingDownloadManifest"
+                    @click="selectDownloadManifestFolder"
+                  >
+                    <svg v-if="isPreparingDownloadManifest" class="loading-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/>
+                    </svg>
+                    {{ isPreparingDownloadManifest ? '处理中...' : '选择文件夹' }}
+                  </button>
+                </div>
+
+                <p v-if="selectedDownloadManifestPath" class="source-select-info">
+                  已选择: {{ selectedDownloadManifestPath }}
+                </p>
+              </div>
             </div>
 
             <!-- 下载路径显示 -->
@@ -306,6 +368,11 @@
               </p>
             </div>
 
+            <!-- 未选择游戏路径时的提示 -->
+            <p class="game-path-display warning" v-if="!gamePath">
+              请先选择游戏路径
+            </p>
+
             <!-- 选择补丁文件并应用按钮（当本地不存在时显示） -->
             <button
               v-if="!isPatchLocalExists(tab.patchType)"
@@ -319,7 +386,7 @@
                 <line x1="12" y1="18" x2="12" y2="12"/>
                 <line x1="9" y1="15" x2="15" y2="15"/>
               </svg>
-              <span>{{ applyingPatch ? '应用中...' : '选择补丁文件并应用' }}</span>
+              <span>{{ applyingPatch ? '应用中...' : '选择补丁文件（7z）并应用' }}</span>
             </button>
 
             <p class="patch-path">补丁路径: {{ tab.patchPath }}</p>
@@ -404,45 +471,138 @@
           <h3 class="panel-title">入库Steam</h3>
           <div class="import-steam-content">
             <div class="import-description">
-              <p>将游戏清单导入Steam客户端，导入后可在Steam库中查看和启动游戏。</p>
+              <p>将游戏清单导入Steam客户端，导入后可在Steam库中下载和启动游戏，如果库不显示游戏，请重启steam。</p>
               <p class="import-note">注意：部分游戏入库下载后需要配合补丁才能正常游玩。</p>
             </div>
 
-            <!-- OpenSteamTool内核入库按钮（推荐） -->
-            <button
-              class="import-opensteamtool-btn-large"
-              :class="{ disabled: !manifestExists, loading: isImportingWithOpenSteamTool }"
-              :disabled="!manifestExists || isImportingWithOpenSteamTool"
-              @click="importWithOpenSteamTool"
-            >
-              <svg v-if="isImportingWithOpenSteamTool" class="loading-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/>
-              </svg>
-              <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
-              </svg>
-              {{ isImportingWithOpenSteamTool ? 'OpenSteamTool入库中...' : 'opensteamtool入库（推荐）' }}
-            </button>
+            <!-- 入库按钮组 -->
+            <div class="import-btn-group">
+              <!-- OpenSteamTool内核入库按钮（推荐） -->
+              <button
+                class="import-opensteamtool-btn-large"
+                :class="{ disabled: !canImportToSteam, loading: isImportingWithOpenSteamTool }"
+                :disabled="!canImportToSteam || isImportingWithOpenSteamTool"
+                @click="importWithOpenSteamTool"
+              >
+                <svg v-if="isImportingWithOpenSteamTool" class="loading-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/>
+                </svg>
+                <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+                </svg>
+                {{ isImportingWithOpenSteamTool ? '入库中...' : 'opensteamtool入库（推荐）' }}
+              </button>
 
-            <!-- SteamTools传统入库按钮 -->
-            <button
-              class="import-steamtools-btn-large"
-              :class="{ disabled: !canImportToSteam, loading: isImportingToSteam }"
-              :disabled="!canImportToSteam || isImportingToSteam"
-              @click="importToSteam"
-            >
-              <svg v-if="isImportingToSteam" class="loading-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/>
-              </svg>
-              <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
-              </svg>
-              {{ isImportingToSteam ? '入库中...' : 'steamtools入库' }}
-            </button>
+              <!-- SteamTools传统入库按钮 -->
+              <button
+                class="import-steamtools-btn-large"
+                :class="{ disabled: !canImportToSteam, loading: isImportingToSteam }"
+                :disabled="!canImportToSteam || isImportingToSteam"
+                @click="importToSteam"
+              >
+                <svg v-if="isImportingToSteam" class="loading-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/>
+                </svg>
+                <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+                </svg>
+                {{ isImportingToSteam ? '入库中...' : 'steamtools入库' }}
+              </button>
 
-            <p v-if="!manifestExists" class="import-error">
-              未找到清单文件，无法入库
-            </p>
+              <!-- 重启Steam按钮 -->
+              <button
+                class="restart-steam-btn"
+                @click="restartSteam"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M23 4v6h-6"/>
+                  <path d="M1 20v-6h6"/>
+                  <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+                </svg>
+                重启steam
+              </button>
+            </div>
+
+            <!-- 自定义源已选择提示 -->
+            <div v-if="importSourceReady" class="import-source-info">
+              <span class="source-label">当前使用自定义清单源:</span>
+              <span class="source-path" :title="selectedImportPath">{{ selectedImportPath }}</span>
+              <button class="clear-source-btn" @click="clearImportSource">清除</button>
+            </div>
+
+            <!-- 没有vdf/lua时显示下载引导和文件选择 -->
+            <div v-if="!hasLua && !importSourceReady" class="import-no-files">
+              <!-- 下载引导 -->
+              <div class="download-guide">
+                <button
+                  class="download-link-btn"
+                  @click="openDownloadUrl('https://pan.xunlei.com/s/VOw3jTAGHqYFsm49n2t_AeVGA1?pwd=3r6n')"
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                    <polyline points="7 10 12 15 17 10"/>
+                    <line x1="12" y1="15" x2="12" y2="3"/>
+                  </svg>
+                  点击下载对应清单文件7z，id：{{ gameId }}
+                </button>
+                <p class="password-hint">密码：3r6n</p>
+              </div>
+
+              <!-- 文件选择区域 -->
+              <div class="import-source-select">
+                <h4 class="source-select-title">清单文件选择</h4>
+
+                <div class="radio-group">
+                  <label class="radio-label">
+                    <input
+                      type="radio"
+                      v-model="importSourceMode"
+                      value="7z"
+                      name="import-source-mode"
+                    />
+                    <span>7z文件</span>
+                  </label>
+                  <label class="radio-label">
+                    <input
+                      type="radio"
+                      v-model="importSourceMode"
+                      value="folder"
+                      name="import-source-mode"
+                    />
+                    <span>.vdf / .lua 和 .manifest所在文件夹</span>
+                  </label>
+                </div>
+
+                <div class="source-select-actions">
+                  <button
+                    v-if="importSourceMode === '7z'"
+                    class="select-source-btn"
+                    :disabled="isPreparingImport"
+                    @click="selectImportArchive"
+                  >
+                    <svg v-if="isPreparingImport" class="loading-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/>
+                    </svg>
+                    {{ isPreparingImport ? '处理中...' : '选择7z文件' }}
+                  </button>
+                  <button
+                    v-else
+                    class="select-source-btn"
+                    :disabled="isPreparingImport"
+                    @click="selectImportFolder"
+                  >
+                    <svg v-if="isPreparingImport" class="loading-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/>
+                    </svg>
+                    {{ isPreparingImport ? '处理中...' : '选择文件夹' }}
+                  </button>
+                </div>
+
+                <p v-if="selectedImportPath && !importSourceReady" class="source-select-error">
+                  所选位置未找到vdf或lua文件，无法入库
+                </p>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -640,7 +800,27 @@ let monitorInterval: number | null = null
 const isImportingToSteam = ref(false)
 const isImportingWithOpenSteamTool = ref(false)
 const manifestExists = ref(false)
+const hasLua = ref(false)
+const hasVdf = ref(false)
+const hasManifest = ref(false)
 const showFirstTimeSetup = ref(false)
+
+// 自定义清单源状态
+const importSourceMode = ref<'7z' | 'folder'>('7z')
+const selectedImportPath = ref('')
+const selectedImportTempPath = ref('')
+const isPreparingImport = ref(false)
+const importSourceReady = computed(() => {
+  if (!selectedImportPath.value) return false
+  // 7z模式需要已经解压到临时目录并检测到lua
+  if (importSourceMode.value === '7z' && !selectedImportTempPath.value) return false
+  return hasLua.value
+})
+
+// 游戏下载标签页的自定义清单源状态
+const downloadManifestSourceMode = ref<'7z' | 'folder'>('7z')
+const selectedDownloadManifestPath = ref('')
+const isPreparingDownloadManifest = ref(false)
 
 // 二维码弹窗状态
 const showQRCodeModal = ref(false)
@@ -703,7 +883,8 @@ const handleQRCodeClose = () => {
   qrCodeImageUrl.value = ''
 }
 const canImportToSteam = computed(() => {
-  return manifestExists.value && !isImportingToSteam.value
+  // 只要有lua就可以入库（内置清单或自定义源）
+  return (hasLua.value || importSourceReady.value) && !isImportingToSteam.value
 })
 // 首次使用配置 - 关闭
 function handleFirstTimeSetupClose() {
@@ -745,10 +926,8 @@ const availableTabs = computed(() => {
     tabs.push({ id: 'extract-play', name: '解压即玩' })
   }
 
-  // 3. 如果有清单文件，添加入库Steam标签
-  if (manifestExists.value) {
-    tabs.push({ id: 'import', name: '入库Steam' })
-  }
+  // 3. 入库Steam标签始终显示
+  tabs.push({ id: 'import', name: '入库Steam' })
 
   // 4. 添加游戏分类标签（各类补丁）
   game.value?.tags.forEach(tag => {
@@ -1429,6 +1608,8 @@ onMounted(async () => {
 
   // 设置默认标签页
   setDefaultTab()
+  // 自动填充下载路径（不依赖清单文件夹是否存在）
+  await autoSetDownloadPath()
   // 自动检测清单文件夹
   await checkManifestFolder()
   // 加载所有补丁说明
@@ -1577,7 +1758,8 @@ const addDownloadLog = (message: string, type: 'info' | 'success' | 'error' | 'w
 }
 
 /**
- * 检查游戏清单文件是否存在
+ * 检查游戏清单文件状态
+ * 有vdf时自动转换为lua，有lua时直接使用
  */
 const checkGameManifest = async () => {
   try {
@@ -1590,9 +1772,289 @@ const checkGameManifest = async () => {
     }>('check_game_manifest_exists', {
       gameId: gameId.value
     })
-    manifestExists.value = result.canImport
+
+    manifestExists.value = result.exists
+    hasLua.value = result.hasLua
+    hasVdf.value = result.hasVdf
+    hasManifest.value = result.hasManifest
+
+    // 有vdf但没有lua时，自动转换vdf为lua
+    if (result.hasVdf && !result.hasLua) {
+      await convertVdfToLuaInManifestFolder()
+    }
   } catch (error) {
     manifestExists.value = false
+    hasLua.value = false
+    hasVdf.value = false
+    hasManifest.value = false
+  }
+}
+
+/**
+ * 将内置清单文件夹中的vdf转换为lua
+ */
+const convertVdfToLuaInManifestFolder = async () => {
+  try {
+    const manifestPath = await invoke<string>('get_manifest_path', {
+      gameId: gameId.value
+    })
+
+    if (!manifestPath) return
+
+    const vdfFiles = await invoke<string[]>('get_vdf_files_in_folder', {
+      folder: manifestPath
+    })
+
+    for (const vdfFile of vdfFiles) {
+      try {
+        const convertResult = await invoke<{
+          success: boolean
+          outputPath: string
+          message: string
+        }>('convert_vdf_to_lua', {
+          filePath: vdfFile
+        })
+
+        if (convertResult.success) {
+          hasLua.value = true
+        }
+      } catch {
+        // 单个文件转换失败继续处理下一个
+      }
+    }
+  } catch {
+    // 转换失败时保持当前状态
+  }
+}
+
+/**
+ * 扫描指定文件夹并转换vdf为lua
+ * 返回扫描后的文件状态
+ */
+const scanAndConvertFolder = async (folderPath: string) => {
+  hasLua.value = false
+  hasVdf.value = false
+  hasManifest.value = false
+
+  const scanResult = await invoke<{
+    luaFiles: string[]
+    manifestFiles: string[]
+    vdfFiles: string[]
+  }>('scan_manifest_folder', {
+    folderPath
+  })
+
+  hasLua.value = scanResult.luaFiles.length > 0
+  hasVdf.value = scanResult.vdfFiles.length > 0
+  hasManifest.value = scanResult.manifestFiles.length > 0
+
+  // 有vdf但没有lua时，自动转换
+  if (hasVdf.value && !hasLua.value) {
+    for (const vdfFile of scanResult.vdfFiles) {
+      try {
+        const convertResult = await invoke<{
+          success: boolean
+          outputPath: string
+          message: string
+        }>('convert_vdf_to_lua', {
+          filePath: vdfFile
+        })
+
+        if (convertResult.success) {
+          hasLua.value = true
+        }
+      } catch {
+        // 单个文件转换失败继续处理下一个
+      }
+    }
+  }
+
+  return scanResult
+}
+
+/**
+ * 选择7z压缩包作为清单源
+ */
+const selectImportArchive = async () => {
+  try {
+    const selected = await open({
+      multiple: false,
+      filters: [
+        { name: '7z压缩包', extensions: ['7z'] }
+      ],
+      title: '选择清单7z压缩包'
+    })
+
+    if (!selected || typeof selected !== 'string') {
+      return
+    }
+
+    selectedImportPath.value = selected
+    selectedImportTempPath.value = ''
+    isPreparingImport.value = true
+
+    try {
+      // 解压到临时目录
+      const tempFolder = await invoke<string>('extract_archive', {
+        archivePath: selected
+      })
+
+      selectedImportTempPath.value = tempFolder
+
+      // 扫描并转换
+      await scanAndConvertFolder(tempFolder)
+
+      if (!hasLua.value) {
+        alert('未在压缩包中找到vdf或lua文件，无法入库')
+      }
+    } catch (error) {
+      alert(`解压失败: ${error}`)
+      selectedImportPath.value = ''
+      selectedImportTempPath.value = ''
+    } finally {
+      isPreparingImport.value = false
+    }
+  } catch (error) {
+    alert(`选择文件失败: ${error}`)
+  }
+}
+
+/**
+ * 选择lua所在文件夹作为清单源
+ */
+const selectImportFolder = async () => {
+  try {
+    const selected = await open({
+      directory: true,
+      title: '选择包含lua/vdf文件的文件夹'
+    })
+
+    if (!selected || typeof selected !== 'string') {
+      return
+    }
+
+    selectedImportPath.value = selected
+    selectedImportTempPath.value = ''
+    isPreparingImport.value = true
+
+    try {
+      // 扫描并转换
+      await scanAndConvertFolder(selected)
+
+      if (!hasLua.value) {
+        alert('未在文件夹中找到vdf或lua文件，无法入库')
+      }
+    } catch (error) {
+      alert(`扫描失败: ${error}`)
+      selectedImportPath.value = ''
+    } finally {
+      isPreparingImport.value = false
+    }
+  } catch (error) {
+    alert(`选择文件夹失败: ${error}`)
+  }
+}
+
+/**
+ * 清除自定义清单源选择
+ */
+const clearImportSource = () => {
+  selectedImportPath.value = ''
+  selectedImportTempPath.value = ''
+  // 重新检查内置清单
+  checkGameManifest()
+}
+
+/**
+ * 选择 7z 压缩包作为游戏下载的清单源
+ * 解压到 resources/manifest/{game_id}/ 后重新检测
+ */
+const selectDownloadManifestArchive = async () => {
+  try {
+    const selected = await open({
+      multiple: false,
+      filters: [
+        { name: '7z压缩包', extensions: ['7z'] }
+      ],
+      title: '选择清单7z压缩包'
+    })
+
+    if (!selected || typeof selected !== 'string') {
+      return
+    }
+
+    selectedDownloadManifestPath.value = selected
+    isPreparingDownloadManifest.value = true
+
+    try {
+      addDownloadLog(`正在解压清单压缩包...`, 'info')
+      const targetFolder = await invoke<string>('extract_manifest_archive', {
+        archivePath: selected,
+        gameId: gameId.value
+      })
+
+      addDownloadLog(`清单已解压到: ${targetFolder}`, 'success')
+
+      // 记录手动导入的清单游戏ID到缓存
+      try {
+        await invoke('add_imported_manifest_game_id', {
+          gameId: gameId.value
+        })
+      } catch (cacheError) {
+        console.warn('记录清单导入缓存失败:', cacheError)
+      }
+
+      // 重新检测清单文件夹状态
+      await checkManifestFolder()
+    } catch (error) {
+      addDownloadLog(`解压清单压缩包失败: ${error}`, 'error')
+      alert(`解压失败: ${error}`)
+      selectedDownloadManifestPath.value = ''
+    } finally {
+      isPreparingDownloadManifest.value = false
+    }
+  } catch (error) {
+    alert(`选择文件失败: ${error}`)
+  }
+}
+
+/**
+ * 选择 lua 所在文件夹作为游戏下载的清单源
+ * 直接复制/使用 resources/manifest/{game_id}/ 目录
+ */
+const selectDownloadManifestFolder = async () => {
+  try {
+    const selected = await open({
+      directory: true,
+      title: '选择包含lua/vdf文件的文件夹'
+    })
+
+    if (!selected || typeof selected !== 'string') {
+      return
+    }
+
+    selectedDownloadManifestPath.value = selected
+    isPreparingDownloadManifest.value = true
+
+    try {
+      addDownloadLog(`正在复制清单文件夹...`, 'info')
+      const targetFolder = await invoke<string>('copy_folder_to_manifest', {
+        sourcePath: selected,
+        gameId: gameId.value
+      })
+
+      addDownloadLog(`清单已复制到: ${targetFolder}`, 'success')
+      // 重新检测清单文件夹状态
+      await checkManifestFolder()
+    } catch (error) {
+      addDownloadLog(`复制清单文件夹失败: ${error}`, 'error')
+      alert(`复制失败: ${error}`)
+      selectedDownloadManifestPath.value = ''
+    } finally {
+      isPreparingDownloadManifest.value = false
+    }
+  } catch (error) {
+    alert(`选择文件夹失败: ${error}`)
   }
 }
 
@@ -1638,16 +2100,52 @@ const importToSteam = async () => {
   isImportingToSteam.value = true
 
   try {
-    // 调用后端命令导入游戏清单
-    const result = await invoke<{
+    let result: {
       success: boolean
       message: string
       importedLua: number
       importedManifest: number
       convertedVdf: number
-    }>('import_game_manifest_to_steam', {
-      gameId: gameId.value
-    })
+    }
+
+    if (importSourceReady.value) {
+      // 使用自定义清单源
+      const folderPath = importSourceMode.value === '7z'
+        ? selectedImportTempPath.value
+        : selectedImportPath.value
+
+      const scanResult = await invoke<{
+        luaFiles: string[]
+        manifestFiles: string[]
+        vdfFiles: string[]
+      }>('scan_manifest_folder', {
+        folderPath
+      })
+
+      result = await invoke<{
+        success: boolean
+        message: string
+        importedLua: number
+        importedManifest: number
+        convertedVdf: number
+      }>('import_manifest_to_steam', {
+        steamPath,
+        luaFiles: scanResult.luaFiles,
+        manifestFiles: scanResult.manifestFiles,
+        vdfFiles: scanResult.vdfFiles
+      })
+    } else {
+      // 使用内置清单
+      result = await invoke<{
+        success: boolean
+        message: string
+        importedLua: number
+        importedManifest: number
+        convertedVdf: number
+      }>('import_game_manifest_to_steam', {
+        gameId: gameId.value
+      })
+    }
 
     if (result.success) {
       // 显示成功弹窗，包含重启Steam按钮
@@ -1727,7 +2225,7 @@ const importWithOpenSteamTool = async () => {
   isImportingWithOpenSteamTool.value = true
 
   try {
-    const result = await invoke<{
+    let result: {
       success: boolean
       message: string
       kernelInstalled: boolean
@@ -1735,13 +2233,47 @@ const importWithOpenSteamTool = async () => {
       manifestCopied: number
       steamRestarted: boolean
       advancedEnabled: boolean
-    }>('import_game_with_opensteamtool', {
-      steamPath: steamPath,
-      gameId: gameId.value,
-      gameName: game.value.chinese_name || game.value.game_name || gameId.value,
-      appId: appId,
-      advancedMode: advancedMode
-    })
+    }
+
+    if (importSourceReady.value) {
+      // 使用自定义清单源
+      const folderPath = importSourceMode.value === '7z'
+        ? selectedImportTempPath.value
+        : selectedImportPath.value
+
+      result = await invoke<{
+        success: boolean
+        message: string
+        kernelInstalled: boolean
+        luaWritten: boolean
+        manifestCopied: number
+        steamRestarted: boolean
+        advancedEnabled: boolean
+      }>('import_manifest_with_opensteamtool', {
+        steamPath: steamPath,
+        folderPath: folderPath,
+        gameName: game.value.chinese_name || game.value.game_name || gameId.value,
+        appId: appId,
+        advancedMode: advancedMode
+      })
+    } else {
+      // 使用内置清单
+      result = await invoke<{
+        success: boolean
+        message: string
+        kernelInstalled: boolean
+        luaWritten: boolean
+        manifestCopied: number
+        steamRestarted: boolean
+        advancedEnabled: boolean
+      }>('import_game_with_opensteamtool', {
+        steamPath: steamPath,
+        gameId: gameId.value,
+        gameName: game.value.chinese_name || game.value.game_name || gameId.value,
+        appId: appId,
+        advancedMode: advancedMode
+      })
+    }
 
     if (result.success) {
       const message =
@@ -1790,7 +2322,7 @@ const restartSteam = async () => {
   width: 100%;
   height: 100%;
   overflow-y: auto;
-  padding: 24px;
+  padding: 14px;
   background-color: var(--steam-bg-secondary);
 }
 
@@ -1799,8 +2331,8 @@ const restartSteam = async () => {
   display: flex;
   align-items: center;
   gap: 24px;
-  margin-bottom: 24px;
-  padding-bottom: 16px;
+  margin-bottom: 14px;
+  padding-bottom: 10px;
   border-bottom: 1px solid var(--steam-border);
 }
 
@@ -1864,7 +2396,8 @@ const restartSteam = async () => {
 .detail-content {
   display: flex;
   gap: 24px;
-  margin-bottom: 24px;
+  margin-bottom: 14px;
+  align-items: center;
 }
 
 .cover-section {
@@ -1967,7 +2500,7 @@ const restartSteam = async () => {
 }
 
 .tabs-content {
-  padding: 24px;
+  padding: 14px;
 }
 
 .tab-panel {
@@ -1987,19 +2520,19 @@ const restartSteam = async () => {
   font-size: 16px;
   font-weight: 600;
   color: var(--steam-text-primary);
-  margin: 0 0 16px 0;
+  margin: 0 0 10px 0;
 }
 
 /* 下载完成提示 */
 .download-completed-notice {
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 20px;
+  gap: 10px;
+  padding: 12px;
   background-color: rgba(16, 185, 129, 0.1);
   border-radius: 8px;
   border-left: 4px solid #10b981;
-  margin-bottom: 20px;
+  margin-bottom: 12px;
 }
 
 .success-icon {
@@ -2015,13 +2548,13 @@ const restartSteam = async () => {
 }
 
 .success-text h4 {
-  margin: 0 0 8px 0;
+  margin: 0 0 5px 0;
   font-size: 16px;
   color: #10b981;
 }
 
 .success-text p {
-  margin: 0 0 4px 0;
+  margin: 0 0 3px 0;
   font-size: 13px;
   color: var(--steam-text-secondary);
 }
@@ -2062,8 +2595,8 @@ const restartSteam = async () => {
 .download-info {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  margin-bottom: 24px;
+  gap: 10px;
+  margin-bottom: 14px;
 }
 
 .info-item {
@@ -2120,7 +2653,7 @@ const restartSteam = async () => {
 .download-path-section {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 5px;
 }
 
 .path-display {
@@ -2170,7 +2703,7 @@ const restartSteam = async () => {
 /* 下载按钮组 */
 .download-btn-group {
   display: flex;
-  gap: 12px;
+  gap: 7px;
   align-items: center;
   position: relative;
   flex-wrap: wrap;
@@ -2278,15 +2811,15 @@ const restartSteam = async () => {
 
 /* 下载说明样式 */
 .download-description {
-  margin: 20px 0;
-  padding: 16px;
+  margin: 12px 0;
+  padding: 10px;
   background-color: var(--steam-bg-secondary);
   border-radius: 8px;
   border-left: 4px solid #3b82f6;
 }
 
 .download-option {
-  margin-bottom: 16px;
+  margin-bottom: 10px;
 }
 
 .download-option:last-child {
@@ -2294,7 +2827,7 @@ const restartSteam = async () => {
 }
 
 .download-option h4 {
-  margin: 0 0 8px 0;
+  margin: 0 0 5px 0;
   font-size: 14px;
   font-weight: 600;
   color: var(--steam-text-primary);
@@ -2309,19 +2842,19 @@ const restartSteam = async () => {
 
 /* 解压即玩标签页样式 */
 .extract-play-content {
-  padding: 20px;
+  padding: 12px;
 }
 
 .extract-play-description {
-  margin-bottom: 24px;
-  padding: 16px;
+  margin-bottom: 14px;
+  padding: 10px;
   background-color: var(--steam-bg-secondary);
   border-radius: 8px;
   border-left: 4px solid #8b5cf6;
 }
 
 .extract-play-description p {
-  margin: 0 0 8px 0;
+  margin: 0 0 5px 0;
   font-size: 14px;
   color: var(--steam-text-primary);
   line-height: 1.6;
@@ -2342,7 +2875,7 @@ const restartSteam = async () => {
 }
 
 .path-hint {
-  margin: 4px 0 0 0;
+  margin: 3px 0 0 0;
   font-size: 12px;
   color: var(--steam-text-secondary);
   font-style: italic;
@@ -2350,8 +2883,8 @@ const restartSteam = async () => {
 
 /* 下载日志样式 */
 .download-logs {
-  margin-top: 20px;
-  padding: 16px;
+  margin-top: 12px;
+  padding: 10px;
   background-color: var(--steam-bg-secondary);
   border-radius: 8px;
   border: 1px solid var(--steam-border);
@@ -2361,7 +2894,7 @@ const restartSteam = async () => {
   font-size: 14px;
   font-weight: 600;
   color: var(--steam-text-primary);
-  margin: 0 0 12px 0;
+  margin: 0 0 7px 0;
 }
 
 .logs-content {
@@ -2374,7 +2907,7 @@ const restartSteam = async () => {
 
 .log-line {
   display: flex;
-  gap: 10px;
+  gap: 12px;
   padding: 2px 0;
 }
 
@@ -2402,26 +2935,26 @@ const restartSteam = async () => {
 
 /* 下载进度区域样式 */
 .download-progress-section {
-  margin-top: 20px;
+  margin-top: 12px;
 }
 
 .patch-info {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 10px;
 }
 
 /* 补丁说明样式 - 显示在应用补丁按钮下方 */
 .patch-readme {
   background-color: var(--steam-bg-secondary);
   border-radius: 8px;
-  padding: 16px;
+  padding: 10px;
   border-left: 4px solid var(--steam-accent-blue);
-  margin-top: 16px;
+  margin-top: 10px;
 }
 
 .readme-title {
-  margin: 0 0 12px 0;
+  margin: 0 0 7px 0;
   font-size: 14px;
   font-weight: 600;
   color: var(--steam-text-primary);
@@ -2444,14 +2977,14 @@ const restartSteam = async () => {
 .patch-status {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 5px;
   padding: 10px 14px;
   border-radius: 8px;
   background-color: rgba(239, 68, 68, 0.1);
   color: #ef4444;
   font-size: 13px;
   font-weight: 500;
-  margin-bottom: 12px;
+  margin-bottom: 7px;
 }
 
 .patch-status.local-exists {
@@ -2474,28 +3007,28 @@ const restartSteam = async () => {
 
 /* 下载区域样式 */
 .download-section {
-  margin-bottom: 16px;
+  margin-bottom: 10px;
 }
 
 .download-section-title {
   font-size: 14px;
   font-weight: 500;
   color: var(--steam-text-primary);
-  margin: 0 0 12px 0;
+  margin: 0 0 7px 0;
 }
 
 .download-buttons {
   display: flex;
   flex-wrap: wrap;
-  gap: 16px;
-  margin-bottom: 12px;
+  gap: 10px;
+  margin-bottom: 7px;
 }
 
 .download-btn-wrapper {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
+  gap: 7px;
 }
 
 .download-patch-btn {
@@ -2533,7 +3066,7 @@ const restartSteam = async () => {
 .download-hint {
   font-size: 12px;
   color: var(--steam-text-secondary);
-  margin: 8px 0 12px 0;
+  margin: 4px 0 7px 0;
   font-style: italic;
 }
 
@@ -2552,7 +3085,7 @@ const restartSteam = async () => {
   font-weight: 500;
   cursor: pointer;
   transition: background-color 0.15s ease;
-  margin-bottom: 12px;
+  margin-bottom: 7px;
 }
 
 .select-and-apply-btn:hover:not(:disabled) {
@@ -2613,7 +3146,7 @@ const restartSteam = async () => {
 
 /* 虚拟化环境配置教程按钮 */
 .tutorial-btn {
-  margin-top: 12px;
+  margin-top: 7px;
   padding: 12px 24px;
   background: rgba(156, 39, 176, 0.2);
   color: #ce93d8;
@@ -2633,8 +3166,8 @@ const restartSteam = async () => {
 
 /* 补丁结果提示 */
 .patch-result {
-  margin-top: 16px;
-  padding: 16px;
+  margin-top: 10px;
+  padding: 10px;
   border-radius: 8px;
   background-color: var(--steam-bg-secondary);
 }
@@ -2648,7 +3181,7 @@ const restartSteam = async () => {
 }
 
 .result-title {
-  margin: 0 0 12px 0;
+  margin: 0 0 7px 0;
   font-size: 14px;
   font-weight: 600;
 }
@@ -2662,7 +3195,7 @@ const restartSteam = async () => {
 }
 
 .result-section {
-  margin-bottom: 12px;
+  margin-bottom: 7px;
 }
 
 .result-section:last-child {
@@ -2670,7 +3203,7 @@ const restartSteam = async () => {
 }
 
 .section-title {
-  margin: 0 0 8px 0;
+  margin: 0 0 5px 0;
   font-size: 12px;
   font-weight: 500;
   color: var(--steam-text-secondary);
@@ -2684,7 +3217,7 @@ const restartSteam = async () => {
 }
 
 .file-list li {
-  margin-bottom: 4px;
+  margin-bottom: 2px;
 }
 
 .error-section .section-title {
@@ -2699,18 +3232,18 @@ const restartSteam = async () => {
 .trainer-content {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 12px;
 }
 
 .trainer-local-content {
   background-color: var(--steam-bg-secondary);
   border-radius: 8px;
-  padding: 16px;
+  padding: 10px;
   border-left: 4px solid #f59e0b;
 }
 
 .trainer-content-title {
-  margin: 0 0 12px 0;
+  margin: 0 0 7px 0;
   font-size: 14px;
   font-weight: 600;
   color: var(--steam-text-primary);
@@ -2732,7 +3265,7 @@ const restartSteam = async () => {
 }
 
 .trainer-no-content {
-  padding: 20px;
+  padding: 12px;
   background-color: var(--steam-bg-secondary);
   border-radius: 8px;
   text-align: center;
@@ -2740,7 +3273,7 @@ const restartSteam = async () => {
 }
 
 .trainer-no-content p {
-  margin: 0 0 8px 0;
+  margin: 0 0 5px 0;
 }
 
 .trainer-path {
@@ -2753,19 +3286,27 @@ const restartSteam = async () => {
 .import-steam-content {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 12px;
   align-items: flex-start;
 }
 
+.import-btn-group {
+  display: flex;
+  flex-direction: row;
+  gap: 7px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
 .import-description {
-  padding: 16px;
+  padding: 10px;
   background-color: var(--steam-bg-secondary);
   border-radius: 8px;
   border-left: 4px solid #10b981;
 }
 
 .import-description p {
-  margin: 0 0 8px 0;
+  margin: 0 0 5px 0;
   font-size: 14px;
   color: var(--steam-text-primary);
   line-height: 1.5;
@@ -2785,17 +3326,16 @@ const restartSteam = async () => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  padding: 16px 32px;
+  gap: 6px;
+  padding: 12px 26px;
   border: none;
   border-radius: 8px;
   background-color: #10b981;
   color: white;
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 600;
   cursor: pointer;
   transition: background-color 0.15s ease;
-  margin-bottom: 12px;
 }
 
 .import-opensteamtool-btn-large:hover:not(.disabled) {
@@ -2813,21 +3353,21 @@ const restartSteam = async () => {
 }
 
 .import-opensteamtool-btn-large svg {
-  width: 20px;
-  height: 20px;
+  width: 16px;
+  height: 16px;
 }
 
 .import-steamtools-btn-large {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  padding: 16px 32px;
+  gap: 6px;
+  padding: 12px 26px;
   border: none;
   border-radius: 8px;
   background-color: #3b82f6;
   color: white;
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 600;
   cursor: pointer;
   transition: background-color 0.15s ease;
@@ -2848,13 +3388,217 @@ const restartSteam = async () => {
 }
 
 .import-steamtools-btn-large svg {
-  width: 20px;
-  height: 20px;
+  width: 16px;
+  height: 16px;
+}
+
+.restart-steam-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 13px 26px;
+  border: none;
+  border-radius: 8px;
+  background-color: #64748b;
+  color: white;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.restart-steam-btn:hover {
+  background-color: #475569;
+}
+
+.restart-steam-btn svg {
+  width: 16px;
+  height: 16px;
 }
 
 .import-error {
   color: #ef4444;
   font-size: 14px;
   margin: 0;
+}
+
+/* 自定义清单源信息 */
+.import-source-info {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 10px 14px;
+  background-color: rgba(59, 130, 246, 0.1);
+  border-radius: 8px;
+  border-left: 3px solid #3b82f6;
+  font-size: 13px;
+}
+
+.import-source-info .source-label {
+  color: var(--steam-text-secondary);
+  flex-shrink: 0;
+}
+
+.import-source-info .source-path {
+  color: var(--steam-text-primary);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: 'Courier New', monospace;
+}
+
+.import-source-info .clear-source-btn {
+  padding: 4px 10px;
+  border: none;
+  border-radius: 4px;
+  background-color: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+  flex-shrink: 0;
+}
+
+.import-source-info .clear-source-btn:hover {
+  background-color: rgba(239, 68, 68, 0.3);
+}
+
+/* 无清单文件时的引导区域 */
+.import-no-files {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+
+.download-guide {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.download-link-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 24px;
+  border: none;
+  border-radius: 8px;
+  background-color: #f59e0b;
+  color: white;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+  align-self: flex-start;
+}
+
+.download-link-btn:hover {
+  background-color: #d97706;
+}
+
+.download-link-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
+.password-hint {
+  margin: 0;
+  font-size: 11px;
+  color: var(--steam-text-secondary);
+}
+
+/* 清单源选择区域 */
+.import-source-select {
+  padding: 10px;
+  background-color: var(--steam-bg-secondary);
+  border-radius: 8px;
+  border: 1px solid var(--steam-border);
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.source-select-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--steam-text-primary);
+}
+
+.radio-group {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.radio-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--steam-text-primary);
+}
+
+.radio-label input[type="radio"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: var(--steam-accent-blue);
+}
+
+.source-select-actions {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+}
+
+.select-source-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 8px;
+  background-color: var(--steam-accent-blue);
+  color: white;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.select-source-btn:hover:not(:disabled) {
+  background-color: var(--steam-accent-hover);
+}
+
+.select-source-btn:disabled {
+  background-color: var(--steam-text-secondary);
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.select-source-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.source-select-error {
+  margin: 0;
+  font-size: 13px;
+  color: #ef4444;
+}
+
+.source-select-info {
+  margin: 0;
+  font-size: 12px;
+  color: var(--steam-text-secondary);
+  word-break: break-all;
 }
 </style>

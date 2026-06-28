@@ -2,9 +2,10 @@
 // 提供前端调用的IPC命令，用于管理OpenSteamTool内核和游戏入库
 
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use tauri::AppHandle;
 
+use crate::commands::manifest_commands::convert_vdf_to_lua_internal;
 use crate::services::config_service::{ConfigService, ConfigServiceTrait};
 use crate::services::opensteamtool_service::{
     detect_steam_path, get_kernel_dll_info, install_kernel, is_kernel_installed,
@@ -119,6 +120,63 @@ pub fn import_with_opensteamtool_command(
     import_with_opensteamtool(&app, options)
 }
 
+/// 递归扫描清单文件
+/// 扫描目录及其子目录（最多2层），收集.lua、.manifest、.vdf文件路径
+fn scan_manifest_files_recursive(
+    dir: &Path,
+    lua_files: &mut Vec<String>,
+    manifest_files: &mut Vec<String>,
+    vdf_files: &mut Vec<String>,
+    depth: usize,
+) -> Result<(), String> {
+    if depth > 2 {
+        return Ok(());
+    }
+
+    let entries = fs::read_dir(dir).map_err(|e| format!("读取目录失败: {}", e))?;
+
+    for entry in entries {
+        let entry = entry.map_err(|e| format!("读取目录条目失败: {}", e))?;
+        let path = entry.path();
+
+        if path.is_dir() {
+            scan_manifest_files_recursive(&path, lua_files, manifest_files, vdf_files, depth + 1)?;
+        } else if let Some(ext) = path.extension() {
+            let ext = ext.to_string_lossy().to_lowercase();
+            let path_str = path.to_string_lossy().to_string();
+
+            match ext.as_str() {
+                "lua" => lua_files.push(path_str),
+                "manifest" => manifest_files.push(path_str),
+                "vdf" => vdf_files.push(path_str),
+                _ => {}
+            }
+        }
+    }
+
+    Ok(())
+}
+
+/// 尝试将VDF文件转换为Lua文件
+/// 返回转换后的Lua文件路径列表
+fn convert_vdf_files_to_lua(vdf_files: &[String]) -> Vec<String> {
+    let mut converted_lua_files = Vec::new();
+
+    for vdf_file in vdf_files {
+        let vdf_path = PathBuf::from(vdf_file);
+        match convert_vdf_to_lua_internal(&vdf_path) {
+            Ok(lua_path) => {
+                converted_lua_files.push(lua_path.to_string_lossy().to_string());
+            }
+            Err(e) => {
+                log::warn!("转换VDF文件失败 {}: {}", vdf_file, e);
+            }
+        }
+    }
+
+    converted_lua_files
+}
+
 /// 从游戏清单目录使用OpenSteamTool入库
 /// 用于游戏详情页：自动读取 resources/manifest/{game_id}/ 下的文件
 #[tauri::command]
@@ -138,39 +196,29 @@ pub fn import_game_with_opensteamtool(
         return Err(format!("未找到游戏清单目录: {}", manifest_dir.display()));
     }
 
-    // 扫描文件
+    // 递归扫描文件
     let mut lua_files = Vec::new();
     let mut manifest_files = Vec::new();
     let mut vdf_files = Vec::new();
 
-    if let Ok(entries) = fs::read_dir(&manifest_dir) {
-        for entry in entries.flatten() {
-            let path = entry.path();
-            if let Some(ext) = path.extension() {
-                let ext = ext.to_string_lossy().to_lowercase();
-                let path_str = path.to_string_lossy().to_string();
-                match ext.as_str() {
-                    "lua" => lua_files.push(path_str),
-                    "manifest" => manifest_files.push(path_str),
-                    "vdf" => vdf_files.push(path_str),
-                    _ => {}
-                }
-            }
-        }
-    }
+    scan_manifest_files_recursive(&manifest_dir, &mut lua_files, &mut manifest_files, &mut vdf_files, 0)?;
 
     // 检查是否有lua或vdf
     if lua_files.is_empty() && vdf_files.is_empty() {
         return Err("未找到.lua或.vdf文件".to_string());
     }
 
+    // 没有Lua但有VDF时，自动转换VDF为Lua
+    if lua_files.is_empty() && !vdf_files.is_empty() {
+        let converted = convert_vdf_files_to_lua(&vdf_files);
+        lua_files.extend(converted);
+    }
+
     // 读取第一个Lua文件内容
     let lua_content = if let Some(lua_file) = lua_files.first() {
         fs::read_to_string(lua_file).map_err(|e| format!("读取Lua文件失败: {}", e))?
     } else {
-        // 没有Lua但有VDF，需要转换
-        // 这里简单处理：如果有VDF文件，返回错误提示用户先转换
-        return Err("未找到Lua文件，请先使用VDF转Lua功能转换".to_string());
+        return Err("未找到Lua文件，OpenSteamTool内核模式需要Lua文件".to_string());
     };
 
     let options = OpenSteamToolImportOptions {
@@ -204,29 +252,21 @@ pub fn import_manifest_with_opensteamtool(
         return Err("清单文件夹不存在".to_string());
     }
 
-    // 扫描文件
+    // 递归扫描文件
     let mut lua_files = Vec::new();
     let mut manifest_files = Vec::new();
     let mut vdf_files = Vec::new();
 
-    if let Ok(entries) = fs::read_dir(folder_path) {
-        for entry in entries.flatten() {
-            let path = entry.path();
-            if let Some(ext) = path.extension() {
-                let ext = ext.to_string_lossy().to_lowercase();
-                let path_str = path.to_string_lossy().to_string();
-                match ext.as_str() {
-                    "lua" => lua_files.push(path_str),
-                    "manifest" => manifest_files.push(path_str),
-                    "vdf" => vdf_files.push(path_str),
-                    _ => {}
-                }
-            }
-        }
-    }
+    scan_manifest_files_recursive(folder_path, &mut lua_files, &mut manifest_files, &mut vdf_files, 0)?;
 
     if lua_files.is_empty() && vdf_files.is_empty() {
         return Err("未找到.lua或.vdf文件".to_string());
+    }
+
+    // 没有Lua但有VDF时，自动转换VDF为Lua
+    if lua_files.is_empty() && !vdf_files.is_empty() {
+        let converted = convert_vdf_files_to_lua(&vdf_files);
+        lua_files.extend(converted);
     }
 
     // 读取Lua内容

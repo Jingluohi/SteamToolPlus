@@ -386,6 +386,7 @@ async fn download_image(url: &str, output_file: &str) -> Result<(), String> {
 
 /// 扫描清单文件夹并自动转换格式
 /// 用于游戏本体下载：确保有 VDF 文件（如果没有但有 Lua，则自动转换）
+/// 支持递归扫描子目录
 #[tauri::command]
 pub fn scan_and_convert_manifest_for_download(folder_path: String) -> Result<serde_json::Value, String> {
     let folder = Path::new(&folder_path);
@@ -395,26 +396,46 @@ pub fn scan_and_convert_manifest_for_download(folder_path: String) -> Result<ser
         fs::create_dir_all(folder).map_err(|e| format!("创建目录失败: {}", e))?;
     }
 
-    // 扫描文件
+    // 递归扫描文件，支持嵌套 1-2 层子目录
     let mut lua_files = Vec::new();
     let mut vdf_files = Vec::new();
     let mut manifest_files = Vec::new();
 
-    if let Ok(entries) = fs::read_dir(folder) {
-        for entry in entries.flatten() {
+    fn scan_directory(
+        dir: &Path,
+        lua: &mut Vec<String>,
+        vdf: &mut Vec<String>,
+        manifest: &mut Vec<String>,
+        depth: usize,
+    ) -> Result<(), String> {
+        if depth > 2 {
+            return Ok(());
+        }
+
+        let entries = fs::read_dir(dir).map_err(|e| format!("读取目录失败: {}", e))?;
+
+        for entry in entries {
+            let entry = entry.map_err(|e| format!("读取条目失败: {}", e))?;
             let path = entry.path();
-            if let Some(ext) = path.extension() {
+
+            if path.is_dir() {
+                scan_directory(&path, lua, vdf, manifest, depth + 1)?;
+            } else if let Some(ext) = path.extension() {
                 let ext = ext.to_string_lossy().to_lowercase();
                 let path_str = path.to_string_lossy().to_string();
                 match ext.as_str() {
-                    "lua" => lua_files.push(path_str),
-                    "vdf" => vdf_files.push(path_str),
-                    "manifest" => manifest_files.push(path_str),
+                    "lua" => lua.push(path_str),
+                    "vdf" => vdf.push(path_str),
+                    "manifest" => manifest.push(path_str),
                     _ => {}
                 }
             }
         }
+
+        Ok(())
     }
+
+    scan_directory(folder, &mut lua_files, &mut vdf_files, &mut manifest_files, 0)?;
 
     // 检查是否有 VDF 文件
     let has_vdf = !vdf_files.is_empty();

@@ -290,6 +290,8 @@ const configStore = useConfigStore()
 const steamPath = ref('')
 const selectedSource = ref('')
 const sourceType = ref<'folder' | 'archive' | null>(null)
+// 实际用于入库的文件夹路径（压缩包解压后的临时目录）
+const extractedFolderPath = ref('')
 const scanResults = ref<ScanResults>({
   luaFiles: [],
   manifestFiles: [],
@@ -397,6 +399,7 @@ async function selectFolder() {
 
   if (selected && typeof selected === 'string') {
     selectedSource.value = selected
+    extractedFolderPath.value = selected
     sourceType.value = 'folder'
     addLog(`已选择文件夹: ${selected}`, 'info')
     await scanFolder(selected)
@@ -459,10 +462,12 @@ async function extractAndScan(archivePath: string) {
 
   try {
     const tempFolder = await invoke<string>('extract_archive', { archivePath })
+    extractedFolderPath.value = tempFolder
     addLog(`解压完成: ${tempFolder}`, 'success')
     await scanFolder(tempFolder)
   } catch (error) {
     addLog(`解压失败: ${error}`, 'error')
+    extractedFolderPath.value = ''
   } finally {
     isScanning.value = false
   }
@@ -471,6 +476,7 @@ async function extractAndScan(archivePath: string) {
 // 清除选择
 function clearSource() {
   selectedSource.value = ''
+  extractedFolderPath.value = ''
   sourceType.value = null
   scanResults.value = { luaFiles: [], manifestFiles: [], vdfFiles: [] }
   addLog('已清除选择', 'info')
@@ -489,7 +495,7 @@ async function startImport() {
     return
   }
 
-  if (!selectedSource.value) {
+  if (!selectedSource.value || !extractedFolderPath.value) {
     addLog('错误: 未选择清单文件', 'error')
     return
   }
@@ -535,7 +541,7 @@ async function startImport() {
         advancedEnabled: boolean
       }>('import_manifest_with_opensteamtool', {
         steamPath: steamPath.value,
-        folderPath: selectedSource.value,
+        folderPath: extractedFolderPath.value,
         advancedMode: advancedMode.value
       })
 

@@ -28,8 +28,7 @@
 10. [构建与部署](#十构建与部署)
 11. [使用教程](#十一使用教程)
 12. [常见问题与故障排除](#十二常见问题与故障排除)
-13. [版本历史](#十三版本历史)
-14. [版权声明](#十四版权声明)
+13. [版权声明](#十三版权声明)
 
 ---
 
@@ -50,8 +49,9 @@
 | **极致体积** | 基于 Tauri 2.0 不打包 Chromium 内核，打包后 exe 体积 ≤ 10MB |
 | **极低内存** | Rust 后端 + 系统 WebView 组合，运行内存稳定 ≤ 50MB，CPU 占用 ≤ 2% |
 | **Steam UI 复刻** | 基于 Vue 3 + Tailwind CSS 1:1 复刻 Steam 客户端 UI，支持深色/浅色双主题 |
+| **多语言支持** | 内置简体中文与英语，通过 vue-i18n 实现，一键切换无需额外语言包 |
 | **插件化架构** | 核心代码与扩展功能完全隔离，对标 VS Code 的扩展能力 |
-| **内存优化** | 图片懒加载 + IntersectionObserver 自动释放，全局缓存服务避免资源竞争 |
+| **内存优化** | 图片懒加载 + IntersectionObserver 自动释放，窗口隐藏到托盘时自动清理 GPU 缓存 |
 | **GPU 加速** | CSS transform 和 will-change 优化，确保老旧核显电脑 60fps 流畅运行 |
 
 ### 1.3 系统要求
@@ -63,8 +63,8 @@
 
 ### 1.4 项目版本
 
-- **当前版本**：v1.25.2
-- **更新日期**：2026-05-09
+- **当前版本**：v1.26.0
+- **更新日期**：2026-06-21
 - **开发时间**：2026年
 - **版权所有**：© 2026 Steam Tool Plus
 
@@ -86,6 +86,7 @@
 | **Vue Router** | 4.5.x | 前端路由管理 |
 | **Pinia** | 2.3.x | 状态管理，替代 Vuex |
 | **Tailwind CSS** | 3.4.x | 原子化 CSS 框架，快速构建 Steam 风格 UI |
+| **vue-i18n** | 9.x | 国际化支持，内置中英双语 |
 | **Tauri API** | 2.2.x | 与 Rust 后端通信的桥接层 |
 
 #### 后端技术栈
@@ -128,6 +129,7 @@ SteamToolPlus/
 │   │   │   └── QRCodeModal.vue   # 二维码弹窗组件
 │   │   ├── game/                 # 游戏相关组件
 │   │   │   ├── GameCard.vue      # 游戏卡片（懒加载）
+│   │   │   ├── GameGrid.vue      # 游戏网格布局
 │   │   │   ├── GameDetailModal.vue # 游戏详情弹窗
 │   │   │   └── GameFormDialog.vue  # 游戏表单对话框
 │   │   ├── layout/               # 布局组件
@@ -137,6 +139,10 @@ SteamToolPlus/
 │   │   │   └── BackgroundSettings.vue # 背景设置面板
 │   │   └── manifest/             # 清单相关组件
 │   │       └── FirstTimeSetupModal.vue # 首次使用配置弹窗
+│   ├── i18n/                     # 国际化
+│   │   ├── index.ts              # i18n 入口与语言管理
+│   │   ├── zh-CN.json            # 简体中文翻译
+│   │   └── en-US.json            # 英语翻译
 │   ├── store/                    # Pinia 状态管理
 │   │   ├── game.store.ts         # 游戏状态管理
 │   │   ├── config.store.ts       # 配置状态管理
@@ -154,7 +160,8 @@ SteamToolPlus/
 │   │   ├── Download/             # 下载页面
 │   │   ├── Patch/                # 补丁注入页面
 │   │   ├── GlobalSettings/       # 全局设置页面
-│   │   └── Personalization/      # 个性化设置页面
+│   │   ├── Personalization/      # 个性化设置页面
+│   │   └── Sponsor/              # 赞助页面
 │   ├── App.vue                   # 根组件
 │   ├── main.ts                   # 入口文件
 │   └── router.ts                 # 路由配置
@@ -167,6 +174,7 @@ SteamToolPlus/
 │   │   ├── services/             # 业务逻辑服务层
 │   │   │   ├── game_service.rs   # 游戏业务逻辑
 │   │   │   ├── config_service.rs # 配置管理服务
+│   │   │   ├── download_service.rs # 下载管理服务
 │   │   │   └── background_service.rs # 背景图片服务
 │   │   ├── models/               # 数据模型
 │   │   │   ├── mod.rs            # 模型模块入口
@@ -207,7 +215,7 @@ SteamToolPlus/
 
 #### main.ts - 应用入口
 
-应用入口文件负责初始化 Vue 应用实例，注册 Pinia 状态管理、Vue Router 路由，并挂载应用到 DOM。程序启动时会自动加载用户配置，应用保存的主题模式，确保用户每次打开程序都能看到熟悉的界面风格。
+应用入口文件负责初始化 Vue 应用实例，注册 Pinia 状态管理、Vue Router 路由、vue-i18n 国际化，并挂载应用到 DOM。程序启动时会自动加载用户配置，应用保存的主题模式和语言设置，确保用户每次打开程序都能看到熟悉的界面风格。
 
 #### router.ts - 路由配置
 
@@ -222,6 +230,7 @@ SteamToolPlus/
 | `/patch` | Patch.vue | 免 Steam 补丁注入 |
 | `/settings` | GlobalSettings.vue | 全局设置 |
 | `/personalization` | Personalization.vue | 个性化设置 |
+| `/sponsor` | Sponsor.vue | 赞助程序 |
 
 ### 3.2 状态管理（Pinia Store）
 
@@ -231,13 +240,27 @@ SteamToolPlus/
 
 #### config.store.ts - 配置状态管理
 
-配置状态管理器负责维护应用程序的全局配置，包括 Steam 路径、启动设置、主题模式等。配置数据采用双存储机制：运行时存储在 `%appdata%/SteamToolPlus/config/` 目录下，同时会在程序根目录的 `config/` 目录保留备份，确保数据安全。
+配置状态管理器负责维护应用程序的全局配置，包括 Steam 路径、启动设置、主题模式、界面语言等。配置数据采用双存储机制：运行时存储在 `%appdata%/SteamToolPlus/config/` 目录下，同时会在程序根目录的 `config/` 目录保留备份，确保数据安全。
 
 #### theme.store.ts - 主题状态管理
 
 主题状态管理器负责管理应用程序的主题模式（深色/浅色/跟随系统）。它会监听系统主题变化，当设置为"跟随系统"模式时，自动切换深色或浅色主题。主题切换会实时更新 CSS 变量，所有使用主题变量的组件会立即响应变化。
 
-### 3.3 API 层设计
+### 3.3 国际化（i18n）
+
+本项目使用 vue-i18n 实现国际化支持，所有界面文本（除 `games_config.json` 中的游戏中文名外）均已翻译为简体中文和英语。
+
+#### 语言管理
+
+- **zh-CN.json**：简体中文翻译文件
+- **en-US.json**：英语翻译文件
+- **index.ts**：i18n 入口，提供 `setLocale()`、`getLocale()`、`getSupportedLocales()` 等工具函数
+
+#### 切换逻辑
+
+用户在【设置】→【全局设置】中选择语言后，调用 `setLocale()` 更新当前语言并保存到 `localStorage`，同时更新 `<html>` 标签的 `lang` 属性，所有使用 `$t()` 的组件立即响应变化。
+
+### 3.4 API 层设计
 
 前端 API 层采用分层设计，所有与 Rust 后端的通信都通过 `@tauri-apps/api/core` 的 `invoke` 函数实现。
 
@@ -277,7 +300,7 @@ SteamToolPlus/
 - 获取背景图片列表
 - 删除背景图片
 
-### 3.4 组件系统
+### 3.5 组件系统
 
 #### GameCard.vue - 游戏卡片组件
 
@@ -285,16 +308,17 @@ SteamToolPlus/
 - **懒加载**：使用 IntersectionObserver 监听卡片是否进入视口，仅在可见时加载图片
 - **内存管理**：当卡片离开视口一定距离后，自动释放图片资源，避免内存泄漏
 - **骨架屏**：图片加载前显示骨架屏动画，提升用户体验
-- **响应式布局**：使用 CSS Grid 自适应不同屏幕尺寸
+- **响应式布局**：使用 CSS Grid 固定 5 列布局，动态间距随窗口缩放
 
 #### GameDetailModal.vue - 游戏详情弹窗
 
 游戏详情弹窗使用 Vue 3 的 `<Teleport>` 组件将内容渲染到 body 层级，避免被父元素的 z-index 或 overflow 限制。弹窗包含：
 - 游戏封面大图展示
 - 补丁类型标签（带颜色区分）
-- 网盘下载链接（百度网盘、迅雷网盘、蓝奏云）
+- 网盘下载链接（百度网盘、迅雷网盘、蓝奏云、夸克网盘）
 - 补丁应用功能（自动备份原文件）
 - 游戏启动功能
+- 下载/验证完整性功能
 
 #### TitleBar.vue - 自定义标题栏
 
@@ -304,7 +328,7 @@ SteamToolPlus/
 - 支持拖拽移动窗口、双击最大化/还原
 - 菜单采用下拉式设计，与 Steam 客户端风格一致
 
-### 3.5 图片缓存服务
+### 3.6 图片缓存服务
 
 #### imageCache.service.ts
 
@@ -313,7 +337,7 @@ SteamToolPlus/
 - 内存占用持续攀升
 - 页面切换时资源释放不及时
 
-图片缓存服务通过维护一个全局的 `Map<string, string>` 缓存表，确保同一张图片只转换一次，所有组件共享缓存。当程序关闭到托盘时，2 秒后自动释放缓存，降低内存占用。
+图片缓存服务通过维护一个全局的 `Map<string, string>` 缓存表，确保同一张图片只转换一次，所有组件共享缓存。当程序隐藏到托盘时，通过窗口事件注入 JS 清理所有 `<img>` 和 `background-image` DOM，释放 GPU 纹理缓存；窗口重新显示时，通过 `focus` 事件触发图片重新加载。
 
 ---
 
@@ -327,7 +351,8 @@ Rust 后端入口文件负责初始化 Tauri 应用，注册所有 IPC 命令，
 1. 初始化配置目录（`%appdata%/SteamToolPlus`）
 2. 确保配置文件存在
 3. 注册所有前端可调用的命令
-4. 创建主窗口（1500x900，最小尺寸 1500x900，圆角 12px）
+4. 监听窗口事件（focus、hide），实现图片内存释放与重新加载
+5. 创建主窗口（1530x920，最小尺寸 1540x920，圆角 12px）
 
 ### 4.2 命令层（Commands）
 
@@ -344,6 +369,7 @@ Rust 后端入口文件负责初始化 Tauri 应用，注册所有 IPC 命令，
 - `get_patch_readme`：获取补丁说明文档
 - `start_game_download`：启动游戏下载
 - `stop_download`：停止下载
+- `verify_game_integrity`：验证游戏完整性
 - `import_game_manifest_to_steam`：导入游戏清单到 Steam
 - `restart_steam`：重启 Steam 客户端
 
@@ -383,6 +409,16 @@ Rust 后端入口文件负责初始化 Tauri 应用，注册所有 IPC 命令，
 | 2 (Steam联机) | `Resources/crack/Steam联机/{game_id}` |
 | 3 (D加密虚拟机) | `Resources/crack/D_加密虚拟机/{game_id}` |
 | 4 (epic联机) | `Resources/crack/epic_联机/{game_id}` |
+
+#### download_service.rs
+
+下载管理服务：
+- 管理 `ddv20.exe` 下载进程的生命周期
+- 在 `%appdata%/SteamToolPlus/log/{game_id}/` 目录下创建游戏专属工作目录
+- 监控 JSON 进度文件（`{百分比}% - {depotId}.json`）
+- 检测下载异常退出，自动触发断点续传
+- 游戏下载完成后记录到 `game.json`
+- 支持完整性验证（使用与下载相同的参数重新启动 `ddv20.exe`）
 
 #### config_service.rs
 
@@ -471,6 +507,7 @@ pub struct GameConfigData {
     pub game_name: String,       // 英文游戏名称
     pub chinese_name: String,    // 中文游戏名称
     pub downloadable: bool,      // 是否可下载
+    pub has_extract_play: bool,  // 是否有解压即玩版本
     pub tags: Vec<GameTagConfig>, // 补丁标签列表
 }
 ```
@@ -486,6 +523,7 @@ pub struct AppConfig {
     pub gameDirs: GameDirsConfig, // 游戏目录配置
     pub launch: LaunchConfig,    // 启动配置
     pub window: WindowConfig,    // 窗口配置
+    pub language: String,        // 界面语言
 }
 
 pub struct ThemeConfig {
@@ -516,9 +554,9 @@ pub struct LaunchConfig {
 
 #### 功能特性
 
-- **游戏卡片网格**：使用 CSS Grid 布局，自适应不同屏幕尺寸
+- **游戏卡片网格**：使用 CSS Grid 布局，固定 5 列，动态间距随窗口缩放
 - **搜索功能**：支持按中文名、英文名、游戏 ID 搜索
-- **分页加载**：每页 16 张卡片，避免一次性加载过多资源
+- **分页加载**：每页 25 张卡片（5 列 × 5 行），避免一次性加载过多资源
 - **状态保持**：记住当前页码和搜索关键词，返回时恢复
 - **懒加载**：图片使用 IntersectionObserver 懒加载，进入视口才加载
 - **内存管理**：离开视口的卡片自动释放图片资源
@@ -564,6 +602,7 @@ pub struct LaunchConfig {
 - **补丁应用**：自动备份原文件，应用补丁，显示操作结果
 - **下载功能**：支持从网盘下载补丁文件
 - **入库 Steam**：将游戏清单导入 Steam 客户端
+- **下载管理**：启动下载、暂停下载、验证完整性
 
 #### 补丁应用流程
 
@@ -587,15 +626,19 @@ pub struct LaunchConfig {
 - **进度监控**：实时监控下载进度，显示每个 depot 的完成百分比
 - **日志输出**：实时显示下载日志，支持 info/success/error/warning 级别
 - **自动关机**：支持下载完成后自动关机
+- **断点续传**：检测到未完成的 depot 时自动重新启动下载
+- **完整性验证**：下载完成后可重新验证文件完整性
 
 #### 下载流程
 
 1. 选择包含 `.vdf` 和 `.manifest` 文件的清单文件夹
 2. 程序自动验证清单文件，提取游戏 ID 和名称
 3. 自动设置下载路径（优先 D 盘）
-4. 点击"开始下载"启动 `ddv20.exe` 进程
-5. 监控进度文件（`{百分比}% - {depotId}.json`）
-6. 所有 depot 下载完成后自动清理进度文件
+4. 在 `%appdata%/SteamToolPlus/log/{game_id}/` 创建工作目录
+5. 点击"开始下载"启动 `ddv20.exe` 进程
+6. 监控进度文件（`{百分比}% - {depotId}.json`）
+7. 所有 depot 下载完成后自动清理进度文件
+8. 若进程异常退出，自动检测并续传
 
 ### 5.5 补丁注入页面（Patch）
 
@@ -627,7 +670,8 @@ pub struct LaunchConfig {
 - **Steam 路径设置**：配置 Steam 安装目录，用于清单入库
 - **启动设置**：
   - 启动后最小化到托盘
-  - 关闭程序后隐藏在托盘（2 秒后自动释放图片缓存）
+  - 关闭程序后隐藏在托盘（隐藏时自动释放图片缓存，恢复时重新加载）
+- **语言设置**：切换界面语言（简体中文 / English），即时生效
 - **恢复默认**：一键恢复所有设置为默认值
 
 ### 5.7 个性化设置页面（Personalization）
@@ -653,6 +697,15 @@ pub struct LaunchConfig {
 3. **配置存储**：背景配置保存在 `%appdata%/SteamToolPlus/config/background.json`
 4. **图片存储**：背景图片复制到 `%appdata%/SteamToolPlus/resources/pic/background/`
 
+### 5.8 赞助页面（Sponsor）
+
+赞助页面展示软件的赞助方式，帮助用户支持软件的持续发展。
+
+#### 功能特性
+
+- **微信支付图片**：嵌入微信支付二维码图片，直接集成在程序中
+- **简洁布局**：单页面设计，居中显示赞助信息
+
 ---
 
 ## 六、数据模型设计
@@ -670,6 +723,7 @@ pub struct LaunchConfig {
       "game_name": "Game Name",
       "chinese_name": "游戏中文名",
       "downloadable": true,
+      "has_extract_play": true,
       "tags": [
         {
           "patch_type": 0,
@@ -744,10 +798,11 @@ pub struct LaunchConfig {
     "verifyBeforeLaunch": false
   },
   "window": {
-    "width": 1500,
-    "height": 900,
+    "width": 1530,
+    "height": 920,
     "maximized": false
-  }
+  },
+  "language": "zh-CN"
 }
 ```
 
@@ -797,8 +852,8 @@ pub struct LaunchConfig {
 
 1. **运行时目录**：`%appdata%/SteamToolPlus/`
    - 程序运行时读写的主目录
-   - 包含 config、resources/pic/background 等子目录
-   - 适合存储用户数据、缓存、运行时配置
+   - 包含 config、resources/pic/background、log 等子目录
+   - 适合存储用户数据、缓存、运行时配置、下载日志
 
 2. **备份目录**：程序根目录 `config/`
    - 作为运行时目录的备份
@@ -824,6 +879,17 @@ pub struct LaunchConfig {
 | **auto** | 自动跟随系统主题变化 |
 
 主题切换通过更新 CSS 变量实现，所有使用主题变量的组件会立即响应变化，无需刷新页面。
+
+### 7.4 语言配置
+
+语言配置支持两种语言：
+
+| 代码 | 说明 |
+|------|------|
+| **zh-CN** | 简体中文 |
+| **en-US** | English |
+
+语言切换通过更新 vue-i18n 的 locale 实现，所有使用 `$t()` 的组件会立即响应变化，无需刷新页面。语言设置保存在 `localStorage` 和 `config.json` 中。
 
 ---
 
@@ -853,7 +919,7 @@ resources/pic/
 图片缓存服务（`imageCache.service.ts`）解决以下问题：
 
 - **资源竞争**：浏览页面和游戏库页面同时加载同一张图片时，避免重复转换 `convertFileSrc`
-- **内存管理**：程序关闭到托盘时，2 秒后自动释放缓存
+- **内存管理**：程序隐藏到托盘时，通过窗口事件注入 JS 清理所有 `<img>` 和 `background-image`，释放 GPU 纹理；窗口重新显示时通过 `focus` 事件重新加载
 - **路径转换**：将文件系统路径转换为前端可访问的 URL
 
 ---
@@ -949,6 +1015,7 @@ npm run tauri build
 2. **解压文件**：将程序解压到任意目录（建议纯英文路径）
 3. **运行程序**：双击 `SteamToolPlus.exe`
 4. **配置 Steam 路径**（可选）：进入【设置】→【全局设置】配置 Steam 安装目录
+5. **选择语言**（可选）：进入【设置】→【全局设置】切换界面语言
 
 ### 11.2 浏览和下载游戏
 
@@ -959,6 +1026,7 @@ npm run tauri build
 5. 从网盘下载清单文件（manifest）
 6. 进入【工具】→【本体下载】，选择清单文件夹
 7. 点击"开始下载"下载游戏本体
+8. 若下载中断，程序会自动检测并续传
 
 ### 11.3 应用补丁
 
@@ -1002,6 +1070,7 @@ npm run tauri build
 - 确认清单文件夹路径正确，包含有效的 manifest 文件
 - 检查磁盘空间是否充足
 - 尝试更换下载路径到其他磁盘
+- 检查 `%appdata%/SteamToolPlus/log/{game_id}/` 目录权限
 
 ### Q3: 补丁应用后游戏无法启动？
 
@@ -1049,6 +1118,11 @@ npm run tauri build
 - 配置正确的广播地址（如 `192.168.1.0/24`）
 - 确保所有玩家使用相同的补丁版本
 
+### Q10: 窗口隐藏到托盘后再次打开图片不显示？
+
+- 程序已自动处理：隐藏时释放图片缓存，重新显示时自动重新加载
+- 如仍有问题，尝试重启程序
+
 ---
 
 ## 十三、版权声明
@@ -1068,4 +1142,4 @@ npm run tauri build
 
 ---
 
-*本文档最后更新于 2026-05-09*
+*本文档最后更新于 2026-06-21*

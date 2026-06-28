@@ -9,9 +9,9 @@ mod models;
 mod services;
 mod utils;
 
-use commands::{background_commands, config_commands, download_commands, game_commands, game_data_commands, help_commands, log_commands, manifest_commands, opensteamtool_commands, patch_commands, window_commands};
+use commands::{background_commands, cache_commands, config_commands, download_commands, game_commands, game_data_commands, help_commands, log_commands, manifest_commands, opensteamtool_commands, patch_commands, window_commands};
 use once_cell::sync::Lazy;
-use services::{ConfigService, ConfigServiceTrait, GameService, GameServiceTrait};
+use services::{CacheService, CacheServiceTrait, ConfigService, ConfigServiceTrait, GameService, GameServiceTrait};
 use std::collections::HashSet;
 use std::sync::{Arc, Mutex};
 use tauri::{Manager, Emitter};
@@ -24,6 +24,7 @@ use tauri::WindowEvent;
 pub struct AppState {
     pub game_service: Arc<dyn GameServiceTrait>,
     pub config_service: Arc<dyn ConfigServiceTrait>,
+    pub cache_service: Arc<dyn CacheServiceTrait>,
 }
 
 /// 初始化应用程序状态
@@ -31,10 +32,12 @@ pub struct AppState {
 fn initialize_app_state() -> AppState {
     let config_service: Arc<dyn ConfigServiceTrait> = Arc::new(ConfigService::new());
     let game_service = GameService::new(Arc::clone(&config_service));
+    let cache_service: Arc<dyn CacheServiceTrait> = Arc::new(CacheService::new());
 
     AppState {
         game_service: Arc::new(game_service) as Arc<dyn GameServiceTrait>,
         config_service: config_service as Arc<dyn ConfigServiceTrait>,
+        cache_service: cache_service as Arc<dyn CacheServiceTrait>,
     }
 }
 
@@ -472,6 +475,10 @@ fn main() {
             config_commands::get_config,
             config_commands::update_config,
             config_commands::reset_config,
+            // 缓存命令
+            cache_commands::add_imported_manifest_game_id,
+            cache_commands::get_cache,
+            cache_commands::clear_imported_manifest_cache,
             // 窗口命令
             window_commands::minimize_window,
             window_commands::maximize_window,
@@ -625,6 +632,8 @@ fn main() {
             // 清单入库命令
             manifest_commands::scan_manifest_folder,
             manifest_commands::extract_archive,
+            manifest_commands::extract_manifest_archive,
+            manifest_commands::copy_folder_to_manifest,
             manifest_commands::import_manifest_to_steam,
             manifest_commands::restart_steam,
             manifest_commands::check_game_manifest_exists,

@@ -203,7 +203,7 @@ fn generate_lua(
 }
 
 /// 将VDF文件转换为Lua文件
-fn convert_vdf_to_lua_internal(vdf_path: &Path) -> Result<PathBuf, String> {
+pub fn convert_vdf_to_lua_internal(vdf_path: &Path) -> Result<PathBuf, String> {
     // 读取VDF文件内容
     let content = fs::read_to_string(vdf_path).map_err(|e| format!("读取VDF文件失败: {}", e))?;
 
@@ -720,4 +720,183 @@ pub fn open_example_folder(app: AppHandle) -> Result<serde_json::Value, String> 
             Err(format!("打开示例文件夹失败: {}", e))
         }
     }
+}
+
+/// 在指定深度内查找包含 .lua 或 .vdf 文件的文件夹
+/// 返回最浅层的匹配文件夹路径，优先返回同一层的结果
+fn find_manifest_folder(dir: &Path, max_depth: usize) -> Option<PathBuf> {
+    fn search(current: &Path, depth: usize, max_depth: usize) -> Option<PathBuf> {
+        if depth > max_depth {
+            return None;
+        }
+
+        // 先检查当前目录是否包含目标文件
+        let has_manifest_file = fs::read_dir(current)
+            .ok()?
+            .flatten()
+            .filter(|e| e.path().is_file())
+            .any(|e| {
+                e.path()
+                    .extension()
+                    .and_then(|ext| ext.to_str())
+                    .map(|ext| {
+                        let ext = ext.to_lowercase();
+                        ext == "lua" || ext == "vdf"
+                    })
+                    .unwrap_or(false)
+            });
+
+        if has_manifest_file {
+            return Some(current.to_path_buf());
+        }
+
+        // 再递归检查子目录
+        if let Ok(entries) = fs::read_dir(current) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if path.is_dir() {
+                    if let Some(found) = search(&path, depth + 1, max_depth) {
+                        return Some(found);
+                    }
+                }
+            }
+        }
+
+        None
+    }
+
+    search(dir, 0, max_depth)
+}
+
+/// 将清单 7z 压缩包解压到 resources/manifest/{game_id}/ 目录
+/// 用于游戏详情页下载游戏本体时，手动选择清单压缩包并解压
+/// 解压流程：
+/// 1. 先将压缩包解压到临时目录
+/// 2. 在临时目录的 2 层子目录内搜索包含 .lua 或 .vdf 的文件夹
+/// 3. 将找到的文件夹内容复制到 resources/manifest/{game_id}/
+/// 4. 清理临时目录
+/// 5. 若 2 层内未找到 .lua 或 .vdf，返回错误并清理临时目录
+#[tauri::command]
+pub fn extract_manifest_archive(
+    app: AppHandle,
+    archive_path: String,
+    game_id: String,
+) -> Result<String, String> {
+    let resource_dir = get_resource_dir(&app)?;
+    let target_dir = resource_dir.join("manifest").join(&game_id);
+
+    // 如果目标目录已存在，先清理旧文件
+    if target_dir.exists() {
+        fs::remove_dir_all(&target_dir)
+            .map_err(|e| format!("清理旧清单目录失败: {}", e))?;
+    }
+
+    // 创建目标目录
+    fs::create_dir_all(&target_dir)
+        .map_err(|e| format!("创建清单目录失败: {}", e))?;
+
+    // 创建临时解压目录
+    let archive = Path::new(&archive_path);
+    let file_stem = archive
+        .file_stem()
+        .ok_or("无法获取文件名")?
+        .to_string_lossy();
+    let temp_dir = std::env::temp_dir()
+        .join(format!("steam_tool_manifest_{}_{}", game_id, file_stem));
+
+    if temp_dir.exists() {
+        fs::remove_dir_all(&temp_dir)
+            .map_err(|e| format!("清理旧临时目录失败: {}", e))?;
+    }
+    fs::create_dir_all(&temp_dir)
+        .map_err(|e| format!("创建临时解压目录失败: {}", e))?;
+
+    // 使用 sevenz-rust 解压 7z 文件到临时目录
+    sevenz_rust::decompress_file(archive, &temp_dir)
+        .map_err(|e| format!("解压清单压缩包失败: {:?}", e))?;
+
+    // 在 2 层以内查找包含 .lua 或 .vdf 的文件夹
+    let source_dir = match find_manifest_folder(&temp_dir, 2) {
+        Some(dir) => dir,
+        None => {
+            // 未找到清单文件，清理临时目录和目标目录
+            if let Err(e) = fs::remove_dir_all(&temp_dir) {
+                log::warn!("清理临时解压目录失败: {}", e);
+            }
+            if let Err(e) = fs::remove_dir_all(&target_dir) {
+                log::warn!("清理空目标目录失败: {}", e);
+            }
+            return Err("未在压缩包中找到.lua或.vdf文件".to_string());
+        }
+    };
+
+    // 将定位到的文件夹内容复制到目标目录
+    copy_dir_all(&source_dir, &target_dir)
+        .map_err(|e| format!("复制清单文件到目标目录失败: {}", e))?;
+
+    // 清理临时解压目录
+    if let Err(e) = fs::remove_dir_all(&temp_dir) {
+        log::warn!("清理临时解压目录失败: {}", e);
+    }
+
+    log::info!(
+        "已将清单从 {} 移动到 {}",
+        source_dir.display(),
+        target_dir.display()
+    );
+
+    Ok(target_dir.to_string_lossy().to_string())
+}
+
+/// 递归复制源目录到目标目录
+fn copy_dir_all(src: &Path, dst: &Path) -> std::io::Result<()> {
+    fs::create_dir_all(dst)?;
+
+    for entry in fs::read_dir(src)? {
+        let entry = entry?;
+        let src_path = entry.path();
+        let dst_path = dst.join(entry.file_name());
+        let file_type = entry.file_type()?;
+
+        if file_type.is_dir() {
+            copy_dir_all(&src_path, &dst_path)?;
+        } else {
+            fs::copy(&src_path, &dst_path)?;
+        }
+    }
+
+    Ok(())
+}
+
+/// 将用户选择的清单文件夹复制到 resources/manifest/{game_id}/ 目录
+/// 用于已解压的清单文件夹场景
+#[tauri::command]
+pub fn copy_folder_to_manifest(
+    app: AppHandle,
+    source_path: String,
+    game_id: String,
+) -> Result<String, String> {
+    let resource_dir = get_resource_dir(&app)?;
+    let target_dir = resource_dir.join("manifest").join(&game_id);
+
+    // 如果目标目录已存在，先清理旧文件
+    if target_dir.exists() {
+        fs::remove_dir_all(&target_dir)
+            .map_err(|e| format!("清理旧清单目录失败: {}", e))?;
+    }
+
+    // 创建目标目录并复制内容
+    fs::create_dir_all(&target_dir)
+        .map_err(|e| format!("创建清单目录失败: {}", e))?;
+
+    copy_dir_all(Path::new(&source_path), &target_dir)
+        .map_err(|e| format!("复制清单文件夹失败: {}", e))?;
+
+    log::info!(
+        "已将清单文件夹 {} 复制到 {}",
+        source_path,
+        target_dir.display()
+    );
+
+    Ok(target_dir.to_string_lossy().to_string())
 }

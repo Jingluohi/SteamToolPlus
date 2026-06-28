@@ -48,6 +48,7 @@ pub struct OpenSteamToolImportOptions {
 
 /// OpenSteamTool导入结果
 #[derive(Debug, Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct OpenSteamToolImportResult {
     pub success: bool,
     pub message: String,
