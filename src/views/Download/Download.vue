@@ -1,9 +1,42 @@
 <template>
   <div class="game-download-view">
+    <!-- 清单下载夸克网盘二维码弹窗 -->
+    <QRCodeModal
+      v-model="showQRCodeModal"
+      title="夸克网盘下载"
+      :qr-image-url="qrCodeImageUrl"
+      hint="请使用夸克APP扫码下载"
+      @close="handleQRCodeClose"
+    />
+
     <!-- 页面标题 -->
     <div class="page-header">
       <div class="page-title-row">
         <h1 class="page-title">游戏本体下载</h1>
+        <span class="manifest-label">清单下载：</span>
+        <button
+          class="manifest-link-btn"
+          @click="openQingdanQRCode"
+        >
+          <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          夸克网盘
+        </button>
+        <span class="backup-label">备用（容易和谐）：</span>
+        <button
+          class="manifest-link-btn"
+          @click="openExternalLink('https://pan.baidu.com/s/1FTZyknIObyzMuLAJC-Uj9g?pwd=8uwx')"
+        >
+          <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          百度网盘
+        </button>
         <button
           class="manifest-link-btn"
           @click="openExternalLink('https://pan.xunlei.com/s/VOrmjucdcpCilK1xnElvCI9vA1?pwd=z2gb#')"
@@ -13,7 +46,7 @@
             <polyline points="7 10 12 15 17 10"/>
             <line x1="12" y1="15" x2="12" y2="3"/>
           </svg>
-          清单下载
+          迅雷网盘
         </button>
       </div>
       <p class="page-desc">选择游戏清单文件夹并配置下载路径</p>
@@ -107,7 +140,13 @@
             <div class="info-grid">
               <div class="info-item">
                 <span class="info-label">游戏名称:</span>
-                <span class="info-value">{{ gameName || '-' }}</span>
+                <input
+                  type="text"
+                  v-model="customGameName"
+                  class="info-input"
+                  placeholder="请输入纯英文游戏名称..."
+                />
+                <span class="input-hint">输入后将作为下载文件夹名称</span>
               </div>
               <div class="info-item">
                 <span class="info-label">Game ID:</span>
@@ -365,16 +404,39 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, nextTick, onUnmounted } from 'vue'
+import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 import { open } from '@tauri-apps/plugin-dialog'
 import { open as openShell } from '@tauri-apps/plugin-shell'
-import { useConfigStore } from '../../store/config.store'
+import { useConfigStore, useDownloadStore } from '../../store'
 import DownloadProgress from '../../components/download/DownloadProgress.vue'
+import QRCodeModal from '../../components/common/QRCodeModal.vue'
 import type { DownloadProgress as DownloadProgressType } from '../../types/download.types'
 
 // Store
 const configStore = useConfigStore()
+const downloadStore = useDownloadStore()
+
+// 清单下载夸克网盘二维码弹窗状态
+const showQRCodeModal = ref(false)
+const qrCodeImageUrl = ref('')
+
+/**
+ * 打开清单下载夸克网盘二维码弹窗
+ * 使用程序内置的 qingdan.png 二维码图片
+ */
+const openQingdanQRCode = async () => {
+  qrCodeImageUrl.value = await invoke<string>('get_qingdan_image_base64')
+  showQRCodeModal.value = true
+}
+
+/**
+ * 关闭二维码弹窗
+ */
+const handleQRCodeClose = () => {
+  showQRCodeModal.value = false
+  qrCodeImageUrl.value = ''
+}
 
 /**
  * 在系统默认浏览器中打开外部链接
@@ -425,46 +487,49 @@ interface BatchGame {
 }
 
 // ============================================
-// 响应式状态
+// 响应式状态（从 downloadStore 恢复，切换路由时不丢失）
 // ============================================
 
 /** 下载模式: single-单游戏 batch-批量 */
-const downloadMode = ref<'single' | 'batch'>('single')
+const downloadMode = ref<'single' | 'batch'>(downloadStore.downloadMode)
 
 /** 单游戏模式状态 */
-const manifestPath = ref('')
-const downloadPath = ref('')
-const gameName = ref('')
-const gameId = ref('')
-const manifestFiles = ref<string[]>([])
-const vdfFilePath = ref('')
-const validationError = ref('')
+const manifestPath = ref(downloadStore.manifestPath)
+const downloadPath = ref(downloadStore.downloadPath)
+const gameName = ref(downloadStore.gameName)
+const customGameName = ref(downloadStore.customGameName)
+const gameId = ref(downloadStore.gameId)
+const manifestFiles = ref<string[]>([...downloadStore.manifestFiles])
+const vdfFilePath = ref(downloadStore.vdfFilePath)
+const validationError = ref(downloadStore.validationError)
 
 /** 批量下载模式状态 */
-const batchParentPath = ref('')
-const batchDownloadBasePath = ref('')
-const batchGames = ref<BatchGame[]>([])
+const batchParentPath = ref(downloadStore.batchParentPath)
+const batchDownloadBasePath = ref(downloadStore.batchDownloadBasePath)
+const batchGames = ref<BatchGame[]>(JSON.parse(JSON.stringify(downloadStore.batchGames)))
 const showGameSelector = ref(false)
-const batchTotalGames = ref(0)
-const batchCompletedGames = ref(0)
-const currentDownloadingGame = ref<BatchGame | null>(null)
+const batchTotalGames = ref(downloadStore.batchTotalGames)
+const batchCompletedGames = ref(downloadStore.batchCompletedGames)
+const currentDownloadingGame = ref<BatchGame | null>(
+  downloadStore.currentDownloadingGame ? JSON.parse(JSON.stringify(downloadStore.currentDownloadingGame)) : null
+)
 
 /** 自动关机选项 */
-const autoShutdown = ref(false)
+const autoShutdown = ref(downloadStore.autoShutdown)
 
 /** 下载状态 */
-const isDownloading = ref(false)
-const downloadLogs = ref<DownloadLog[]>([])
+const isDownloading = ref(downloadStore.isDownloading)
+const downloadLogs = ref<DownloadLog[]>([...downloadStore.downloadLogs])
 const logContentRef = ref<HTMLDivElement>()
 
 /** 下载进度监控 */
-const isMonitoring = ref(false)
+const isMonitoring = ref(downloadStore.isMonitoring)
 const downloadProgress = ref<DownloadProgressType>({
-  totalDepots: 0,
-  completedDepots: 0,
-  overallPercentage: 0,
-  depots: [],
-  isComplete: false
+  totalDepots: downloadStore.downloadProgress.totalDepots,
+  completedDepots: downloadStore.downloadProgress.completedDepots,
+  overallPercentage: downloadStore.downloadProgress.overallPercentage,
+  depots: JSON.parse(JSON.stringify(downloadStore.downloadProgress.depots)),
+  isComplete: downloadStore.downloadProgress.isComplete
 })
 let monitorInterval: number | null = null
 
@@ -517,6 +582,77 @@ const canStartDownload = computed(() => {
 // ============================================
 
 /**
+ * 将当前组件状态保存到 downloadStore
+ * 切换路由前调用，确保进度、路径、日志不丢失
+ */
+const saveStateToStore = () => {
+  downloadStore.downloadMode = downloadMode.value
+  downloadStore.manifestPath = manifestPath.value
+  downloadStore.downloadPath = downloadPath.value
+  downloadStore.gameName = gameName.value
+  downloadStore.customGameName = customGameName.value
+  downloadStore.gameId = gameId.value
+  downloadStore.manifestFiles = [...manifestFiles.value]
+  downloadStore.vdfFilePath = vdfFilePath.value
+  downloadStore.validationError = validationError.value
+  downloadStore.batchParentPath = batchParentPath.value
+  downloadStore.batchDownloadBasePath = batchDownloadBasePath.value
+  downloadStore.batchGames = JSON.parse(JSON.stringify(batchGames.value))
+  downloadStore.batchTotalGames = batchTotalGames.value
+  downloadStore.batchCompletedGames = batchCompletedGames.value
+  downloadStore.currentDownloadingGame = currentDownloadingGame.value
+    ? JSON.parse(JSON.stringify(currentDownloadingGame.value))
+    : null
+  downloadStore.autoShutdown = autoShutdown.value
+  downloadStore.isDownloading = isDownloading.value
+  downloadStore.downloadLogs = [...downloadLogs.value]
+  downloadStore.isMonitoring = isMonitoring.value
+  downloadStore.downloadProgress = {
+    totalDepots: downloadProgress.value.totalDepots,
+    completedDepots: downloadProgress.value.completedDepots,
+    overallPercentage: downloadProgress.value.overallPercentage,
+    depots: JSON.parse(JSON.stringify(downloadProgress.value.depots)),
+    isComplete: downloadProgress.value.isComplete
+  }
+}
+
+/**
+ * 将本地状态重置为初始值
+ */
+const resetLocalState = () => {
+  downloadMode.value = 'single'
+  manifestPath.value = ''
+  downloadPath.value = ''
+  gameName.value = ''
+  customGameName.value = ''
+  gameId.value = ''
+  manifestFiles.value = []
+  vdfFilePath.value = ''
+  validationError.value = ''
+  batchParentPath.value = ''
+  batchDownloadBasePath.value = ''
+  batchGames.value = []
+  batchTotalGames.value = 0
+  batchCompletedGames.value = 0
+  currentDownloadingGame.value = null
+  autoShutdown.value = false
+  isDownloading.value = false
+  downloadLogs.value = []
+  isMonitoring.value = false
+  downloadProgress.value = {
+    totalDepots: 0,
+    completedDepots: 0,
+    overallPercentage: 0,
+    depots: [],
+    isComplete: false
+  }
+  if (monitorInterval) {
+    clearInterval(monitorInterval)
+    monitorInterval = null
+  }
+}
+
+/**
  * 获取下载提示文本
  */
 const getDownloadHint = () => {
@@ -547,11 +683,14 @@ const getStatusText = (status: BatchGame['status']) => {
 
 /**
  * 添加下载日志
+ * 同时保存到 downloadStore，切换路由后可恢复
  */
 const addLog = (message: string, type: DownloadLog['type'] = 'info') => {
   const now = new Date()
   const time = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`
-  downloadLogs.value.push({ time, message, type })
+  const logEntry = { time, message, type }
+  downloadLogs.value.push(logEntry)
+  downloadStore.addLog(logEntry)
 
   if (downloadLogs.value.length > 500) {
     downloadLogs.value = downloadLogs.value.slice(-400)
@@ -590,6 +729,7 @@ const selectManifestFolder = async () => {
  */
 const parseManifestFolder = async (folderPath: string) => {
   gameName.value = ''
+  customGameName.value = ''
   gameId.value = ''
   manifestFiles.value = []
   vdfFilePath.value = ''
@@ -697,11 +837,12 @@ const sanitizeFolderName = (name: string): string => {
 
 /**
  * 自动设置下载路径
- * 优先使用全局配置中的默认下载路径，否则使用默认路径（D盘优先）
+ * 优先使用用户自定义游戏名作为文件夹名，其次使用读取到的游戏名或游戏ID
+ * 基础路径优先使用全局配置中的默认下载路径，否则使用默认路径（D盘优先）
  */
 const autoSetDownloadPath = async () => {
   try {
-    const rawFolderName = gameName.value || gameId.value
+    const rawFolderName = customGameName.value || gameName.value || gameId.value
     const folderName = sanitizeFolderName(rawFolderName)
 
     // 优先使用全局配置中的默认下载路径
@@ -721,6 +862,31 @@ const autoSetDownloadPath = async () => {
     addLog(`自动设置下载路径失败: ${error}`, 'warning')
   }
 }
+
+/**
+ * 根据用户输入的游戏名称更新下载路径中的文件夹名
+ * 仅修改路径最后一段，保留用户手动选择的基础路径
+ */
+const updateDownloadFolderName = (newName: string) => {
+  if (!downloadPath.value) return
+  const sanitized = sanitizeFolderName(newName)
+  if (!sanitized) return
+
+  const lastBackslashIndex = downloadPath.value.lastIndexOf('\\')
+  if (lastBackslashIndex === -1) return
+
+  const basePath = downloadPath.value.substring(0, lastBackslashIndex)
+  downloadPath.value = `${basePath}\\${sanitized}`
+}
+
+/**
+ * 监听用户自定义游戏名称变化，实时更新下载路径的文件夹名
+ */
+watch(customGameName, (newName) => {
+  if (newName) {
+    updateDownloadFolderName(newName)
+  }
+})
 
 /**
  * 选择游戏下载文件夹
@@ -998,6 +1164,7 @@ const startBatchDownload = async () => {
   }
 
   isDownloading.value = false
+  downloadStore.setShouldResetOnReturn(true)
 }
 
 /**
@@ -1170,12 +1337,37 @@ const stopProgressMonitoring = () => {
   }
 }
 
-// 组件卸载时清理
+/**
+ * 组件挂载时恢复状态
+ * 若上次下载已完成并离开页面，则重置为初始状态
+ */
+onMounted(() => {
+  if (downloadStore.shouldResetOnReturn) {
+    downloadStore.resetState()
+    resetLocalState()
+    return
+  }
+
+  // 如果 store 中保存了下载中或已完成的进度，恢复定时监控
+  if (downloadStore.isMonitoring && !monitorInterval) {
+    monitorInterval = window.setInterval(() => {
+      scanProgressFiles()
+    }, 1000)
+  }
+})
+
+/**
+ * 组件卸载时保存状态到 downloadStore
+ */
 onUnmounted(() => {
+  // 先保存监控状态，再停止定时器，确保返回时能恢复进度扫描
+  saveStateToStore()
   stopProgressMonitoring()
 })
 
-// 监听清单路径变化
+/**
+ * 监听清单路径变化，清空日志与进度
+ */
 watch(manifestPath, () => {
   downloadLogs.value = []
   downloadProgress.value = {
@@ -1185,7 +1377,19 @@ watch(manifestPath, () => {
     depots: [],
     isComplete: false
   }
+  customGameName.value = ''
   stopProgressMonitoring()
+})
+
+/**
+ * 监听下载完成状态
+ * 单游戏下载 100% 完成后标记 shouldResetOnReturn，下次进入页面时重置
+ */
+watch(() => downloadProgress.value.isComplete, (isComplete) => {
+  if (isComplete && downloadMode.value === 'single') {
+    downloadStore.setShouldResetOnReturn(true)
+    isDownloading.value = false
+  }
 })
 </script>
 
@@ -1204,16 +1408,16 @@ watch(manifestPath, () => {
    页面头部
    ============================================ */
 .page-header {
-  margin-bottom: 24px;
-  padding-bottom: 16px;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
   border-bottom: 1px solid var(--steam-border);
 }
 
 .page-title-row {
   display: flex;
   align-items: center;
-  gap: 16px;
-  margin-bottom: 8px;
+  gap: 12px;
+  margin-bottom: 4px;
 }
 
 .page-title {
@@ -1223,29 +1427,42 @@ watch(manifestPath, () => {
   margin: 0;
 }
 
+.manifest-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--steam-text-secondary);
+  margin-left: auto;
+}
+
+.backup-label {
+  font-size: 13px;
+  color: var(--steam-text-secondary);
+  white-space: nowrap;
+}
+
 .manifest-link-btn {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 12px;
-  background-color: var(--steam-accent-blue);
+  padding: 8px 16px;
+  background: var(--steam-accent-blue);
   color: white;
   border: none;
   border-radius: 6px;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all 0.2s ease;
 }
 
 .manifest-link-btn:hover {
-  background-color: var(--steam-accent-hover);
-  transform: scale(1.02);
+  background: var(--steam-accent-blue-hover, #4aa8ff);
+  transform: translateY(-1px);
 }
 
 .manifest-link-btn .btn-icon {
-  width: 14px;
-  height: 14px;
+  width: 16px;
+  height: 16px;
 }
 
 .page-desc {
@@ -1258,7 +1475,7 @@ watch(manifestPath, () => {
    下载模式选择
    ============================================ */
 .mode-selection-section {
-  margin-bottom: 20px;
+  margin-bottom: 10px;
 }
 
 .mode-tabs {
@@ -1302,7 +1519,7 @@ watch(manifestPath, () => {
 .content-wrapper {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 10px;
   width: 100%;
   max-width: 1600px;
 }
@@ -1313,10 +1530,10 @@ watch(manifestPath, () => {
 .path-selection-section {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 8px;
   background-color: rgba(102, 192, 244, 0.1);
   backdrop-filter: blur(10px);
-  padding: 20px;
+  padding: 10px;
   border-radius: 12px;
   border: 1px solid var(--steam-border);
 }
@@ -1324,7 +1541,7 @@ watch(manifestPath, () => {
 .path-item {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 4px;
 }
 
 .path-label {
@@ -1377,13 +1594,13 @@ watch(manifestPath, () => {
    游戏信息区域
    ============================================ */
 .game-info-section {
-  margin-top: 4px;
+  margin-top: 2px;
 }
 
 .info-card {
   background-color: rgba(102, 192, 244, 0.1);
   backdrop-filter: blur(10px);
-  padding: 20px;
+  padding: 10px;
   border-radius: 12px;
   border: 1px solid var(--steam-border);
 }
@@ -1392,19 +1609,19 @@ watch(manifestPath, () => {
   font-size: 16px;
   font-weight: 600;
   color: var(--steam-text-primary);
-  margin: 0 0 16px 0;
+  margin: 0 0 8px 0;
 }
 
 .info-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 16px;
+  gap: 8px;
 }
 
 .info-item {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
 }
 
 .info-label {
@@ -1423,17 +1640,43 @@ watch(manifestPath, () => {
   font-family: monospace;
 }
 
+.info-input {
+  flex: 1;
+  padding: 8px 10px;
+  border: 1px solid var(--steam-border);
+  border-radius: 6px;
+  background-color: var(--steam-bg-secondary);
+  color: var(--steam-text-primary);
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.info-input:focus {
+  border-color: var(--steam-accent-blue);
+}
+
+.info-input::placeholder {
+  color: var(--steam-text-muted);
+}
+
+.input-hint {
+  font-size: 12px;
+  color: var(--steam-text-secondary);
+  margin-top: 2px;
+}
+
 /* ============================================
    验证状态区域
    ============================================ */
 .validation-section {
-  margin-top: 4px;
+  margin-top: 2px;
 }
 
 .validation-card {
   background-color: rgba(102, 192, 244, 0.1);
   backdrop-filter: blur(10px);
-  padding: 16px 20px;
+  padding: 8px 10px;
   border-radius: 12px;
   border: 1px solid var(--steam-border);
 }
@@ -1474,8 +1717,8 @@ watch(manifestPath, () => {
 }
 
 .validation-details {
-  margin-top: 8px;
-  padding-left: 28px;
+  margin-top: 4px;
+  padding-left: 14px;
 }
 
 .validation-error {
@@ -1493,7 +1736,7 @@ watch(manifestPath, () => {
 .file-list {
   list-style: none;
   padding: 0;
-  margin: 8px 0 0 0;
+  margin: 4px 0 0 0;
 }
 
 .file-item {
@@ -1511,12 +1754,12 @@ watch(manifestPath, () => {
    批量游戏区域
    ============================================ */
 .batch-games-section {
-  margin-top: 4px;
+  margin-top: 2px;
 }
 
 .batch-games-card {
   background-color: var(--steam-bg-primary);
-  padding: 20px;
+  padding: 10px;
   border-radius: 12px;
   border: 1px solid var(--steam-border);
 }
@@ -1525,7 +1768,7 @@ watch(manifestPath, () => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
+  margin-bottom: 8px;
 }
 
 .batch-actions {
@@ -1561,7 +1804,7 @@ watch(manifestPath, () => {
 .batch-games-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 4px;
   max-height: 300px;
   overflow-y: auto;
 }
@@ -1570,7 +1813,7 @@ watch(manifestPath, () => {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 10px 12px;
+  padding: 5px 6px;
   background-color: var(--steam-bg-secondary);
   border-radius: 8px;
   font-size: 13px;
@@ -1616,7 +1859,7 @@ watch(manifestPath, () => {
 
 .no-games-hint {
   text-align: center;
-  padding: 20px;
+  padding: 10px;
   color: var(--steam-text-secondary);
   font-size: 13px;
 }
@@ -1627,7 +1870,7 @@ watch(manifestPath, () => {
 .auto-shutdown-section {
   background-color: rgba(102, 192, 244, 0.1);
   backdrop-filter: blur(10px);
-  padding: 16px 20px;
+  padding: 8px 10px;
   border-radius: 12px;
   border: 1px solid var(--steam-border);
 }
@@ -1679,7 +1922,7 @@ watch(manifestPath, () => {
 }
 
 .shutdown-warning {
-  margin: 8px 0 0 28px;
+  margin: 4px 0 0 28px;
   font-size: 12px;
   color: #f59e0b;
 }
@@ -1691,8 +1934,8 @@ watch(manifestPath, () => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
-  padding: 20px 0;
+  gap: 6px;
+  padding: 10px 0;
 }
 
 .start-download-btn {
@@ -1754,12 +1997,12 @@ watch(manifestPath, () => {
    批量下载进度
    ============================================ */
 .batch-progress-section {
-  margin-top: 4px;
+  margin-top: 2px;
 }
 
 .batch-progress-card {
   background-color: var(--steam-bg-primary);
-  padding: 20px;
+  padding: 10px;
   border-radius: 12px;
   border: 1px solid var(--steam-border);
 }
@@ -1768,13 +2011,13 @@ watch(manifestPath, () => {
   font-size: 16px;
   font-weight: 600;
   color: var(--steam-text-primary);
-  margin: 0 0 16px 0;
+  margin: 0 0 8px 0;
 }
 
 .overall-progress {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 6px;
 }
 
 .progress-bar {
@@ -1801,7 +2044,7 @@ watch(manifestPath, () => {
 }
 
 .current-game-info {
-  margin-top: 12px;
+  margin-top: 6px;
   font-size: 13px;
   color: var(--steam-text-secondary);
 }
@@ -1810,7 +2053,7 @@ watch(manifestPath, () => {
    下载日志区域
    ============================================ */
 .download-log-section {
-  margin-top: 4px;
+  margin-top: 2px;
 }
 
 .log-card {
@@ -1825,7 +2068,7 @@ watch(manifestPath, () => {
   font-size: 14px;
   font-weight: 600;
   color: var(--steam-text-primary);
-  padding: 12px 16px;
+  padding: 6px 8px;
   margin: 0;
   border-bottom: 1px solid var(--steam-border);
 }
@@ -1833,14 +2076,14 @@ watch(manifestPath, () => {
 .log-content {
   max-height: 300px;
   overflow-y: auto;
-  padding: 12px 16px;
+  padding: 6px 8px;
 }
 
 .log-line {
   display: flex;
   gap: 12px;
   font-size: 13px;
-  padding: 4px 0;
+  padding: 2px 0;
   font-family: monospace;
 }
 
@@ -2036,6 +2279,6 @@ watch(manifestPath, () => {
    下载进度组件
    ============================================ */
 .download-progress-section {
-  margin-top: 4px;
+  margin-top: 2px;
 }
 </style>

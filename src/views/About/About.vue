@@ -11,7 +11,7 @@
           <img src="../../../src-tauri/icons/128x128.png" alt="Steam Tool Plus" />
         </div>
         <h1 class="app-name">Steam Tool Plus</h1>
-        <p class="app-version">版本 v1.26.0</p>
+        <p class="app-version">版本 v1.26.1</p>
       </div>
 
       <!-- 作者信息区域（来自旧版设置） -->

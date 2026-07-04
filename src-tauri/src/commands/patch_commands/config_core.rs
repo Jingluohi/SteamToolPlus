@@ -528,6 +528,7 @@ pub async fn save_main_config(
 }
 
 /// 加载主配置（返回原始 INI 字符串，供前端文本编辑器使用）
+/// 当文件不存在时，返回默认 INI 内容，确保单独窗口与完整管理器的默认值一致
 #[tauri::command]
 pub async fn load_main_config(
     game_path: String,
@@ -537,9 +538,10 @@ pub async fn load_main_config(
     let main_config_path = Path::new(&game_path).join("steam_settings").join("configs.main.ini");
 
     if !main_config_path.exists() {
+        let default_content = MainConfig::default_config().to_ini();
         return Ok(serde_json::json!({
             "exists": false,
-            "content": null
+            "content": default_content
         }));
     }
 

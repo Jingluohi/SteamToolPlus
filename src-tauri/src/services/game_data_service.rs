@@ -341,4 +341,162 @@ pub async fn toggle_game_favorite(app: AppHandle, game_id: String) -> Result<Gam
     Ok(updated_game)
 }
 
+/// 下载完成后收尾处理
+/// 扫描下载目录，自动定位游戏主程序并标记为已安装
+pub async fn finalize_download(app: AppHandle, game_id: String) -> Result<GameData, String> {
+    let mut collection = load_game_data(app.clone()).await?;
+
+    // 获取游戏数据
+    let game = collection.games.get(&game_id)
+        .cloned()
+        .ok_or_else(|| format!("游戏不存在: {}", game_id))?;
+
+    // 确定要扫描的根目录：优先使用下载路径
+    let scan_root = game.download_path.as_ref()
+        .filter(|p| !p.is_empty() && std::path::Path::new(p).exists())
+        .or_else(|| Some(&game.install_path))
+        .filter(|p| !p.is_empty() && std::path::Path::new(p).exists())
+        .cloned()
+        .ok_or_else(|| "未找到有效的下载目录".to_string())?;
+
+    // 扫描目录寻找游戏主程序
+    let best_exe = find_best_game_exe(&scan_root, &game.game_name);
+
+    // 更新游戏数据
+    if let Some(game) = collection.games.get_mut(&game_id) {
+        game.download_status = "completed".to_string();
+        game.download_progress = 100;
+
+        if let Some((exe_path, install_path)) = best_exe {
+            game.exe_path = exe_path;
+            game.install_path = install_path;
+            game.is_installed = true;
+        } else {
+            // 即使没有找到 exe，只要目录存在也标记为已安装
+            // 用户可以后续手动编辑 exe 路径
+            game.install_path = scan_root;
+            game.is_installed = true;
+        }
+
+        game.last_played = Some(chrono::Local::now().to_rfc3339());
+        collection.last_updated = chrono::Local::now().to_rfc3339();
+    }
+
+    // 保存更新后的数据
+    save_game_data(app, &collection).await?;
+
+    // 返回更新后的游戏数据
+    collection.games.get(&game_id)
+        .cloned()
+        .ok_or_else(|| format!("游戏不存在: {}", game_id))
+}
+
+/// 在指定目录中查找最合适的游戏主程序
+/// 返回 (exe 完整路径, 所在目录) 或 None
+fn find_best_game_exe(root: &str, game_name: &str) -> Option<(String, String)> {
+    let root_path = std::path::Path::new(root);
+    if !root_path.exists() || !root_path.is_dir() {
+        return None;
+    }
+
+    // 使用栈进行非递归扫描，限制最大深度为 2
+    let mut candidates: Vec<(std::path::PathBuf, usize, u64)> = Vec::new();
+    let mut dirs_to_scan: Vec<(std::path::PathBuf, usize)> = vec![(root_path.to_path_buf(), 0)];
+
+    while let Some((current_dir, depth)) = dirs_to_scan.pop() {
+        let entries = match std::fs::read_dir(&current_dir) {
+            Ok(entries) => entries,
+            Err(_) => continue,
+        };
+
+        for entry in entries.flatten() {
+            let path = entry.path();
+
+            if path.is_file() {
+                // 检查是否为 .exe 文件
+                if let Some(ext) = path.extension() {
+                    if ext.eq_ignore_ascii_case("exe") {
+                        // 排除明显的辅助程序
+                        let file_name = path.file_stem()
+                            .and_then(|s| s.to_str())
+                            .unwrap_or("")
+                            .to_lowercase();
+
+                        if is_helper_exe(&file_name) {
+                            continue;
+                        }
+
+                        // 获取文件大小
+                        let size = entry.metadata().map(|m| m.len()).unwrap_or(0);
+                        candidates.push((path, depth, size));
+                    }
+                }
+            } else if path.is_dir() && depth < 2 {
+                dirs_to_scan.push((path, depth + 1));
+            }
+        }
+    }
+
+    if candidates.is_empty() {
+        return None;
+    }
+
+    // 标准化游戏名称用于匹配
+    let normalized_game_name = normalize_name(game_name);
+
+    // 按优先级排序：深度浅优先，文件名匹配游戏名优先，文件大优先
+    candidates.sort_by(|a, b| {
+        // 首先按深度排序
+        let depth_cmp = a.1.cmp(&b.1);
+        if depth_cmp != std::cmp::Ordering::Equal {
+            return depth_cmp;
+        }
+
+        // 同一深度下，文件名匹配游戏名的优先
+        let a_name = a.0.file_stem().and_then(|s| s.to_str()).unwrap_or("").to_lowercase();
+        let b_name = b.0.file_stem().and_then(|s| s.to_str()).unwrap_or("").to_lowercase();
+        let a_match = normalize_name(&a_name) == normalized_game_name ||
+                      normalized_game_name.len() > 2 && a_name.contains(&normalized_game_name);
+        let b_match = normalize_name(&b_name) == normalized_game_name ||
+                      normalized_game_name.len() > 2 && b_name.contains(&normalized_game_name);
+
+        let match_cmp = b_match.cmp(&a_match);
+        if match_cmp != std::cmp::Ordering::Equal {
+            return match_cmp;
+        }
+
+        // 最后按文件大小降序
+        b.2.cmp(&a.2)
+    });
+
+    // 返回最佳候选
+    candidates.into_iter().next().map(|(path, _, _)| {
+        let exe_path = path.to_string_lossy().to_string();
+        let install_path = path.parent()
+            .map(|p| p.to_string_lossy().to_string())
+            .unwrap_or_else(|| root.to_string());
+        (exe_path, install_path)
+    })
+}
+
+/// 判断 exe 是否为辅助程序（非游戏主程序）
+fn is_helper_exe(file_name: &str) -> bool {
+    let helper_keywords = [
+        "launcher", "setup", "install", "uninstall", "config", "settings",
+        "crash", "report", "updater", "patch", "redist", "vcredist", "directx",
+        "steam", "epic", "origin", "uplay", "cef", "webhelper", "bootstrap",
+        "unitycrashhandler", "dump", "feedback", "repair", "verify",
+    ];
+
+    helper_keywords.iter().any(|keyword| file_name.contains(keyword))
+}
+
+/// 标准化名称：移除非字母数字字符并转小写，用于模糊匹配
+fn normalize_name(name: &str) -> String {
+    name.to_lowercase()
+        .chars()
+        .filter(|c| c.is_alphanumeric())
+        .collect()
+}
+
 

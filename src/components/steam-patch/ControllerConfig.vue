@@ -82,7 +82,7 @@ DLTRIGGER, DRTRIGGER</pre>
           <!-- 控制器类型 -->
           <div class="config-group">
             <label>控制器类型</label>
-            <select v-model="config.controller_type" class="config-select">
+            <select v-model="config.controllerType" class="config-select">
               <option value="xbox">Xbox</option>
               <option value="playstation">PlayStation</option>
               <option value="nintendo">Nintendo</option>
@@ -106,23 +106,23 @@ DLTRIGGER, DRTRIGGER</pre>
           <h4 class="section-title">死区设置</h4>
           <div class="config-group">
             <label>左摇杆死区</label>
-            <input v-model.number="config.deadzone.left_stick" type="range" min="0" max="1" step="0.01" class="config-slider" />
-            <span class="slider-value">{{ (config.deadzone.left_stick * 100).toFixed(0) }}%</span>
+            <input v-model.number="config.deadzone.leftStick" type="range" min="0" max="1" step="0.01" class="config-slider" />
+            <span class="slider-value">{{ (config.deadzone.leftStick * 100).toFixed(0) }}%</span>
           </div>
           <div class="config-group">
             <label>右摇杆死区</label>
-            <input v-model.number="config.deadzone.right_stick" type="range" min="0" max="1" step="0.01" class="config-slider" />
-            <span class="slider-value">{{ (config.deadzone.right_stick * 100).toFixed(0) }}%</span>
+            <input v-model.number="config.deadzone.rightStick" type="range" min="0" max="1" step="0.01" class="config-slider" />
+            <span class="slider-value">{{ (config.deadzone.rightStick * 100).toFixed(0) }}%</span>
           </div>
           <div class="config-group">
             <label>左扳机死区</label>
-            <input v-model.number="config.deadzone.left_trigger" type="range" min="0" max="1" step="0.01" class="config-slider" />
-            <span class="slider-value">{{ (config.deadzone.left_trigger * 100).toFixed(0) }}%</span>
+            <input v-model.number="config.deadzone.leftTrigger" type="range" min="0" max="1" step="0.01" class="config-slider" />
+            <span class="slider-value">{{ (config.deadzone.leftTrigger * 100).toFixed(0) }}%</span>
           </div>
           <div class="config-group">
             <label>右扳机死区</label>
-            <input v-model.number="config.deadzone.right_trigger" type="range" min="0" max="1" step="0.01" class="config-slider" />
-            <span class="slider-value">{{ (config.deadzone.right_trigger * 100).toFixed(0) }}%</span>
+            <input v-model.number="config.deadzone.rightTrigger" type="range" min="0" max="1" step="0.01" class="config-slider" />
+            <span class="slider-value">{{ (config.deadzone.rightTrigger * 100).toFixed(0) }}%</span>
           </div>
 
           <!-- 震动设置 -->
@@ -143,18 +143,19 @@ DLTRIGGER, DRTRIGGER</pre>
           <h4 class="section-title">自定义图标</h4>
           <div class="config-group">
             <label class="checkbox-label">
-              <input v-model="config.custom_glyphs.enabled" type="checkbox" />
+              <input v-model="config.customGlyphs.enabled" type="checkbox" />
               <span>使用自定义图标</span>
             </label>
           </div>
           <div class="config-group">
-            <label>图标路径（每行一个）</label>
-            <textarea
-              v-model="glyphsText"
-              class="config-textarea"
-              rows="3"
-              placeholder="图标文件路径，每行一个&#10;例如：glyphs/cross.png"
-            ></textarea>
+            <label>图标目录路径</label>
+            <input
+              v-model="config.customGlyphs.path"
+              type="text"
+              class="config-input"
+              placeholder="例如：glyphs/"
+            />
+            <p class="field-hint">包含自定义控制器图标文件的目录路径</p>
           </div>
         </template>
       </div>
@@ -184,7 +185,7 @@ DLTRIGGER, DRTRIGGER</pre>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, onUnmounted, watch } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 
 const props = defineProps<{
@@ -205,36 +206,33 @@ const showToast = ref(false)
  */
 const config = ref({
   enabled: true,
-  controller_type: 'xbox',
-  bindings: [] as Array<{ action: string; buttons: string }>,
+  controllerType: 'xbox',
+  bindings: [] as Array<{ action: string; button: string }>,
   deadzone: {
-    left_stick: 0.1,
-    right_stick: 0.1,
-    left_trigger: 0.05,
-    right_trigger: 0.05,
+    leftStick: 0.1,
+    rightStick: 0.1,
+    leftTrigger: 0.1,
+    rightTrigger: 0.1,
   },
   rumble: {
     enabled: true,
     intensity: 0.8,
   },
-  custom_glyphs: {
+  customGlyphs: {
     enabled: false,
-    glyphs: [] as string[],
+    path: '',
   },
 })
 
 /** 按键绑定文本（用于 textarea 编辑） */
 const bindingsText = ref('')
 
-/** 自定义图标文本（用于 textarea 编辑） */
-const glyphsText = ref('')
-
 /**
  * 将数组格式的 bindings 转换为文本
  */
 function syncBindingsToText() {
   bindingsText.value = config.value.bindings
-    .map((b) => `${b.action}=${b.buttons}`)
+    .map((b) => `${b.action}=${b.button}`)
     .join('\n')
 }
 
@@ -251,39 +249,20 @@ function syncTextToBindings() {
     const idx = line.indexOf('=')
     return {
       action: line.slice(0, idx),
-      buttons: line.slice(idx + 1),
+      button: line.slice(idx + 1),
     }
   })
 }
 
-/**
- * 将数组格式的 glyphs 转换为文本
- */
-function syncGlyphsToText() {
-  glyphsText.value = config.value.custom_glyphs.glyphs.join('\n')
-}
-
-/**
- * 将文本格式的 glyphs 转换为数组
- */
-function syncTextToGlyphs() {
-  config.value.custom_glyphs.glyphs = glyphsText.value
-    .split('\n')
-    .map((l) => l.trim())
-    .filter((l) => l)
-}
-
 /** 监听文本变化同步到数组 */
 watch(bindingsText, syncTextToBindings)
-watch(glyphsText, syncTextToGlyphs)
 
 /**
  * 保存配置
  */
 async function saveConfig() {
-  // 确保文本已同步到数组
+  // 确保按键绑定文本已同步到数组
   syncTextToBindings()
-  syncTextToGlyphs()
 
   try {
     const result = await invoke<{ success: boolean; message: string }>('save_controller_config', {
@@ -297,6 +276,10 @@ async function saveConfig() {
         showToast.value = false
       }, 3000)
       emit('saved')
+      // 广播控制器配置已保存事件，通知完整配置管理器等其它窗口刷新
+      window.dispatchEvent(new CustomEvent('controller-config-saved', {
+        detail: { gamePath: props.gamePath }
+      }))
       // 延迟关闭弹窗，等待 Toast 消失后再关闭
       setTimeout(() => {
         emit('close')
@@ -324,15 +307,15 @@ async function loadConfig() {
     if (result.exists && result.config) {
       const cfg = result.config
       config.value.enabled = cfg.enabled ?? true
-      config.value.controller_type = cfg.controller_type || 'xbox'
+      config.value.controllerType = cfg.controllerType || 'xbox'
 
       // 加载死区
       if (cfg.deadzone) {
         config.value.deadzone = {
-          left_stick: cfg.deadzone.left_stick ?? 0.1,
-          right_stick: cfg.deadzone.right_stick ?? 0.1,
-          left_trigger: cfg.deadzone.left_trigger ?? 0.05,
-          right_trigger: cfg.deadzone.right_trigger ?? 0.05,
+          leftStick: cfg.deadzone.leftStick ?? 0.1,
+          rightStick: cfg.deadzone.rightStick ?? 0.1,
+          leftTrigger: cfg.deadzone.leftTrigger ?? 0.1,
+          rightTrigger: cfg.deadzone.rightTrigger ?? 0.1,
         }
       }
 
@@ -345,29 +328,44 @@ async function loadConfig() {
       }
 
       // 加载自定义图标
-      if (cfg.custom_glyphs) {
-        config.value.custom_glyphs = {
-          enabled: cfg.custom_glyphs.enabled ?? false,
-          glyphs: cfg.custom_glyphs.glyphs || [],
+      if (cfg.customGlyphs) {
+        config.value.customGlyphs = {
+          enabled: cfg.customGlyphs.enabled ?? false,
+          path: cfg.customGlyphs.path || '',
         }
       }
 
-      // 加载按键绑定
-      if (cfg.bindings && cfg.bindings.length > 0) {
-        config.value.bindings = cfg.bindings
-        syncBindingsToText()
-      }
+      // 加载按键绑定（包括空数组，确保外部清空后文本区同步）
+      config.value.bindings = Array.isArray(cfg.bindings) ? cfg.bindings : []
+      syncBindingsToText()
 
       // 同步图标文本
       syncGlyphsToText()
     }
   } catch (error) {
-    console.error('加载控制器配置失败:', error)
+    // 加载失败时使用默认值
   }
 }
 
+let configSyncHandler: ((e: Event) => void) | null = null
+
 onMounted(() => {
   loadConfig()
+
+  configSyncHandler = (e: Event) => {
+    const customEvent = e as CustomEvent<{ gamePath?: string }>
+    if (customEvent.detail?.gamePath === props.gamePath) {
+      loadConfig()
+    }
+  }
+  // 监听控制器配置保存事件，与完整配置管理器实时同步
+  window.addEventListener('controller-config-saved', configSyncHandler)
+})
+
+onUnmounted(() => {
+  if (configSyncHandler) {
+    window.removeEventListener('controller-config-saved', configSyncHandler)
+  }
 })
 </script>
 

@@ -127,11 +127,18 @@ pub async fn start_game_download(
                     let rt = tokio::runtime::Runtime::new();
                     if let Ok(rt) = rt {
                         rt.block_on(async {
+                            // 先更新下载状态为已完成
                             let _ = game_data_service::update_download_status(
-                                app_complete,
-                                game_id_complete,
+                                app_complete.clone(),
+                                game_id_complete.clone(),
                                 "completed".to_string(),
                                 100,
+                            ).await;
+
+                            // 然后执行下载完成收尾：扫描目录、定位 exe、标记已安装
+                            let _ = game_data_service::finalize_download(
+                                app_complete,
+                                game_id_complete,
                             ).await;
                         });
                     }

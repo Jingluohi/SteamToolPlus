@@ -145,7 +145,7 @@ friend.example.com</pre>
 
       <div class="modal-footer">
         <button class="btn-secondary" @click="$emit('close')">取消</button>
-        <button class="btn-primary" :disabled="!config.enabled" @click="saveConfig">
+        <button class="btn-primary" @click="saveConfig">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <polyline points="20 6 9 17 4 12"/>
           </svg>
@@ -157,7 +157,7 @@ friend.example.com</pre>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 
 interface LanConfig {
@@ -178,7 +178,7 @@ const emit = defineEmits<{
 }>()
 
 const config = ref<LanConfig>({
-  enabled: true,
+  enabled: false,
   customBroadcasts: [],
   autoAcceptInvite: 'none',
   listenPort: 47584
@@ -218,6 +218,10 @@ async function saveConfig() {
 
     if (result.success) {
       emit('saved')
+      // 广播局域网配置已保存事件，通知 Patch 页面与完整配置管理器同步刷新
+      window.dispatchEvent(new CustomEvent('lan-config-saved', {
+        detail: { gamePath: props.gamePath }
+      }))
       emit('close')
     } else {
       alert(`保存失败: ${result.message}`)
@@ -238,9 +242,9 @@ async function loadConfig() {
 
     if (result.exists && result.config) {
       config.value.enabled = result.config.enabled
-      config.value.customBroadcasts = result.config.customBroadcasts.length > 0
+      config.value.customBroadcasts = Array.isArray(result.config.customBroadcasts)
         ? result.config.customBroadcasts
-        : ['']
+        : []
       config.value.autoAcceptInvite = result.config.autoAcceptInvite
       config.value.listenPort = result.config.listenPort
 
@@ -253,8 +257,25 @@ async function loadConfig() {
   }
 }
 
+let configSyncHandler: ((e: Event) => void) | null = null
+
 onMounted(() => {
   loadConfig()
+
+  configSyncHandler = (e: Event) => {
+    const customEvent = e as CustomEvent<{ gamePath?: string }>
+    if (customEvent.detail?.gamePath === props.gamePath) {
+      loadConfig()
+    }
+  }
+  // 监听局域网配置保存事件，与完整配置管理器实时同步
+  window.addEventListener('lan-config-saved', configSyncHandler)
+})
+
+onUnmounted(() => {
+  if (configSyncHandler) {
+    window.removeEventListener('lan-config-saved', configSyncHandler)
+  }
 })
 </script>
 

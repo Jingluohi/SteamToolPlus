@@ -265,7 +265,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 import { open } from '@tauri-apps/plugin-dialog'
 import type { AchievementsConfig, Achievement } from '../../../src/types/steam-config.types'
@@ -416,6 +416,10 @@ async function saveConfig() {
         showToast.value = false
       }, 3000)
       emit('saved')
+      // 广播成就配置已保存事件，通知完整配置管理器等其它窗口刷新
+      window.dispatchEvent(new CustomEvent('achievements-config-saved', {
+        detail: { gamePath: props.gamePath }
+      }))
       // 延迟关闭弹窗，等待 Toast 消失后再关闭
       setTimeout(() => {
         emit('close')
@@ -445,8 +449,25 @@ async function loadConfig() {
   }
 }
 
+let configSyncHandler: ((e: Event) => void) | null = null
+
 onMounted(() => {
   loadConfig()
+
+  configSyncHandler = (e: Event) => {
+    const customEvent = e as CustomEvent<{ gamePath?: string }>
+    if (customEvent.detail?.gamePath === props.gamePath) {
+      loadConfig()
+    }
+  }
+  // 监听成就配置保存事件，与完整配置管理器实时同步
+  window.addEventListener('achievements-config-saved', configSyncHandler)
+})
+
+onUnmounted(() => {
+  if (configSyncHandler) {
+    window.removeEventListener('achievements-config-saved', configSyncHandler)
+  }
 })
 </script>
 

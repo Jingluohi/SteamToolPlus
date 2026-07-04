@@ -220,27 +220,27 @@ pub struct UserConfig {
     /// 用户名 (account_name)
     pub username: String,
     /// Steam64 格式的用户 ID
-    #[serde(rename = "account_steamid", default)]
+    #[serde(rename = "account_steamid", default, alias = "accountSteamid")]
     pub account_steamid: Option<String>,
     /// 语言
     pub language: String,
     /// IP 国家代码 (ISO 3166-1-alpha-2)
-    #[serde(rename = "ip_country", default)]
+    #[serde(rename = "ip_country", default, alias = "ipCountry")]
     pub ip_country: Option<String>,
     /// 存档文件夹名称（覆盖默认的 "GSE Saves"）
-    #[serde(rename = "saves_folder_name")]
+    #[serde(rename = "saves_folder_name", alias = "savesFolderName")]
     pub saves_folder_name: Option<String>,
     /// 本地存档路径（便携模式）
-    #[serde(rename = "local_save_path")]
+    #[serde(rename = "local_save_path", alias = "localSavePath")]
     pub local_save_path: Option<String>,
     /// EncryptedAppTicket (Base64编码)
     #[serde(rename = "ticket")]
     pub ticket: Option<String>,
     /// 备用 SteamID（用于加密存档替换）
-    #[serde(rename = "alt_steamid", default)]
+    #[serde(rename = "alt_steamid", default, alias = "altSteamid")]
     pub alt_steamid: Option<String>,
     /// 备用 SteamID 替换触发次数
-    #[serde(rename = "alt_steamid_count", default)]
+    #[serde(rename = "alt_steamid_count", default, alias = "altSteamidCount")]
     pub alt_steamid_count: Option<u64>,
 }
 

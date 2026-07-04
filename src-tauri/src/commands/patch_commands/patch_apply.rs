@@ -5,6 +5,103 @@ use crate::models::steam_config::*;
 use std::path::Path;
 use tauri::AppHandle;
 
+// ============================================
+// 补丁资源路径常量
+// 所有相对路径均基于 resources 目录，禁止在业务代码中硬编码路径
+// ============================================
+
+/// gbe_fork 资源目录名
+const GBE_FORK_DIR: &str = "gbe_fork";
+/// 示例配置目录名
+const STEAM_SETTINGS_EXAMPLE_DIR: &str = "steam_settings.EXAMPLE";
+/// 实验版 steam_api 目录
+const EXPERIMENTAL_DIR: &str = "experimental";
+/// 稳定版 steam_api 目录
+const REGULAR_DIR: &str = "regular";
+/// 64 位子目录
+const X64_DIR: &str = "x64";
+/// 32 位子目录
+const X32_DIR: &str = "x32";
+/// steamclient 实验版目录
+const STEAMCLIENT_EXPERIMENTAL_DIR: &str = "steamclient_experimental";
+
+/// 标准模式 64 位 steam_api64.dll 资源路径
+fn regular_x64_steam_api_dll() -> String {
+    format!("{}/{}/{}/steam_api64.dll", GBE_FORK_DIR, REGULAR_DIR, X64_DIR)
+}
+
+/// 标准模式 32 位 steam_api.dll 资源路径
+fn regular_x32_steam_api_dll() -> String {
+    format!("{}/{}/{}/steam_api.dll", GBE_FORK_DIR, REGULAR_DIR, X32_DIR)
+}
+
+/// 实验版 64 位 steam_api64.dll 资源路径
+fn experimental_x64_steam_api_dll() -> String {
+    format!("{}/{}/{}/steam_api64.dll", GBE_FORK_DIR, EXPERIMENTAL_DIR, X64_DIR)
+}
+
+/// 实验版 32 位 steam_api.dll 资源路径
+fn experimental_x32_steam_api_dll() -> String {
+    format!("{}/{}/{}/steam_api.dll", GBE_FORK_DIR, EXPERIMENTAL_DIR, X32_DIR)
+}
+
+/// 高级模式 64 位 steamclient64.dll 资源路径
+fn steamclient_experimental_x64_dll() -> String {
+    format!("{}/{}/steamclient64.dll", GBE_FORK_DIR, STEAMCLIENT_EXPERIMENTAL_DIR)
+}
+
+/// 高级模式 32 位 steamclient.dll 资源路径
+fn steamclient_experimental_x32_dll() -> String {
+    format!("{}/{}/steamclient.dll", GBE_FORK_DIR, STEAMCLIENT_EXPERIMENTAL_DIR)
+}
+
+/// 高级模式 64 位 GameOverlayRenderer64.dll 资源路径
+fn game_overlay_renderer_x64_dll() -> String {
+    format!("{}/{}/GameOverlayRenderer64.dll", GBE_FORK_DIR, STEAMCLIENT_EXPERIMENTAL_DIR)
+}
+
+/// 高级模式 32 位 GameOverlayRenderer.dll 资源路径
+fn game_overlay_renderer_x32_dll() -> String {
+    format!("{}/{}/GameOverlayRenderer.dll", GBE_FORK_DIR, STEAMCLIENT_EXPERIMENTAL_DIR)
+}
+
+/// 根据架构和模式获取标准模式 steam_api DLL 资源路径
+fn get_standard_mode_api_dll_path(is_64bit: bool, use_experimental: bool) -> String {
+    if is_64bit {
+        if use_experimental {
+            experimental_x64_steam_api_dll()
+        } else {
+            regular_x64_steam_api_dll()
+        }
+    } else if use_experimental {
+        experimental_x32_steam_api_dll()
+    } else {
+        regular_x32_steam_api_dll()
+    }
+}
+
+/// 根据架构获取高级模式 steamclient DLL 资源路径
+fn get_advanced_mode_client_dll_path(is_64bit: bool) -> String {
+    if is_64bit {
+        steamclient_experimental_x64_dll()
+    } else {
+        steamclient_experimental_x32_dll()
+    }
+}
+
+/// 根据架构获取高级模式 GameOverlayRenderer DLL 资源路径
+fn get_game_overlay_renderer_dll_path(is_64bit: bool) -> String {
+    if is_64bit {
+        game_overlay_renderer_x64_dll()
+    } else {
+        game_overlay_renderer_x32_dll()
+    }
+}
+
+/// 默认局域网广播地址列表
+/// 应用基础配置时写入 custom_broadcasts.txt
+const DEFAULT_CUSTOM_BROADCASTS: &str = "192.168.1.0/24\n192.168.0.0/24\n10.0.0.0/24\n";
+
 /// 检查游戏目录中是否存在 steam_api.dll 或 steam_api64.dll
 /// 标准模式下应用基础配置前的预检查
 #[tauri::command]
@@ -93,7 +190,7 @@ pub async fn apply_steam_patch_basic(
     let mode = emulator_mode.unwrap_or(0);
 
     // 第1步: 复制 steam_settings.EXAMPLE 文件夹
-    let example_dir = Path::new(&resource_dir).join("gbe_fork").join("steam_settings.EXAMPLE");
+    let example_dir = Path::new(&resource_dir).join(GBE_FORK_DIR).join(STEAM_SETTINGS_EXAMPLE_DIR);
 
     if example_dir.exists() {
         if steam_settings_dir.exists() {
@@ -112,16 +209,29 @@ pub async fn apply_steam_patch_basic(
     }
 
     // 第2步: 判断游戏架构
-    let is_64bit = game_dir.read_dir()
-        .map_err(|e| format!("读取游戏目录失败: {}", e))?
-        .filter_map(|e| e.ok())
-        .any(|e| {
-            if let Some(name) = e.file_name().to_str() {
-                name.contains("64") || name.contains("x64")
-            } else {
-                false
-            }
-        });
+    // 优先根据实际存在的 steam_api/steamclient DLL 判断，避免文件名包含 "64" 导致误判
+    let has_api_64 = game_dir.join("steam_api64.dll").exists();
+    let has_api_32 = game_dir.join("steam_api.dll").exists();
+    let has_client_64 = game_dir.join("steamclient64.dll").exists();
+    let has_client_32 = game_dir.join("steamclient.dll").exists();
+
+    let is_64bit = if has_api_64 || has_client_64 {
+        true
+    } else if has_api_32 || has_client_32 {
+        false
+    } else {
+        // 两种 DLL 都不存在时，兜底检查目录名中是否包含 x64/64 字样
+        game_dir
+            .read_dir()
+            .map_err(|e| format!("读取游戏目录失败: {}", e))?
+            .filter_map(|e| e.ok())
+            .any(|e| {
+                e.file_name()
+                    .to_str()
+                    .map(|name| name.contains("x64") || name == "64")
+                    .unwrap_or(false)
+            })
+    };
 
     // 第3步: 根据模式处理 DLL
     if mode == 0 {
@@ -148,19 +258,8 @@ pub async fn apply_steam_patch_basic(
         super::tools::generate_interfaces(&resource_dir, &original_api_path, game_dir, &steam_settings_dir).await?;
 
         // 替换 steam_api.dll
-        let source_dll = if is_64bit {
-            if use_experimental {
-                "gbe_fork/experimental/x64/steam_api64.dll"
-            } else {
-                "gbe_fork/regular/x64/steam_api64.dll"
-            }
-        } else if use_experimental {
-            "gbe_fork/experimental/x32/steam_api.dll"
-        } else {
-            "gbe_fork/regular/x32/steam_api.dll"
-        };
-
-        let source_path = Path::new(&resource_dir).join(source_dll);
+        let source_dll = get_standard_mode_api_dll_path(is_64bit, use_experimental);
+        let source_path = Path::new(&resource_dir).join(&source_dll);
         if source_path.exists() {
             fs::copy(&source_path, &original_api_path)
                 .await
@@ -188,13 +287,8 @@ pub async fn apply_steam_patch_basic(
                 .map_err(|e| format!("备份 steamclient 失败: {}", e))?;
         }
 
-        let client_source = if is_64bit {
-            "gbe_fork/steamclient_experimental/steamclient64.dll"
-        } else {
-            "gbe_fork/steamclient_experimental/steamclient.dll"
-        };
-
-        let client_source_path = Path::new(&resource_dir).join(client_source);
+        let client_source = get_advanced_mode_client_dll_path(is_64bit);
+        let client_source_path = Path::new(&resource_dir).join(&client_source);
         if client_source_path.exists() {
             fs::copy(&client_source_path, &original_client_path)
                 .await
@@ -206,12 +300,11 @@ pub async fn apply_steam_patch_basic(
         // 同步替换 steam_api.dll（实验版）
         let api_dll_name = if is_64bit { "steam_api64.dll" } else { "steam_api.dll" };
         let api_source = if is_64bit {
-            "gbe_fork/experimental/x64/steam_api64.dll"
+            experimental_x64_steam_api_dll()
         } else {
-            "gbe_fork/experimental/x32/steam_api.dll"
+            experimental_x32_steam_api_dll()
         };
-
-        let api_source_path = Path::new(&resource_dir).join(api_source);
+        let api_source_path = Path::new(&resource_dir).join(&api_source);
         let api_target_path = game_dir.join(api_dll_name);
 
         if api_source_path.exists() {
@@ -330,25 +423,18 @@ pub async fn apply_steam_patch_basic(
 
     // 写入 custom_broadcasts.txt
     let broadcasts_path = steam_settings_dir.join("custom_broadcasts.txt");
-    let broadcasts_content = "192.168.1.0/24\n192.168.0.0/24\n10.0.0.0/24\n";
-
     let mut broadcasts_file = fs::File::create(&broadcasts_path)
         .await
         .map_err(|e| format!("创建 custom_broadcasts.txt 失败: {}", e))?;
-    broadcasts_file.write_all(broadcasts_content.as_bytes())
+    broadcasts_file.write_all(DEFAULT_CUSTOM_BROADCASTS.as_bytes())
         .await
         .map_err(|e| format!("写入 custom_broadcasts.txt 失败: {}", e))?;
 
     // 第6步: 高级模式额外复制 GameOverlayRenderer DLL
     if mode == 1 {
         let overlay_dll_name = if is_64bit { "GameOverlayRenderer64.dll" } else { "GameOverlayRenderer.dll" };
-        let overlay_source = if is_64bit {
-            "gbe_fork/steamclient_experimental/GameOverlayRenderer64.dll"
-        } else {
-            "gbe_fork/steamclient_experimental/GameOverlayRenderer.dll"
-        };
-
-        let overlay_source_path = Path::new(&resource_dir).join(overlay_source);
+        let overlay_source = get_game_overlay_renderer_dll_path(is_64bit);
+        let overlay_source_path = Path::new(&resource_dir).join(&overlay_source);
         let overlay_target_path = game_dir.join(overlay_dll_name);
 
         if overlay_source_path.exists() {
@@ -370,5 +456,137 @@ pub async fn apply_steam_patch_basic(
     Ok(BasicConfigResult {
         success: true,
         message: "基础配置已应用".to_string(),
+    })
+}
+
+// ============================================
+// 还原游戏文件
+// 删除补丁生成的文件/目录，并将 .bak 备份复原
+// ============================================
+
+/// 补丁可能新增或替换的文件名列表
+/// 用于在不存在对应 .bak 时清理残留文件
+const PATCH_GENERATED_FILES: &[&str] = &[
+    "steam_api.dll",
+    "steam_api64.dll",
+    "steamclient.dll",
+    "steamclient64.dll",
+    "GameOverlayRenderer.dll",
+    "GameOverlayRenderer64.dll",
+    "steam_appid.txt",
+];
+
+/// 还原结果
+#[derive(serde::Serialize)]
+pub struct RestoreFilesResult {
+    pub success: bool,
+    pub restored_files: Vec<String>,
+    pub removed_files: Vec<String>,
+    pub removed_directories: Vec<String>,
+    pub skipped_files: Vec<String>,
+    pub message: String,
+}
+
+/// 还原游戏文件
+/// 1. 删除 steam_settings 目录
+/// 2. 删除 steam_appid.txt
+/// 3. 删除补丁新增且无对应 .bak 的文件
+/// 4. 将 .bak 备份文件去掉 .bak 后缀复原
+#[tauri::command]
+pub async fn restore_game_files(game_path: String) -> Result<RestoreFilesResult, String> {
+    use tokio::fs;
+
+    let game_dir = Path::new(&game_path);
+    if !game_dir.exists() {
+        return Err(format!("游戏路径不存在: {}", game_path));
+    }
+
+    let mut restored_files: Vec<String> = Vec::new();
+    let mut removed_files: Vec<String> = Vec::new();
+    let mut removed_directories: Vec<String> = Vec::new();
+    let mut skipped_files: Vec<String> = Vec::new();
+    let mut errors: Vec<String> = Vec::new();
+
+    // 1. 删除 steam_settings 目录
+    let steam_settings_dir = game_dir.join("steam_settings");
+    if steam_settings_dir.exists() {
+        match fs::remove_dir_all(&steam_settings_dir).await {
+            Ok(_) => removed_directories.push("steam_settings".to_string()),
+            Err(e) => errors.push(format!("删除 steam_settings 失败: {}", e)),
+        }
+    }
+
+    // 2. 删除补丁新增且无对应 .bak 的文件
+    for file_name in PATCH_GENERATED_FILES {
+        let file_path = game_dir.join(file_name);
+        let backup_path = game_dir.join(format!("{}.bak", file_name));
+
+        // 如果存在对应的 .bak，则后续统一处理，这里跳过
+        if backup_path.exists() {
+            continue;
+        }
+
+        if file_path.exists() {
+            match fs::remove_file(&file_path).await {
+                Ok(_) => removed_files.push(file_name.to_string()),
+                Err(e) => errors.push(format!("删除 {} 失败: {}", file_name, e)),
+            }
+        }
+    }
+
+    // 3. 扫描并恢复所有 .bak 文件
+    let entries = match fs::read_dir(game_dir).await {
+        Ok(entries) => entries,
+        Err(e) => return Err(format!("读取游戏目录失败: {}", e)),
+    };
+
+    let mut entries_stream = entries;
+    while let Ok(Some(entry)) = entries_stream.next_entry().await {
+        let path = entry.path();
+        if !path.is_file() {
+            continue;
+        }
+
+        let file_name = entry.file_name();
+        let file_name_str = file_name.to_string_lossy();
+
+        // 只处理 .bak 结尾的文件
+        if let Some(original_name) = file_name_str.strip_suffix(".bak") {
+            let original_path = game_dir.join(original_name);
+
+            // 如果原始文件存在，先删除原始文件
+            if original_path.exists() {
+                if let Err(e) = fs::remove_file(&original_path).await {
+                    errors.push(format!("删除原文件 {} 失败: {}", original_name, e));
+                    skipped_files.push(file_name_str.to_string());
+                    continue;
+                }
+            }
+
+            // 将 .bak 重命名为原始文件名
+            match fs::rename(&path, &original_path).await {
+                Ok(_) => restored_files.push(original_name.to_string()),
+                Err(e) => {
+                    errors.push(format!("恢复 {} 失败: {}", file_name_str, e));
+                    skipped_files.push(file_name_str.to_string());
+                }
+            }
+        }
+    }
+
+    // 构建结果消息
+    let message = if errors.is_empty() {
+        "游戏文件已还原".to_string()
+    } else {
+        format!("还原完成，但出现 {} 个错误: {}", errors.len(), errors.join("; "))
+    };
+
+    Ok(RestoreFilesResult {
+        success: errors.is_empty(),
+        restored_files,
+        removed_files,
+        removed_directories,
+        skipped_files,
+        message,
     })
 }

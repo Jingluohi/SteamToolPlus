@@ -1206,6 +1206,25 @@ pub async fn save_lan_multiplayer_config(
         .await
         .map_err(|e| format!("创建 steam_settings 目录失败: {}", e))?;
 
+    // 保存 configs.lan.ini（enabled 和 listen_port）
+    let enabled = config.get("enabled").and_then(|v| v.as_bool()).unwrap_or(false);
+    let listen_port = config
+        .get("listenPort")
+        .and_then(|v| v.as_u64())
+        .unwrap_or(47584) as u16;
+    let lan_ini_path = steam_settings_dir.join("configs.lan.ini");
+    let lan_ini_content = format!(
+        "[lan::general]\nenabled = {}\nlisten_port = {}\n",
+        enabled as i32, listen_port
+    );
+    let mut lan_file = fs::File::create(&lan_ini_path)
+        .await
+        .map_err(|e| format!("创建 configs.lan.ini 失败: {}", e))?;
+    lan_file
+        .write_all(lan_ini_content.as_bytes())
+        .await
+        .map_err(|e| format!("写入 configs.lan.ini 失败: {}", e))?;
+
     // 保存 custom_broadcasts.txt
     if let Some(broadcasts) = config.get("customBroadcasts").and_then(|v| v.as_array()) {
         let broadcasts_path = steam_settings_dir.join("custom_broadcasts.txt");
@@ -1269,6 +1288,30 @@ pub async fn load_lan_multiplayer_config(
 
     let steam_settings_dir = Path::new(&game_path).join("steam_settings");
 
+    // 读取 configs.lan.ini（enabled / listen_port）
+    let lan_ini_path = steam_settings_dir.join("configs.lan.ini");
+    let (mut enabled, mut listen_port) = (false, 47584u16);
+    if lan_ini_path.exists() {
+        let content = fs::read_to_string(&lan_ini_path)
+            .await
+            .map_err(|e| format!("读取 configs.lan.ini 失败: {}", e))?;
+        for line in content.lines() {
+            let line = line.trim();
+            if line.starts_with('[') || line.is_empty() {
+                continue;
+            }
+            if let Some((key, value)) = line.split_once('=') {
+                let key = key.trim();
+                let value = value.trim();
+                match key {
+                    "enabled" => enabled = value == "1" || value.to_lowercase() == "true",
+                    "listen_port" => listen_port = value.parse().unwrap_or(47584),
+                    _ => {}
+                }
+            }
+        }
+    }
+
     // 读取 custom_broadcasts.txt
     let broadcasts_path = steam_settings_dir.join("custom_broadcasts.txt");
     let custom_broadcasts = if broadcasts_path.exists() {
@@ -1306,11 +1349,11 @@ pub async fn load_lan_multiplayer_config(
     };
 
     Ok(serde_json::json!({
-        "exists": broadcasts_path.exists() || auto_accept_path.exists(),
-        "enabled": true,
+        "exists": broadcasts_path.exists() || auto_accept_path.exists() || lan_ini_path.exists(),
+        "enabled": enabled,
         "customBroadcasts": custom_broadcasts,
         "autoAcceptInvite": auto_accept,
         "whitelist": whitelist,
-        "listenPort": 47584
+        "listenPort": listen_port
     }))
 }

@@ -77,6 +77,12 @@ const routes: RouteRecordRaw[] = [
     meta: { title: 'Steam封面下载' }
   },
   {
+    path: '/denuvo-auth',
+    name: 'DenuvoAuth',
+    component: () => import('./views/Tools/DenuvoAuth.vue'),
+    meta: { title: 'D加密授权' }
+  },
+  {
     path: '/about',
     name: 'About',
     component: () => import('./views/About/About.vue'),

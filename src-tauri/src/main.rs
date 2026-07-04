@@ -9,7 +9,7 @@ mod models;
 mod services;
 mod utils;
 
-use commands::{background_commands, cache_commands, config_commands, download_commands, game_commands, game_data_commands, help_commands, log_commands, manifest_commands, opensteamtool_commands, patch_commands, window_commands};
+use commands::{background_commands, cache_commands, config_commands, denuvo_commands, download_commands, game_commands, game_data_commands, help_commands, log_commands, manifest_commands, opensteamtool_commands, patch_commands, window_commands};
 use once_cell::sync::Lazy;
 use services::{CacheService, CacheServiceTrait, ConfigService, ConfigServiceTrait, GameService, GameServiceTrait};
 use std::collections::HashSet;
@@ -521,6 +521,7 @@ fn main() {
             // 免Steam补丁注入新命令 - 100% 实现 gbe_fork 所有功能
             patch_commands::check_steam_dll_exists,
             patch_commands::apply_steam_patch_basic,
+            patch_commands::restore_game_files,
             patch_commands::unpack_game_exe,
             // 配置保存命令
             patch_commands::save_main_config,
@@ -610,6 +611,7 @@ fn main() {
             game_data_commands::update_game_data,
             game_data_commands::close_game_process,
             game_data_commands::toggle_game_favorite,
+            game_data_commands::finalize_game_download,
             game_data_commands::check_game_process_status,
             game_data_commands::delete_game_directory,
             game_data_commands::open_game_directory,
@@ -617,6 +619,7 @@ fn main() {
             help_commands::read_readme_file,
             help_commands::check_readme_exists,
             help_commands::get_sponsor_image_base64,
+            help_commands::get_qingdan_image_base64,
             // 背景图片命令
             background_commands::get_background_config,
             background_commands::save_background_config,
@@ -651,6 +654,16 @@ fn main() {
             opensteamtool_commands::import_with_opensteamtool_command,
             opensteamtool_commands::import_game_with_opensteamtool,
             opensteamtool_commands::import_manifest_with_opensteamtool,
+            // Denuvo 授权管理命令
+            denuvo_commands::get_active_steam_user,
+            denuvo_commands::read_denuvo_auth_from_registry,
+            denuvo_commands::write_denuvo_auth_to_registry,
+            denuvo_commands::backup_denuvo_auth,
+            denuvo_commands::list_denuvo_auth_backups,
+            denuvo_commands::load_denuvo_auth_backup,
+            denuvo_commands::save_denuvo_auth_entry,
+            denuvo_commands::delete_denuvo_auth_backup,
+            denuvo_commands::apply_denuvo_auth_backup,
         ])
         .run(tauri::generate_context!())
         .expect("应用程序启动失败");

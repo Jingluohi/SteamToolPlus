@@ -898,3 +898,13 @@ pub async fn toggle_game_favorite(
 ) -> Result<GameData, String> {
     game_data_service::toggle_game_favorite(app, game_id).await
 }
+
+/// 下载完成后收尾处理
+/// 扫描下载目录，自动定位游戏主程序并标记为已安装
+#[tauri::command]
+pub async fn finalize_game_download(
+    app: AppHandle,
+    game_id: String,
+) -> Result<GameData, String> {
+    game_data_service::finalize_download(app, game_id).await
+}

@@ -188,6 +188,14 @@ export async function toggleGameFavorite(gameId: string): Promise<GameData> {
 }
 
 /**
+ * 下载完成后收尾处理
+ * 扫描下载目录，自动定位游戏主程序并标记为已安装
+ */
+export async function finalizeGameDownload(gameId: string): Promise<GameData> {
+  return invoke<GameData>('finalize_game_download', { gameId })
+}
+
+/**
  * 格式化游戏时长（分钟 → 中文可读格式）
  */
 export function formatPlayTime(minutes: number): string {

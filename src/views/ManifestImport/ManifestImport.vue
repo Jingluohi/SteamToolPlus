@@ -7,9 +7,30 @@
       @confirm="handleFirstTimeSetupConfirm"
     />
 
+    <!-- 清单下载夸克网盘二维码弹窗 -->
+    <QRCodeModal
+      v-model="showQRCodeModal"
+      title="夸克网盘下载"
+      :qr-image-url="qrCodeImageUrl"
+      hint="请使用夸克APP扫码下载"
+      @close="handleQRCodeClose"
+    />
+
     <div class="page-header">
       <div class="page-title-row">
         <h1>清单入库</h1>
+        <button
+          class="manifest-link-btn"
+          @click="openQingdanQRCode"
+        >
+          <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          夸克网盘
+        </button>
+        <span class="backup-label">备用（容易和谐）：</span>
         <button
           class="manifest-link-btn"
           @click="openExternalLink('https://pan.baidu.com/s/1FTZyknIObyzMuLAJC-Uj9g?pwd=8uwx')"
@@ -263,6 +284,7 @@ import { open as openShell } from '@tauri-apps/plugin-shell'
 import Button from '../../components/common/Button.vue'
 import Toggle from '../GlobalSettings/components/Toggle.vue'
 import FirstTimeSetupModal from '../../components/manifest/FirstTimeSetupModal.vue'
+import QRCodeModal from '../../components/common/QRCodeModal.vue'
 import { useConfigStore } from '../../store/config.store'
 
 interface LogItem {
@@ -285,6 +307,27 @@ interface ImportStats {
 
 // Store
 const configStore = useConfigStore()
+
+// 清单下载夸克网盘二维码弹窗状态
+const showQRCodeModal = ref(false)
+const qrCodeImageUrl = ref('')
+
+/**
+ * 打开清单下载夸克网盘二维码弹窗
+ * 使用程序内置的 qingdan.png 二维码图片
+ */
+const openQingdanQRCode = async () => {
+  qrCodeImageUrl.value = await invoke<string>('get_qingdan_image_base64')
+  showQRCodeModal.value = true
+}
+
+/**
+ * 关闭二维码弹窗
+ */
+const handleQRCodeClose = () => {
+  showQRCodeModal.value = false
+  qrCodeImageUrl.value = ''
+}
 
 // 状态
 const steamPath = ref('')
@@ -666,6 +709,12 @@ async function openExternalLink(url: string) {
   font-size: 24px;
   color: var(--steam-text-primary);
   margin: 0;
+}
+
+.backup-label {
+  font-size: 13px;
+  color: var(--steam-text-secondary);
+  white-space: nowrap;
 }
 
 /* 网盘链接按钮 */

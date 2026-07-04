@@ -147,7 +147,7 @@
                     </div>
                     <div class="form-group">
                       <label>统计类型</label>
-                      <select v-model="stat.type">
+                      <select v-model="stat.type" @change="handleStatTypeChange(stat)">
                         <option value="int">整数 (int)</option>
                         <option value="float">浮点数 (float)</option>
                         <option value="avgrate">平均值 (avgrate)</option>
@@ -233,7 +233,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 import type { StatsConfig, StatItem } from '../../../src/types/steam-config.types'
 
@@ -270,14 +270,78 @@ function toggleExpand(index: number) {
   expandedIndex.value = expandedIndex.value === index ? null : index
 }
 
-function addStat() {
-  const newStat: StatItem = {
-    name: '',
-    type: 'int',
-    defaultValue: 0
+/**
+ * 为统计项应用默认值，确保与后端 DEFAULT_STATS_CONFIG 一致
+ */
+function normalizeStat(stat: Partial<StatItem>): StatItem {
+  const type = stat.type || 'int'
+  const normalized: StatItem = {
+    name: stat.name || '',
+    type,
+    defaultValue: stat.defaultValue ?? 0
   }
+
+  // float 类型保留最小值/最大值
+  if (type === 'float') {
+    if (stat.minValue !== undefined) normalized.minValue = stat.minValue
+    if (stat.maxValue !== undefined) normalized.maxValue = stat.maxValue
+  }
+
+  // avgrate 类型默认窗口大小为 100
+  if (type === 'avgrate') {
+    normalized.windowSize = stat.windowSize ?? 100
+  }
+
+  return normalized
+}
+
+/**
+ * 保存前归一化所有统计项，避免写入 undefined/null 字段
+ */
+function normalizeStatsForSave(stats: StatItem[]): StatItem[] {
+  return stats.map(normalizeStat)
+}
+
+/**
+ * 加载后归一化配置，确保默认值正确填充
+ */
+function normalizeLoadedConfig(loaded: Partial<StatsConfig>): StatsConfig {
+  return {
+    enabled: loaded.enabled ?? true,
+    stats: Array.isArray(loaded.stats)
+      ? loaded.stats.map(s => normalizeStat(s as Partial<StatItem>))
+      : []
+  }
+}
+
+function addStat() {
+  const newStat = normalizeStat({ type: 'int' })
   config.value.stats.push(newStat)
   expandedIndex.value = config.value.stats.length - 1
+}
+
+/**
+ * 处理统计类型切换，自动补全对应类型的默认字段
+ */
+function handleStatTypeChange(stat: StatItem) {
+  const normalized = normalizeStat(stat)
+  stat.type = normalized.type
+  stat.defaultValue = normalized.defaultValue
+  if (normalized.minValue !== undefined) {
+    stat.minValue = normalized.minValue
+  } else {
+    delete stat.minValue
+  }
+  if (normalized.maxValue !== undefined) {
+    stat.maxValue = normalized.maxValue
+  } else {
+    delete stat.maxValue
+  }
+  if (normalized.windowSize !== undefined) {
+    stat.windowSize = normalized.windowSize
+  } else {
+    delete stat.windowSize
+  }
 }
 
 function removeStat(index: number) {
@@ -299,7 +363,10 @@ async function saveConfig() {
   try {
     const result = await invoke<{ success: boolean; message: string }>('save_stats_config', {
       gamePath: props.gamePath,
-      config: config.value
+      config: {
+        enabled: config.value.enabled,
+        stats: normalizeStatsForSave(config.value.stats)
+      }
     })
 
     if (result.success) {
@@ -308,6 +375,10 @@ async function saveConfig() {
         showToast.value = false
       }, 3000)
       emit('saved')
+      // 广播统计配置已保存事件，通知完整配置管理器等其它窗口刷新
+      window.dispatchEvent(new CustomEvent('stats-config-saved', {
+        detail: { gamePath: props.gamePath }
+      }))
       // 延迟关闭弹窗，等待 Toast 消失后再关闭
       setTimeout(() => {
         emit('close')
@@ -322,23 +393,40 @@ async function saveConfig() {
 
 async function loadConfig() {
   try {
-    const result = await invoke<{ 
+    const result = await invoke<{
       exists: boolean
-      config?: StatsConfig 
+      config?: StatsConfig
     }>('load_stats_config', {
       gamePath: props.gamePath
     })
 
     if (result.exists && result.config) {
-      config.value = { ...config.value, ...result.config }
+      config.value = normalizeLoadedConfig(result.config)
     }
   } catch (error) {
     // 加载失败时使用默认值
   }
 }
 
+let configSyncHandler: ((e: Event) => void) | null = null
+
 onMounted(() => {
   loadConfig()
+
+  configSyncHandler = (e: Event) => {
+    const customEvent = e as CustomEvent<{ gamePath?: string }>
+    if (customEvent.detail?.gamePath === props.gamePath) {
+      loadConfig()
+    }
+  }
+  // 监听统计配置保存事件，与完整配置管理器实时同步
+  window.addEventListener('stats-config-saved', configSyncHandler)
+})
+
+onUnmounted(() => {
+  if (configSyncHandler) {
+    window.removeEventListener('stats-config-saved', configSyncHandler)
+  }
 })
 </script>
 

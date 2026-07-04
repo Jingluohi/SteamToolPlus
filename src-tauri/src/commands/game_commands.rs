@@ -5,6 +5,7 @@ use crate::models::{
     AddGameRequest, Game, GameConfigData, GameFilter, GameListResponse, GameSortBy,
     ScanGamesRequest, UpdateGameRequest,
 };
+use crate::commands::patch_commands::common::normalize_resource_relative_path;
 use crate::utils::resource_utils::get_resource_dir;
 use crate::AppState;
 
@@ -305,15 +306,8 @@ pub async fn check_patch_file_exists(
     // 获取资源目录
     let resource_dir = get_resource_dir(&app)?;
     
-    // 处理路径：如果 patch_source_path 已经包含 "resources/" 或 "Resources/" 前缀，则移除它
-    let patch_lower = patch_source_path.to_lowercase();
-    let patch_relative_path = if patch_lower.starts_with("resources/") {
-        &patch_source_path[10..]  // 移除 "resources/" 前缀
-    } else if patch_lower.starts_with("resources\\") {
-        &patch_source_path[11..]  // 移除 "resources\" 前缀
-    } else {
-        &patch_source_path
-    };
+    // 规范化资源相对路径，移除可能存在的 "resources/" 或 "Resources\\" 前缀
+    let patch_relative_path = normalize_resource_relative_path(&patch_source_path);
     
     // 自动添加 .7z 后缀（如果路径中没有）
     let patch_file_name = if patch_relative_path.ends_with(".7z") {

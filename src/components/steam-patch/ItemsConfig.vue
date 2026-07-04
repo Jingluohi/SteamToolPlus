@@ -119,8 +119,9 @@ item_health_potion=20</pre>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, onUnmounted, watch } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
+import type { ItemsConfig } from '../../../src/types/steam-config.types'
 
 const props = defineProps<{
   gamePath: string
@@ -138,18 +139,10 @@ const showToast = ref(false)
  * 物品配置对象
  * 与 Rust ItemsConfig 结构体一致
  */
-const config = ref({
+const config = ref<ItemsConfig>({
   enabled: true,
-  itemDefinitions: [] as Array<{
-    id: number | string
-    name: string
-    stackable: boolean
-    maxStackSize: number
-  }>,
-  initialItems: [] as Array<{
-    itemId: string
-    quantity: number
-  }>,
+  itemDefinitions: [],
+  initialItems: [],
 })
 
 /** 物品定义文本（用于 textarea 编辑） */
@@ -245,6 +238,10 @@ async function saveConfig() {
         showToast.value = false
       }, 3000)
       emit('saved')
+      // 广播物品配置已保存事件，通知完整配置管理器等其它窗口刷新
+      window.dispatchEvent(new CustomEvent('items-config-saved', {
+        detail: { gamePath: props.gamePath }
+      }))
       // 延迟关闭弹窗，等待 Toast 消失后再关闭
       setTimeout(() => {
         emit('close')
@@ -264,7 +261,7 @@ async function loadConfig() {
   try {
     const result = await invoke<{
       exists: boolean
-      config?: any
+      config?: ItemsConfig
     }>('load_items_config', {
       gamePath: props.gamePath,
     })
@@ -272,25 +269,42 @@ async function loadConfig() {
     if (result.exists && result.config) {
       config.value.enabled = result.config.enabled ?? true
 
-      // 加载物品定义
-      if (result.config.itemDefinitions && result.config.itemDefinitions.length > 0) {
-        config.value.itemDefinitions = result.config.itemDefinitions
-        syncItemDefsToText()
-      }
+      // 同步物品定义（包括空数组，确保外部清空后文本区也刷新）
+      config.value.itemDefinitions = Array.isArray(result.config.itemDefinitions)
+        ? result.config.itemDefinitions
+        : []
+      syncItemDefsToText()
 
-      // 加载初始库存
-      if (result.config.initialItems && result.config.initialItems.length > 0) {
-        config.value.initialItems = result.config.initialItems
-        syncInitialItemsToText()
-      }
+      // 同步初始库存（包括空数组，确保外部清空后文本区也刷新）
+      config.value.initialItems = Array.isArray(result.config.initialItems)
+        ? result.config.initialItems
+        : []
+      syncInitialItemsToText()
     }
   } catch (error) {
-    console.error('加载物品配置失败:', error)
+    // 加载失败时使用默认值
   }
 }
 
+let configSyncHandler: ((e: Event) => void) | null = null
+
 onMounted(() => {
   loadConfig()
+
+  configSyncHandler = (e: Event) => {
+    const customEvent = e as CustomEvent<{ gamePath?: string }>
+    if (customEvent.detail?.gamePath === props.gamePath) {
+      loadConfig()
+    }
+  }
+  // 监听物品配置保存事件，与完整配置管理器实时同步
+  window.addEventListener('items-config-saved', configSyncHandler)
+})
+
+onUnmounted(() => {
+  if (configSyncHandler) {
+    window.removeEventListener('items-config-saved', configSyncHandler)
+  }
 })
 </script>
 

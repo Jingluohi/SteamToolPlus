@@ -99,7 +99,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 
 const props = defineProps<{
@@ -120,21 +120,15 @@ const config = ref({
 const showToast = ref(false)
 
 /**
- * 解析 DLC 列表文本，提取纯 appid
+ * 规范化 DLC 列表文本
  * 支持格式: "123456" 或 "123456=DLC Name"
- * 只返回 appid 部分
+ * 保留原始 "appid=Name" 格式，仅去除空行和首尾空格，过滤非数字开头的行
  */
-function parseDlcList(text: string): string {
+function normalizeDlcList(text: string): string {
   return text
     .split('\n')
     .map(line => line.trim())
     .filter(line => line && /^\d/.test(line))
-    .map(line => {
-      // 如果是 "appid=Name" 格式，只取 appid
-      const eqIdx = line.indexOf('=')
-      return eqIdx > 0 ? line.slice(0, eqIdx).trim() : line
-    })
-    .filter(id => /^\d+$/.test(id))
     .join('\n')
 }
 
@@ -155,64 +149,84 @@ async function loadDlcConfig() {
         config.value.dlcList = appConfig.dlcs.individual_dlcs
           .filter((d: any) => d.enabled)
           .map((d: any) => {
-            // 如果有名称，使用 appid=Name 格式
-            if (d.name && d.name !== d.app_id) {
+            // 如果名称是默认生成的 "DLC {appid}" 或等于 app_id，只显示 appid
+            if (d.name && d.name !== `DLC ${d.app_id}` && d.name !== d.app_id) {
               return `${d.app_id}=${d.name}`
             }
             return d.app_id
           })
           .join('\n')
+      } else {
+        // 外部清空 DLC 列表后同步为空
+        config.value.dlcList = ''
       }
     }
   } catch (error) {
-    console.error('加载 DLC 配置失败:', error)
+    // 加载失败时使用默认值
   }
 }
 
 // 组件挂载时加载配置
+let configSyncHandler: ((e: Event) => void) | null = null
+
 onMounted(() => {
   loadDlcConfig()
+
+  configSyncHandler = (e: Event) => {
+    const customEvent = e as CustomEvent<{ gamePath?: string }>
+    if (customEvent.detail?.gamePath === props.gamePath) {
+      loadDlcConfig()
+    }
+  }
+  // 监听应用配置保存事件，与完整配置管理器实时同步
+  window.addEventListener('app-config-saved', configSyncHandler)
+})
+
+onUnmounted(() => {
+  if (configSyncHandler) {
+    window.removeEventListener('app-config-saved', configSyncHandler)
+  }
 })
 
 /**
  * 保存配置
- * 提取 DLC 列表中的纯 appid 发送到后端
- * 同时补充 controller/cloudSaves 字段，避免覆盖已有数据
+ * 保留 DLC 列表中的 "appid=Name" 格式发送到后端
+ * 同时保留已有 app 配置中的分支、路径、controller、cloudSaves 等字段，避免覆盖
  */
-async function saveConfig() {
-  try {
-    // 先读取已有配置，保留 controller 和 cloudSaves
-    let existingController = {}
-    let existingCloudSaves = {}
+  async function saveConfig() {
     try {
-      const existing = await invoke<{ exists: boolean; config?: any }>('load_app_config', {
-        gamePath: props.gamePath
-      })
-      if (existing.exists && existing.config) {
-        existingController = existing.config.controller || {}
-        existingCloudSaves = existing.config.cloud_saves || {}
-      }
-    } catch {
-      // 读取失败不影响保存
-    }
-
-    // 解析 DLC 列表，提取纯 appid
-    const pureDlcList = parseDlcList(config.value.dlcList)
-
-    const result = await invoke<{ success: boolean; message: string }>('save_app_config', {
-      gamePath: props.gamePath,
-      config: {
-        branchName: 'public',
-        isBetaBranch: false,
-        // 保留已有的 controller 和 cloudSaves 配置
-        controller: existingController,
-        cloudSaves: existingCloudSaves,
-        dlcs: {
-          unlockAll: config.value.unlockAll,
-          dlcList: pureDlcList
+      // 先读取已有配置，保留除 dlcs 外的所有字段
+      let existingAppConfig: any = {}
+      try {
+        const existing = await invoke<{ exists: boolean; config?: any }>('load_app_config', {
+          gamePath: props.gamePath
+        })
+        if (existing.exists && existing.config) {
+          existingAppConfig = existing.config
         }
+      } catch {
+        // 读取失败不影响保存
       }
-    })
+
+      // 规范化 DLC 列表，保留 appid=Name 格式
+      const normalizedDlcList = normalizeDlcList(config.value.dlcList)
+
+      const result = await invoke<{ success: boolean; message: string }>('save_app_config', {
+        gamePath: props.gamePath,
+        config: {
+          // 保留已有分支、路径等配置，没有则使用默认值
+          branchName: existingAppConfig.branch_name || 'public',
+          isBetaBranch: existingAppConfig.is_beta_branch || false,
+          appPaths: existingAppConfig.app_paths || {},
+          // 保留已有的 controller 和 cloudSaves 配置
+          controller: existingAppConfig.controller || {},
+          cloudSaves: existingAppConfig.cloud_saves || {},
+          dlcs: {
+            unlockAll: config.value.unlockAll,
+            dlcList: normalizedDlcList
+          }
+        }
+      })
 
     if (result.success) {
       showToast.value = true
@@ -220,6 +234,10 @@ async function saveConfig() {
         showToast.value = false
       }, 3000)
       emit('saved')
+      // 广播应用配置已保存事件，通知完整配置管理器等其它窗口刷新
+      window.dispatchEvent(new CustomEvent('app-config-saved', {
+        detail: { gamePath: props.gamePath }
+      }))
       // 延迟关闭弹窗，等待 Toast 消失后再关闭
       setTimeout(() => {
         emit('close')

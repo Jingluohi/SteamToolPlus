@@ -4,6 +4,7 @@
 pub mod background_commands;
 pub mod cache_commands;
 pub mod config_commands;
+pub mod denuvo_commands;
 pub mod download_commands;
 pub mod game_commands;
 pub mod game_data_commands;

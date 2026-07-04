@@ -52,32 +52,32 @@
         <!-- 启用开关 -->
         <div class="config-section">
           <label class="toggle-label">
-            <input v-model="config.enable_experimental_overlay" type="checkbox" class="toggle-input" />
+            <input v-model="config.enableExperimentalOverlay" type="checkbox" class="toggle-input" />
             <span class="toggle-slider"></span>
             <span class="toggle-text">启用实验性 Overlay（Shift+Tab）</span>
           </label>
           <p class="config-hint">实验性功能，如遇到游戏崩溃或卡顿请关闭</p>
         </div>
 
-        <template v-if="config.enable_experimental_overlay">
+        <template v-if="config.enableExperimentalOverlay">
           <!-- 快捷键设置 -->
           <div class="config-group">
             <label class="config-label">快捷键</label>
-            <input v-model="config.overlay_hotkey" type="text" class="config-input" placeholder="shift + tab" />
+            <input v-model="config.overlayHotkey" type="text" class="config-input" placeholder="shift + tab" />
             <p class="config-hint">按下组合键显示/隐藏 Overlay</p>
           </div>
 
           <!-- Hook 延迟 -->
           <div class="config-group">
             <label>Hook 延迟（秒）</label>
-            <input v-model.number="config.hook_delay_sec" type="number" class="config-input" min="0" max="30" placeholder="0" />
+            <input v-model.number="config.hookDelaySec" type="number" class="config-input" min="0" max="30" placeholder="0" />
             <p class="config-hint">游戏启动后延迟 Hook 的时间，避免冲突</p>
           </div>
 
           <!-- 渲染器检测超时 -->
           <div class="config-group">
             <label>渲染器检测超时（秒）</label>
-            <input v-model.number="config.renderer_detector_timeout_sec" type="number" class="config-input" min="1" max="60" placeholder="10" />
+            <input v-model.number="config.rendererDetectorTimeoutSec" type="number" class="config-input" min="1" max="60" placeholder="10" />
             <p class="config-hint">检测游戏渲染器的超时时间</p>
           </div>
 
@@ -85,51 +85,51 @@
           <h4 class="section-title">通知与功能开关</h4>
           <div class="form-row">
             <label class="checkbox-label">
-              <input v-model="config.notifications.disable_achievement_notification" type="checkbox" />
+              <input v-model="config.notifications.disableAchievementNotification" type="checkbox" />
               <span>禁用成就通知</span>
             </label>
             <label class="checkbox-label">
-              <input v-model="config.notifications.disable_friend_notification" type="checkbox" />
+              <input v-model="config.notifications.disableFriendNotification" type="checkbox" />
               <span>禁用好友通知</span>
             </label>
           </div>
           <div class="form-row">
             <label class="checkbox-label">
-              <input v-model="config.notifications.disable_achievement_progress" type="checkbox" />
+              <input v-model="config.notifications.disableAchievementProgress" type="checkbox" />
               <span>禁用成就进度</span>
             </label>
             <label class="checkbox-label">
-              <input v-model="config.notifications.disable_warning_any" type="checkbox" />
+              <input v-model="config.notifications.disableWarningAny" type="checkbox" />
               <span>禁用所有警告</span>
             </label>
           </div>
           <div class="form-row">
             <label class="checkbox-label">
-              <input v-model="config.notifications.disable_warning_bad_appid" type="checkbox" />
+              <input v-model="config.notifications.disableWarningBadAppid" type="checkbox" />
               <span>禁用 AppID 警告</span>
             </label>
             <label class="checkbox-label">
-              <input v-model="config.notifications.disable_warning_local_save" type="checkbox" />
+              <input v-model="config.notifications.disableWarningLocalSave" type="checkbox" />
               <span>禁用本地存档警告</span>
             </label>
           </div>
           <div class="form-row">
             <label class="checkbox-label">
-              <input v-model="config.notifications.overlay_always_show_user_info" type="checkbox" />
+              <input v-model="config.notifications.overlayAlwaysShowUserInfo" type="checkbox" />
               <span>始终显示用户信息</span>
             </label>
             <label class="checkbox-label">
-              <input v-model="config.notifications.overlay_always_show_fps" type="checkbox" />
+              <input v-model="config.notifications.overlayAlwaysShowFps" type="checkbox" />
               <span>始终显示 FPS</span>
             </label>
           </div>
           <div class="form-row">
             <label class="checkbox-label">
-              <input v-model="config.notifications.overlay_always_show_frametime" type="checkbox" />
+              <input v-model="config.notifications.overlayAlwaysShowFrametime" type="checkbox" />
               <span>始终显示帧时间</span>
             </label>
             <label class="checkbox-label">
-              <input v-model="config.notifications.overlay_always_show_playtime" type="checkbox" />
+              <input v-model="config.notifications.overlayAlwaysShowPlaytime" type="checkbox" />
               <span>始终显示游玩时间</span>
             </label>
           </div>
@@ -137,7 +137,7 @@
           <!-- FPS 平均窗口 -->
           <div class="config-group">
             <label>FPS 平均窗口</label>
-            <input v-model.number="config.fps_averaging_window" type="number" class="config-input" min="0.1" max="10" step="0.1" placeholder="1.0" />
+            <input v-model.number="config.fpsAveragingWindow" type="number" class="config-input" min="0.1" max="10" step="0.1" placeholder="1.0" />
             <p class="config-hint">FPS 计算的平均窗口（秒）</p>
           </div>
         </template>
@@ -168,7 +168,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 
 const props = defineProps<{
@@ -186,28 +186,43 @@ const showToast = ref(false)
 
 /**
  * Overlay 配置对象
- * 字段名与 Rust 后端 OverlayConfig 结构完全一致（snake_case）
+ * 字段名使用 camelCase，与后端 save_overlay_config 命令期望的 JSON 键名保持一致
  */
 const config = ref({
-  enable_experimental_overlay: true,
-  hook_delay_sec: 0,
-  renderer_detector_timeout_sec: 10,
-  overlay_hotkey: 'shift + tab',
-  fps_averaging_window: 1.0,
+  enableExperimentalOverlay: false,
+  hookDelaySec: undefined,
+  rendererDetectorTimeoutSec: undefined,
+  overlayHotkey: 'shift + tab',
+  fpsAveragingWindow: undefined,
   notifications: {
-    disable_achievement_notification: false,
-    disable_friend_notification: false,
-    disable_achievement_progress: false,
-    disable_warning_any: false,
-    disable_warning_bad_appid: false,
-    disable_warning_local_save: false,
-    upload_achievements_icons_to_gpu: true,
-    overlay_always_show_user_info: false,
-    overlay_always_show_fps: false,
-    overlay_always_show_frametime: false,
-    overlay_always_show_playtime: false,
+    disableAchievementNotification: false,
+    disableFriendNotification: false,
+    disableAchievementProgress: false,
+    disableWarningAny: false,
+    disableWarningBadAppid: false,
+    disableWarningLocalSave: false,
+    uploadAchievementsIconsToGpu: true,
+    overlayAlwaysShowUserInfo: false,
+    overlayAlwaysShowFps: false,
+    overlayAlwaysShowFrametime: false,
+    overlayAlwaysShowPlaytime: false,
   },
 })
+
+/**
+ * 将 snake_case 键名递归转换为 camelCase
+ * 用于把后端返回的 OverlayConfig 数据转换为前端表单结构
+ */
+function snakeToCamel(obj: any): any {
+  if (obj === null || typeof obj !== 'object') return obj
+  if (Array.isArray(obj)) return obj.map(snakeToCamel)
+  const result: any = {}
+  for (const [key, value] of Object.entries(obj)) {
+    const camelKey = key.replace(/_([a-z])/g, (_, letter: string) => letter.toUpperCase())
+    result[camelKey] = snakeToCamel(value)
+  }
+  return result
+}
 
 /**
  * 保存配置
@@ -226,6 +241,10 @@ async function saveConfig() {
         showToast.value = false
       }, 3000)
       emit('saved')
+      // 广播覆盖层配置已保存事件，使其他弹窗/页面同步刷新
+      window.dispatchEvent(new CustomEvent('overlay-config-saved', {
+        detail: { gamePath: props.gamePath }
+      }))
       // 延迟关闭弹窗，等待 Toast 消失后再关闭
       setTimeout(() => {
         emit('close')
@@ -252,21 +271,38 @@ async function loadConfig() {
     })
 
     if (result.exists && result.config) {
+      // 后端返回 snake_case 键名，需转换为 camelCase 以匹配前端表单结构
+      const camelConfig = snakeToCamel(result.config)
       // 合并已有配置，保留默认值
-      config.value = { ...config.value, ...result.config }
+      config.value = { ...config.value, ...camelConfig }
       // 确保 notifications 子对象也存在
-      if (result.config.notifications) {
-        config.value.notifications = { ...config.value.notifications, ...result.config.notifications }
+      if (camelConfig.notifications) {
+        config.value.notifications = { ...config.value.notifications, ...camelConfig.notifications }
       }
     }
   } catch (error) {
     // 加载失败时使用默认值
-    console.error('加载 Overlay 配置失败:', error)
+  }
+}
+
+/**
+ * 处理覆盖层配置同步事件
+ * 当其他组件（如完整配置管理器）保存 overlay 配置时，若 gamePath 匹配则自动重载
+ */
+function handleOverlayConfigSaved(event: Event) {
+  const customEvent = event as CustomEvent<{ gamePath: string }>
+  if (customEvent.detail?.gamePath === props.gamePath) {
+    loadConfig()
   }
 }
 
 onMounted(() => {
   loadConfig()
+  window.addEventListener('overlay-config-saved', handleOverlayConfigSaved)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('overlay-config-saved', handleOverlayConfigSaved)
 })
 </script>
 

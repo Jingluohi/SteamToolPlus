@@ -80,7 +80,7 @@ saves_folder_name = </pre>
 
         <div class="config-group">
           <label class="config-label">SteamID（Steam64 格式，可选）</label>
-          <input v-model="config.account_steamid" type="text" class="config-input" placeholder="76561197960287930" />
+          <input v-model="config.accountSteamid" type="text" class="config-input" placeholder="76561197960287930" />
           <p class="field-hint">无效 ID 会被模拟器忽略，留空则自动生成</p>
         </div>
 
@@ -105,19 +105,19 @@ saves_folder_name = </pre>
 
         <div class="config-group">
           <label class="config-label">IP 国家代码</label>
-          <input v-model="config.ip_country" type="text" class="config-input" placeholder="CN" />
+          <input v-model="config.ipCountry" type="text" class="config-input" placeholder="CN" />
           <p class="field-hint">ISO 3166-1-alpha-2 格式，游戏查询 IP 时上报的国家代码</p>
         </div>
 
         <div class="config-group">
           <label class="config-label">存档文件夹名称（可选）</label>
-          <input v-model="config.saves_folder_name" type="text" class="config-input" placeholder="覆盖默认的 GSE Saves" />
+          <input v-model="config.savesFolderName" type="text" class="config-input" placeholder="覆盖默认的 GSE Saves" />
           <p class="field-hint">设置后会覆盖默认的存档文件夹名称</p>
         </div>
 
         <div class="config-group">
           <label class="config-label">本地存档路径（便携模式）</label>
-          <input v-model="config.local_save_path" type="text" class="config-input" placeholder="设置后完全便携，例如：./saves" />
+          <input v-model="config.localSavePath" type="text" class="config-input" placeholder="设置后完全便携，例如：./saves" />
           <p class="field-hint">设置后，存档将保存在此相对路径下，实现便携存档</p>
         </div>
 
@@ -142,7 +142,7 @@ saves_folder_name = </pre>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 
 const props = defineProps<{
@@ -157,21 +157,37 @@ const emit = defineEmits<{
 
 const config = ref({
   username: 'Player',
-  account_steamid: '',
+  accountSteamid: '',
   language: 'schinese',
-  ip_country: 'CN',
-  saves_folder_name: '',
-  local_save_path: '',
+  ipCountry: 'CN',
+  savesFolderName: '',
+  localSavePath: '',
   ticket: '',
-  alt_steamid: '',
-  alt_steamid_count: 0
+  altSteamid: '',
+  altSteamidCount: 0
 })
 
 const showToast = ref(false)
 
 /**
+ * 将 snake_case 键名递归转换为 camelCase
+ * Rust 后端默认返回 snake_case，但前端类型与表单统一使用 camelCase
+ */
+function snakeToCamel(obj: any): any {
+  if (obj === null || typeof obj !== 'object') return obj
+  if (Array.isArray(obj)) return obj.map(snakeToCamel)
+  const result: any = {}
+  for (const [key, value] of Object.entries(obj)) {
+    const camelKey = key.replace(/_([a-z])/g, (_, letter: string) => letter.toUpperCase())
+    result[camelKey] = snakeToCamel(value)
+  }
+  return result
+}
+
+/**
  * 加载已有配置
  * 调用 load_user_config 读取 configs.user.ini 并填充表单
+ * 后端返回 snake_case，通过 snakeToCamel 转换为 camelCase 后赋值
  */
 async function loadConfig() {
   try {
@@ -180,16 +196,16 @@ async function loadConfig() {
     })
 
     if (result.exists && result.config) {
-      const cfg = result.config
+      const cfg = snakeToCamel(result.config)
       config.value.username = cfg.username || 'Player'
-      config.value.account_steamid = cfg.account_steamid || ''
+      config.value.accountSteamid = cfg.accountSteamid || ''
       config.value.language = cfg.language || 'schinese'
-      config.value.ip_country = cfg.ip_country || 'CN'
-      config.value.saves_folder_name = cfg.saves_folder_name || ''
-      config.value.local_save_path = cfg.local_save_path || ''
+      config.value.ipCountry = cfg.ipCountry || 'CN'
+      config.value.savesFolderName = cfg.savesFolderName || ''
+      config.value.localSavePath = cfg.localSavePath || ''
       config.value.ticket = cfg.ticket || ''
-      config.value.alt_steamid = cfg.alt_steamid || ''
-      config.value.alt_steamid_count = cfg.alt_steamid_count || 0
+      config.value.altSteamid = cfg.altSteamid || ''
+      config.value.altSteamidCount = cfg.altSteamidCount || 0
     }
   } catch (error) {
     // 加载配置失败时静默处理，使用默认值
@@ -204,14 +220,14 @@ async function saveConfig() {
   try {
     const payload = {
       username: config.value.username,
-      account_steamid: config.value.account_steamid,
+      accountSteamid: config.value.accountSteamid,
       language: config.value.language,
-      ip_country: config.value.ip_country,
-      saves_folder_name: config.value.saves_folder_name,
-      local_save_path: config.value.local_save_path,
+      ipCountry: config.value.ipCountry,
+      savesFolderName: config.value.savesFolderName,
+      localSavePath: config.value.localSavePath,
       ticket: config.value.ticket,
-      alt_steamid: config.value.alt_steamid,
-      alt_steamid_count: config.value.alt_steamid_count
+      altSteamid: config.value.altSteamid,
+      altSteamidCount: config.value.altSteamidCount
     }
     const result = await invoke<{ success: boolean; message: string }>('save_user_config', {
       gamePath: props.gamePath,
@@ -224,6 +240,10 @@ async function saveConfig() {
         showToast.value = false
       }, 3000)
       emit('saved')
+      // 广播用户配置已保存事件，通知完整配置管理器等其它窗口刷新
+      window.dispatchEvent(new CustomEvent('user-config-saved', {
+        detail: { gamePath: props.gamePath }
+      }))
       // 延迟关闭弹窗，等待 Toast 消失后再关闭
       setTimeout(() => {
         emit('close')
@@ -236,8 +256,25 @@ async function saveConfig() {
   }
 }
 
+let configSyncHandler: ((e: Event) => void) | null = null
+
 onMounted(() => {
   loadConfig()
+
+  configSyncHandler = (e: Event) => {
+    const customEvent = e as CustomEvent<{ gamePath?: string }>
+    if (customEvent.detail?.gamePath === props.gamePath) {
+      loadConfig()
+    }
+  }
+  // 监听用户配置保存事件，与完整配置管理器实时同步
+  window.addEventListener('user-config-saved', configSyncHandler)
+})
+
+onUnmounted(() => {
+  if (configSyncHandler) {
+    window.removeEventListener('user-config-saved', configSyncHandler)
+  }
 })
 </script>
 

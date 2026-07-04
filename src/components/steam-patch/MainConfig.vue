@@ -48,25 +48,29 @@
           </div>
           <div class="guide-example">
             <div class="example-title">INI 格式示例：</div>
-            <pre class="example-code">[main]
-# 强制局域网模式
-force_lan_only = 1
-# 启用局域网广播
-enable_lan_broadcast = 1
-# 最大联机人数
-max_lobby_players = 32</pre>
+            <pre class="example-code">[main::general]
+# 生成新版认证票据（多数游戏需要）
+new_app_ticket = 1
+# 启用游戏协调器令牌（如 CS:GO、Dota2 需要）
+gc_token = 1
+# 阻止未知客户端连接
+block_unknown_clients = 0
+
+[main::connectivity]
+# 监听端口
+listen_port = 47584</pre>
           </div>
           <p class="guide-tip">提示：下方已提供推荐配置模板，可直接使用或按需修改</p>
         </div>
 
         <div class="config-group">
           <label class="config-label">核心配置</label>
-          <p class="config-desc">编辑 configs.main.ini 文件内容（下方已预填推荐配置）</p>
+          <p class="config-desc">编辑 configs.main.ini 文件内容（与完整配置管理器使用相同的 gbe_fork 默认格式）</p>
           <textarea
             v-model="config.mainIni"
             class="config-textarea"
             rows="10"
-            placeholder="[main]&#10;force_lan_only = 1&#10;enable_lan_broadcast = 1"
+            placeholder="[main::general]&#10;new_app_ticket = 1&#10;gc_token = 1&#10;..."
           ></textarea>
         </div>
       </div>
@@ -96,7 +100,7 @@ max_lobby_players = 32</pre>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 
 const props = defineProps<{
@@ -110,29 +114,7 @@ const emit = defineEmits<{
 }>()
 
 const config = ref({
-  mainIni: `[main]
-# 强制局域网模式 - 屏蔽外网校验，实现免Steam联机
-force_lan_only = 1
-
-# 启用局域网广播
-enable_lan_broadcast = 1
-
-# 匹配服务器列表类型
-# 0=始终返回局域网服务器列表
-matchmaking_server_list_actual_type = 0
-
-# 禁用Steam网络检查
-disable_steam_network_check = 1
-
-# 低延迟联机模式
-lan_broadcast_interval = 300
-
-# 允许未知统计
-allow_unknown_stats = 1
-
-# 最大联机人数
-max_lobby_players = 32
-`
+  mainIni: ''
 })
 
 const showToast = ref(false)
@@ -150,6 +132,10 @@ async function saveConfig() {
         showToast.value = false
       }, 3000)
       emit('saved')
+      // 广播主配置已保存事件，通知完整配置管理器等其它窗口刷新
+      window.dispatchEvent(new CustomEvent('main-config-saved', {
+        detail: { gamePath: props.gamePath }
+      }))
       // 延迟关闭弹窗，等待 Toast 消失后再关闭
       setTimeout(() => {
         emit('close')
@@ -164,11 +150,12 @@ async function saveConfig() {
 
 async function loadConfig() {
   try {
-    const result = await invoke<{ exists: boolean; content?: string }>('load_main_config', {
+    const result = await invoke<{ exists: boolean; content?: string | null }>('load_main_config', {
       gamePath: props.gamePath
     })
 
-    if (result.exists && result.content) {
+    // 无论文件是否已存在，后端都会返回默认或现有的 INI 内容
+    if (result.content) {
       config.value.mainIni = result.content
     }
   } catch (error) {
@@ -176,8 +163,25 @@ async function loadConfig() {
   }
 }
 
+let configSyncHandler: ((e: Event) => void) | null = null
+
 onMounted(() => {
   loadConfig()
+
+  configSyncHandler = (e: Event) => {
+    const customEvent = e as CustomEvent<{ gamePath?: string }>
+    if (customEvent.detail?.gamePath === props.gamePath) {
+      loadConfig()
+    }
+  }
+  // 监听主配置保存事件，与完整配置管理器实时同步
+  window.addEventListener('main-config-saved', configSyncHandler)
+})
+
+onUnmounted(() => {
+  if (configSyncHandler) {
+    window.removeEventListener('main-config-saved', configSyncHandler)
+  }
 })
 </script>
 

@@ -95,7 +95,7 @@
           v-for="tab in availableTabs" 
           :key="tab.id"
           class="tab-btn"
-          :class="{ active: currentTab === tab.id }"
+          :class="{ active: currentTab === tab.id, 'patch-tab': tab.id.startsWith('patch-') }"
           @click="currentTab = tab.id"
         >
           {{ tab.name }}
@@ -117,6 +117,7 @@
               <h4>游戏已下载</h4>
               <p>下载路径: {{ existingGameData.download_path }}</p>
               <p>安装路径: {{ existingGameData.install_path }}</p>
+              <p class="patch-hint">请安装对应补丁（免steam、steam联机、局域网联机等）</p>
             </div>
             <!-- 验证完整性按钮 -->
             <button
@@ -144,18 +145,51 @@
             >
               <!-- 下载引导 -->
               <div class="download-guide">
-                <button
-                  class="download-link-btn"
-                  @click="openDownloadUrl('https://pan.xunlei.com/s/VOw3jTAGHqYFsm49n2t_AeVGA1?pwd=3r6n')"
-                >
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                    <polyline points="7 10 12 15 17 10"/>
-                    <line x1="12" y1="15" x2="12" y2="3"/>
-                  </svg>
-                  点击下载对应清单文件7z，id：{{ gameId }}
-                </button>
-                <p class="password-hint">密码：3r6n</p>
+                <p class="download-guide-title">点击下载对应清单文件7z，id：{{ gameId }}</p>
+                <div class="download-buttons">
+                  <div class="download-btn-wrapper">
+                    <button
+                      class="download-patch-btn"
+                      @click="openQingdanQRCode"
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="7 10 12 15 17 10"/>
+                        <line x1="12" y1="15" x2="12" y2="3"/>
+                      </svg>
+                      <span>夸克网盘</span>
+                    </button>
+                  </div>
+                  <div class="backup-label">备用（容易和谐）：</div>
+                  <div class="download-btn-wrapper">
+                    <button
+                      class="download-patch-btn"
+                      @click="openDownloadUrl('https://pan.xunlei.com/s/VOw3jTAGHqYFsm49n2t_AeVGA1?pwd=3r6n')"
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="7 10 12 15 17 10"/>
+                        <line x1="12" y1="15" x2="12" y2="3"/>
+                      </svg>
+                      <span>迅雷网盘</span>
+                    </button>
+                    <p class="pwd-hint">提取码: 3r6n</p>
+                  </div>
+                  <div class="download-btn-wrapper">
+                    <button
+                      class="download-patch-btn"
+                      @click="openDownloadUrl('https://pan.baidu.com/s/1FTZyknIObyzMuLAJC-Uj9g?pwd=8uwx')"
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="7 10 12 15 17 10"/>
+                        <line x1="12" y1="15" x2="12" y2="3"/>
+                      </svg>
+                      <span>百度网盘</span>
+                    </button>
+                    <p class="pwd-hint">提取码: 8uwx</p>
+                  </div>
+                </div>
               </div>
 
               <!-- 清单文件选择 -->
@@ -226,7 +260,7 @@
           <div class="download-description">
             <div class="download-option">
               <h4>方法一【开始下载】</h4>
-              <p>下载Steam正版分流文件，下载完成后需要注入补丁才能游玩</p>
+              <p>下载Steam正版分流文件，下载完成后需要<span class="highlight-red-bold">注入补丁</span>才能游玩</p>
             </div>
           </div>
 
@@ -534,18 +568,51 @@
             <div v-if="!hasLua && !importSourceReady" class="import-no-files">
               <!-- 下载引导 -->
               <div class="download-guide">
-                <button
-                  class="download-link-btn"
-                  @click="openDownloadUrl('https://pan.xunlei.com/s/VOw3jTAGHqYFsm49n2t_AeVGA1?pwd=3r6n')"
-                >
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                    <polyline points="7 10 12 15 17 10"/>
-                    <line x1="12" y1="15" x2="12" y2="3"/>
-                  </svg>
-                  点击下载对应清单文件7z，id：{{ gameId }}
-                </button>
-                <p class="password-hint">密码：3r6n</p>
+                <p class="download-guide-title">点击下载对应清单文件7z，id：{{ gameId }}</p>
+                <div class="download-buttons">
+                  <div class="download-btn-wrapper">
+                    <button
+                      class="download-patch-btn"
+                      @click="openQingdanQRCode"
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="7 10 12 15 17 10"/>
+                        <line x1="12" y1="15" x2="12" y2="3"/>
+                      </svg>
+                      <span>夸克网盘</span>
+                    </button>
+                  </div>
+                  <div class="backup-label">备用（容易和谐）：</div>
+                  <div class="download-btn-wrapper">
+                    <button
+                      class="download-patch-btn"
+                      @click="openDownloadUrl('https://pan.xunlei.com/s/VOw3jTAGHqYFsm49n2t_AeVGA1?pwd=3r6n')"
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="7 10 12 15 17 10"/>
+                        <line x1="12" y1="15" x2="12" y2="3"/>
+                      </svg>
+                      <span>迅雷网盘</span>
+                    </button>
+                    <p class="pwd-hint">提取码: 3r6n</p>
+                  </div>
+                  <div class="download-btn-wrapper">
+                    <button
+                      class="download-patch-btn"
+                      @click="openDownloadUrl('https://pan.baidu.com/s/1FTZyknIObyzMuLAJC-Uj9g?pwd=8uwx')"
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="7 10 12 15 17 10"/>
+                        <line x1="12" y1="15" x2="12" y2="3"/>
+                      </svg>
+                      <span>百度网盘</span>
+                    </button>
+                    <p class="pwd-hint">提取码: 8uwx</p>
+                  </div>
+                </div>
               </div>
 
               <!-- 文件选择区域 -->
@@ -709,6 +776,7 @@ import {
   getGameData, 
   upsertGameData, 
   updateGameDownloadStatus,
+  finalizeGameDownload,
   type GameData 
 } from '../../api/gameData.api'
 import { getCategoryName, getCategoryColor } from '../../constants/game'
@@ -882,6 +950,18 @@ const handleQRCodeClose = () => {
   showQRCodeModal.value = false
   qrCodeImageUrl.value = ''
 }
+
+/**
+ * 打开清单下载夸克网盘二维码弹窗
+ * 使用程序内置的 qingdan.png 二维码图片
+ */
+const openQingdanQRCode = async () => {
+  qrCodeTitle.value = '夸克网盘下载'
+  qrCodeHint.value = '请使用夸克APP扫码下载'
+  qrCodeImageUrl.value = await invoke<string>('get_qingdan_image_base64')
+  showQRCodeModal.value = true
+}
+
 const canImportToSteam = computed(() => {
   // 只要有lua就可以入库（内置清单或自定义源）
   return (hasLua.value || importSourceReady.value) && !isImportingToSteam.value
@@ -1277,8 +1357,15 @@ const scanProgressFiles = async () => {
       addDownloadLog('所有depot下载完成！', 'success')
       // 更新游戏数据为已完成
       await updateGameDownloadStatus(gameId.value, 'completed', 100)
-      // 刷新游戏数据
-      existingGameData.value = await getGameData(gameId.value)
+      // 执行下载完成收尾：扫描目录、定位 exe、标记已安装
+      try {
+        const finalizedGame = await finalizeGameDownload(gameId.value)
+        existingGameData.value = finalizedGame
+        addDownloadLog('游戏已入库，可前往游戏库查看', 'success')
+      } catch (finalizeError) {
+        addDownloadLog(`入库处理失败: ${finalizeError}`, 'error')
+        existingGameData.value = await getGameData(gameId.value)
+      }
     }
   } catch (error) {
     // 扫描进度文件失败时静默处理
@@ -1600,6 +1687,17 @@ onMounted(async () => {
     // 如果正在下载中，恢复监控
     if (gameData.download_status === 'downloading') {
       startProgressMonitoring()
+    }
+
+    // 补偿处理：之前版本下载完成后可能只设置了 completed 但没有标记 is_installed
+    // 如果检测到已完成但未安装，自动执行收尾
+    if (gameData.download_status === 'completed' && !gameData.is_installed) {
+      try {
+        const finalizedGame = await finalizeGameDownload(gameId.value)
+        existingGameData.value = finalizedGame
+      } catch {
+        // 补偿失败时保持原数据，不影响页面显示
+      }
     }
   }
 
@@ -2499,6 +2597,23 @@ const restartSteam = async () => {
   background-color: var(--steam-bg-secondary);
 }
 
+/* 补丁类标签页使用红色粗体显示 */
+.tab-btn.patch-tab {
+  color: #ef4444;
+  font-weight: 700;
+}
+
+.tab-btn.patch-tab:hover {
+  color: #f87171;
+  background-color: rgba(239, 68, 68, 0.1);
+}
+
+.tab-btn.patch-tab.active {
+  color: #ef4444;
+  border-bottom-color: #ef4444;
+  background-color: rgba(239, 68, 68, 0.08);
+}
+
 .tabs-content {
   padding: 14px;
 }
@@ -2557,6 +2672,19 @@ const restartSteam = async () => {
   margin: 0 0 3px 0;
   font-size: 13px;
   color: var(--steam-text-secondary);
+}
+
+.success-text .patch-hint {
+  margin-top: 8px;
+  font-size: 15px;
+  font-weight: 700;
+  color: #ef4444;
+}
+
+/* 通用红色加粗高亮文本 */
+.highlight-red-bold {
+  color: #ef4444;
+  font-weight: 700;
 }
 
 /* 验证完整性按钮 - 样式与开始下载按钮一致 */
@@ -3020,8 +3148,16 @@ const restartSteam = async () => {
 .download-buttons {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 10px;
   margin-bottom: 7px;
+}
+
+.backup-label {
+  font-size: 13px;
+  color: var(--steam-text-secondary);
+  white-space: nowrap;
+  margin-left: 6px;
 }
 
 .download-btn-wrapper {
@@ -3480,36 +3616,11 @@ const restartSteam = async () => {
   gap: 7px;
 }
 
-.download-link-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 12px 24px;
-  border: none;
-  border-radius: 8px;
-  background-color: #f59e0b;
-  color: white;
+.download-guide-title {
   font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background-color 0.15s ease;
-  align-self: flex-start;
-}
-
-.download-link-btn:hover {
-  background-color: #d97706;
-}
-
-.download-link-btn svg {
-  width: 18px;
-  height: 18px;
-}
-
-.password-hint {
+  font-weight: 500;
+  color: var(--steam-text-primary);
   margin: 0;
-  font-size: 11px;
-  color: var(--steam-text-secondary);
 }
 
 /* 清单源选择区域 */

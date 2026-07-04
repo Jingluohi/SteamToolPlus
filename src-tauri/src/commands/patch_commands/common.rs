@@ -113,6 +113,19 @@ pub fn get_resource_dir(app: AppHandle) -> Result<String, String> {
     Ok(path.to_string_lossy().to_string())
 }
 
+/// 规范化资源相对路径
+/// 移除用户传入路径中可能包含的 "resources/" 或 "Resources\\" 前缀，使其统一为相对于资源目录的路径
+pub fn normalize_resource_relative_path(path: &str) -> &str {
+    let path_lower = path.to_lowercase();
+    if path_lower.starts_with("resources/") {
+        &path[10..]
+    } else if path_lower.starts_with("resources\\") {
+        &path[11..]
+    } else {
+        path
+    }
+}
+
 /// 检查路径是否存在
 #[tauri::command]
 pub fn path_exists(path: String) -> Result<bool, String> {
@@ -131,8 +144,8 @@ pub async fn get_patch_readme(
 
     let readme_subdir = match patch_type {
         0 => "免_steam",
-        1 => "steam_联机",
-        2 => "steam_联机",
+        1 => "局域网联机",
+        2 => "Steam联机",
         3 => "D_加密虚拟机",
         4 => "epic_联机",
         _ => "免_steam",
@@ -278,14 +291,7 @@ pub async fn apply_patch(
 ) -> Result<ApplyPatchResult, String> {
     let resource_dir = get_resource_dir_util(&app)?;
 
-    let patch_lower = patch_source_path.to_lowercase();
-    let patch_relative_path = if patch_lower.starts_with("resources/") {
-        &patch_source_path[10..]
-    } else if patch_lower.starts_with("resources\\") {
-        &patch_source_path[11..]
-    } else {
-        &patch_source_path
-    };
+    let patch_relative_path = normalize_resource_relative_path(&patch_source_path);
 
     let patch_file_name = if patch_relative_path.ends_with(".7z") {
         patch_relative_path.to_string()

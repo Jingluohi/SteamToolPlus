@@ -101,7 +101,8 @@ const navMenus: { title: string; items: NavMenuItem[] }[] = [
     items: [
       { name: '本体下载', path: '/download' },
       { name: '免Steam补丁', path: '/patch' },
-      { name: '清单入库', path: '/manifest-import' }
+      { name: '清单入库', path: '/manifest-import' },
+      { name: 'D加密授权', path: '/denuvo-auth' }
     ]
   },
   {

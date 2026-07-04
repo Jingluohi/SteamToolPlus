@@ -11,7 +11,7 @@
 // - misc_config: 杂项配置（DLC、depots、branches、groups、languages 等）
 // - tools: 工具集成（ColdClientLoader、lobby_connect、generate_interfaces）
 
-mod common;
+pub mod common;
 mod file_ops;
 mod steamless;
 mod patch_apply;

@@ -104,8 +104,9 @@ level_reached=2=1</pre>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, onUnmounted, watch } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
+import type { LeaderboardsConfig } from '../../../src/types/steam-config.types'
 
 const props = defineProps<{
   gamePath: string
@@ -123,14 +124,9 @@ const showToast = ref(false)
  * 排行榜配置对象
  * 与 Rust LeaderboardsConfig 结构体一致
  */
-const config = ref({
+const config = ref<LeaderboardsConfig>({
   enabled: true,
-  leaderboards: [] as Array<{
-    name: string
-    displayName: string
-    sortMethod: string
-    displayType: string
-  }>,
+  leaderboards: [],
 })
 
 /** 排行榜文本（用于 textarea 编辑） */
@@ -193,6 +189,10 @@ async function saveConfig() {
         showToast.value = false
       }, 3000)
       emit('saved')
+      // 广播排行榜配置已保存事件，通知完整配置管理器等其它窗口刷新
+      window.dispatchEvent(new CustomEvent('leaderboards-config-saved', {
+        detail: { gamePath: props.gamePath }
+      }))
       // 延迟关闭弹窗，等待 Toast 消失后再关闭
       setTimeout(() => {
         emit('close')
@@ -212,7 +212,7 @@ async function loadConfig() {
   try {
     const result = await invoke<{
       exists: boolean
-      config?: any
+      config?: LeaderboardsConfig
     }>('load_leaderboards_config', {
       gamePath: props.gamePath,
     })
@@ -220,19 +220,36 @@ async function loadConfig() {
     if (result.exists && result.config) {
       config.value.enabled = result.config.enabled ?? true
 
-      // 加载排行榜定义
-      if (result.config.leaderboards && result.config.leaderboards.length > 0) {
-        config.value.leaderboards = result.config.leaderboards
-        syncLeaderboardsToText()
-      }
+      // 同步排行榜定义（包括空数组，确保外部清空后文本区同步）
+      config.value.leaderboards = Array.isArray(result.config.leaderboards)
+        ? result.config.leaderboards
+        : []
+      syncLeaderboardsToText()
     }
   } catch (error) {
-    console.error('加载排行榜配置失败:', error)
+    // 加载失败时使用默认值
   }
 }
 
+let configSyncHandler: ((e: Event) => void) | null = null
+
 onMounted(() => {
   loadConfig()
+
+  configSyncHandler = (e: Event) => {
+    const customEvent = e as CustomEvent<{ gamePath?: string }>
+    if (customEvent.detail?.gamePath === props.gamePath) {
+      loadConfig()
+    }
+  }
+  // 监听排行榜配置保存事件，与完整配置管理器实时同步
+  window.addEventListener('leaderboards-config-saved', configSyncHandler)
+})
+
+onUnmounted(() => {
+  if (configSyncHandler) {
+    window.removeEventListener('leaderboards-config-saved', configSyncHandler)
+  }
 })
 </script>
 

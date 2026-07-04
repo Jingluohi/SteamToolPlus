@@ -443,7 +443,7 @@ kill_count=2=1</pre>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 import type { 
   ItemsConfig, 
@@ -490,7 +490,7 @@ const configs = ref({
     bindings: [],
     deadzone: { leftStick: 0.1, rightStick: 0.1, leftTrigger: 0.1, rightTrigger: 0.1 },
     rumble: { enabled: true, intensity: 0.8 },
-    customGlyphs: { enabled: false }
+    customGlyphs: { enabled: false, path: '' }
   } as ControllerConfig,
   coldClientLoader: { enabled: false, injectionMode: 'direct', extraDlls: [], launchArgs: '' } as ColdClientLoaderConfig,
   lobbyConnect: { enabled: false, autoJoin: false, targetLobbyId: '', password: '' } as LobbyConnectConfig,
@@ -573,33 +573,40 @@ function removeLeaderboard(index: number) {
 // 保存所有配置
 async function saveAllConfigs() {
   try {
-    // 保存各个配置
+    // 保存各个配置：无论是否启用都调用保存，禁用时保存空配置以清空文件
     const promises = []
 
-    if (configs.value.items.enabled) {
-      promises.push(invoke('save_items_config', {
-        gamePath: props.gamePath,
-        config: configs.value.items
-      }))
-    }
+    promises.push(invoke('save_items_config', {
+      gamePath: props.gamePath,
+      config: configs.value.items.enabled ? configs.value.items : { enabled: false, itemDefinitions: [], initialItems: [] }
+    }))
 
-    if (configs.value.mods.enabled) {
-      promises.push(invoke('save_mods_config', {
-        gamePath: props.gamePath,
-        config: configs.value.mods
-      }))
-    }
+    promises.push(invoke('save_mods_config', {
+      gamePath: props.gamePath,
+      config: configs.value.mods.enabled ? configs.value.mods : { enabled: false, subscribedMods: [], autoUpdate: false }
+    }))
 
-    if (configs.value.leaderboards.enabled) {
-      promises.push(invoke('save_leaderboards_config', {
-        gamePath: props.gamePath,
-        config: configs.value.leaderboards
-      }))
-    }
+    promises.push(invoke('save_leaderboards_config', {
+      gamePath: props.gamePath,
+      config: configs.value.leaderboards.enabled ? configs.value.leaderboards : { enabled: false, leaderboards: [] }
+    }))
 
+    // 保存控制器配置（无论是否启用，确保文件内容与当前状态一致）
     promises.push(invoke('save_controller_config', {
       gamePath: props.gamePath,
       config: configs.value.controller
+    }))
+
+    // 保存 ColdClientLoader 配置
+    promises.push(invoke('save_coldclient_config', {
+      gamePath: props.gamePath,
+      config: configs.value.coldClientLoader
+    }))
+
+    // 保存 Lobby Connect 配置
+    promises.push(invoke('save_lobby_connect_config', {
+      gamePath: props.gamePath,
+      config: configs.value.lobbyConnect
     }))
 
     // 保存其他配置
@@ -608,6 +615,10 @@ async function saveAllConfigs() {
     await Promise.all(promises)
 
     emit('saved')
+    // 广播配置已保存事件，通知完整配置管理器等其它窗口刷新
+    window.dispatchEvent(new CustomEvent('overlay-config-saved', {
+      detail: { gamePath: props.gamePath }
+    }))
     emit('close')
   } catch (error) {
     alert(`保存失败: ${error}`)
@@ -620,54 +631,48 @@ async function saveOtherConfigs() {
     .split('\n')
     .map(s => s.trim())
     .filter(s => s)
-  if (appIds.length > 0) {
-    await invoke('save_installed_app_ids', {
-      gamePath: props.gamePath,
-      appIds
-    })
-  }
+  await invoke('save_installed_app_ids', {
+    gamePath: props.gamePath,
+    appIds
+  })
 
   // 保存 subscribed_groups.txt
   const groupIds = otherConfigs.value.subscribedGroups
     .split('\n')
     .map(s => s.trim())
     .filter(s => s)
-  if (groupIds.length > 0) {
-    await invoke('save_subscribed_groups', {
-      gamePath: props.gamePath,
-      groupIds
-    })
-  }
+  await invoke('save_subscribed_groups', {
+    gamePath: props.gamePath,
+    groupIds
+  })
 
   // 保存 purchased_keys.txt (格式: appid=KEY)
   const keys = otherConfigs.value.purchasedKeys
     .split('\n')
     .map(s => s.trim())
     .filter(s => s && !s.startsWith('#'))
-  if (keys.length > 0) {
-    await invoke('save_purchased_keys', {
-      gamePath: props.gamePath,
-      keys
-    })
-  }
+  await invoke('save_purchased_keys', {
+    gamePath: props.gamePath,
+    keys
+  })
 
   // 保存 supported_languages.txt
-  if (selectedLanguages.value.length > 0) {
-    await invoke('save_supported_languages', {
-      gamePath: props.gamePath,
-      languages: selectedLanguages.value
-    })
-  }
+  await invoke('save_supported_languages', {
+    gamePath: props.gamePath,
+    languages: selectedLanguages.value
+  })
 }
 
 async function loadConfigs() {
   try {
     // 加载各个配置
-    const [itemsResult, modsResult, leaderboardsResult, controllerResult] = await Promise.all([
+    const [itemsResult, modsResult, leaderboardsResult, controllerResult, coldClientResult, lobbyResult] = await Promise.all([
       invoke<{ exists: boolean; config?: ItemsConfig }>('load_items_config', { gamePath: props.gamePath }),
       invoke<{ exists: boolean; config?: ModsConfig }>('load_mods_config', { gamePath: props.gamePath }),
       invoke<{ exists: boolean; config?: LeaderboardsConfig }>('load_leaderboards_config', { gamePath: props.gamePath }),
       invoke<{ exists: boolean; config?: ControllerConfig }>('load_controller_config', { gamePath: props.gamePath }),
+      invoke<{ exists: boolean; config?: ColdClientLoaderConfig }>('load_coldclient_config', { gamePath: props.gamePath }),
+      invoke<{ exists: boolean; config?: LobbyConnectConfig }>('load_lobby_connect_config', { gamePath: props.gamePath }),
     ])
 
     if (itemsResult.exists && itemsResult.config) {
@@ -682,6 +687,12 @@ async function loadConfigs() {
     if (controllerResult.exists && controllerResult.config) {
       configs.value.controller = controllerResult.config
     }
+    if (coldClientResult.exists && coldClientResult.config) {
+      configs.value.coldClientLoader = coldClientResult.config
+    }
+    if (lobbyResult.exists && lobbyResult.config) {
+      configs.value.lobbyConnect = lobbyResult.config
+    }
 
     // 加载其他配置
     await loadOtherConfigs()
@@ -692,36 +703,44 @@ async function loadConfigs() {
 
 async function loadOtherConfigs() {
   try {
-    // 加载 installed_app_ids.txt
+    // 加载 installed_app_ids.txt（包括空数组，确保外部清空后文本区同步）
     const appIds = await invoke<string[]>('load_installed_app_ids', { gamePath: props.gamePath })
-    if (appIds && appIds.length > 0) {
-      otherConfigs.value.installedAppIds = appIds.join('\n')
-    }
+    otherConfigs.value.installedAppIds = Array.isArray(appIds) ? appIds.join('\n') : ''
 
-    // 加载 subscribed_groups.txt
+    // 加载 subscribed_groups.txt（包括空数组）
     const groupIds = await invoke<string[]>('load_subscribed_groups', { gamePath: props.gamePath })
-    if (groupIds && groupIds.length > 0) {
-      otherConfigs.value.subscribedGroups = groupIds.join('\n')
-    }
+    otherConfigs.value.subscribedGroups = Array.isArray(groupIds) ? groupIds.join('\n') : ''
 
-    // 加载 purchased_keys.txt
+    // 加载 purchased_keys.txt（包括空数组）
     const keys = await invoke<string[]>('load_purchased_keys', { gamePath: props.gamePath })
-    if (keys && keys.length > 0) {
-      otherConfigs.value.purchasedKeys = keys.join('\n')
-    }
+    otherConfigs.value.purchasedKeys = Array.isArray(keys) ? keys.join('\n') : ''
 
-    // 加载 supported_languages.txt
+    // 加载 supported_languages.txt（包括空数组）
     const languages = await invoke<string[]>('load_supported_languages', { gamePath: props.gamePath })
-    if (languages && languages.length > 0) {
-      selectedLanguages.value = languages
-    }
+    selectedLanguages.value = Array.isArray(languages) ? languages : []
   } catch (error) {
     // 加载失败时使用默认值
   }
 }
 
+let configSyncHandler: ((e: Event) => void) | null = null
+
 onMounted(() => {
   loadConfigs()
+
+  configSyncHandler = (e: Event) => {
+    const customEvent = e as CustomEvent<{ gamePath?: string }>
+    if (customEvent.detail?.gamePath === props.gamePath) {
+      loadConfigs()
+    }
+  }
+  window.addEventListener('overlay-config-saved', configSyncHandler)
+})
+
+onUnmounted(() => {
+  if (configSyncHandler) {
+    window.removeEventListener('overlay-config-saved', configSyncHandler)
+  }
 })
 </script>
 
