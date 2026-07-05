@@ -114,8 +114,8 @@ const showMenu = ref(false)
   position: absolute;
   top: 100%;
   left: 0;
-  width: 150px;
-  min-width: 150px;
+  width: 140px;
+  min-width: 140px;
   background: var(--steam-bg-secondary);
   border: 1px solid var(--steam-border);
   border-radius: 8px;

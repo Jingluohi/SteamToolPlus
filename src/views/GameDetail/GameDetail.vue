@@ -260,7 +260,7 @@
           <div class="download-description">
             <div class="download-option">
               <h4>方法一【开始下载】</h4>
-              <p>下载Steam正版分流文件，下载完成后需要<span class="highlight-red-bold">注入补丁</span>才能游玩</p>
+              <p>通过清单文件直连Steam官方服务器下载正版分流文件，下载完成后需要 <span class="highlight-red-bold">注入补丁</span> 才能游玩</p>
             </div>
           </div>
 
@@ -781,7 +781,7 @@ import {
 } from '../../api/gameData.api'
 import { getCategoryName, getCategoryColor } from '../../constants/game'
 import { safeAsync } from '../../utils/async-helper'
-import { getFileName, sanitizeFolderName } from '../../utils/file-helper'
+import { getFileName, sanitizeGameFolderName } from '../../utils/file-helper'
 import { useConfigStore } from '../../store/config.store'
 import FirstTimeSetupModal from '../../components/manifest/FirstTimeSetupModal.vue'
 
@@ -1676,7 +1676,7 @@ onMounted(async () => {
     if (gameData.download_status === 'completed' && isGameDirExists && gameData.download_path) {
       downloadPath.value = gameData.download_path
     } else if (defaultPath) {
-      const folderName = sanitizeFolderName(gameData.game_name || gameId.value)
+      const folderName = sanitizeGameFolderName(gameData.game_name || gameId.value)
       downloadPath.value = `${defaultPath}\\${folderName}`
     } else if (gameData.download_path) {
       downloadPath.value = gameData.download_path
@@ -1815,7 +1815,7 @@ const autoSetDownloadPath = async () => {
   try {
     // 构建下载路径，使用游戏英文名作为文件夹名（清理非法字符）
     const rawFolderName = game.value?.game_name || gameId.value
-    const folderName = sanitizeFolderName(rawFolderName)
+    const folderName = sanitizeGameFolderName(rawFolderName)
 
     // 如果游戏已下载且未卸载，使用保存的路径
     if (existingGameData.value?.download_status === 'completed' && existingGameData.value?.download_path) {

@@ -684,7 +684,7 @@ async function openExternalLink(url: string) {
 .manifest-import-page {
   max-width: 1400px;
   margin: 0 auto;
-  padding: 24px;
+  padding: 16px;
   height: 100%;
   overflow-y: auto;
   overflow-x: hidden;
@@ -692,8 +692,8 @@ async function openExternalLink(url: string) {
 
 .page-header {
   text-align: center;
-  margin-bottom: 24px;
-  padding-bottom: 16px;
+  margin-bottom: 19px;
+  padding-bottom: 13px;
   border-bottom: 1px solid var(--steam-border);
 }
 
@@ -701,8 +701,8 @@ async function openExternalLink(url: string) {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 16px;
-  margin-bottom: 8px;
+  gap: 13px;
+  margin-bottom: 6px;
 }
 
 .page-header h1 {
@@ -751,7 +751,7 @@ async function openExternalLink(url: string) {
 .main-content {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 24px;
+  gap: 19px;
 }
 
 @media (max-width: 1000px) {
@@ -764,8 +764,8 @@ async function openExternalLink(url: string) {
   background: rgba(var(--steam-bg-primary-rgb), 0.15);
   backdrop-filter: blur(10px);
   border-radius: 8px;
-  padding: 16px;
-  margin-bottom: 16px;
+  padding: 13px;
+  margin-bottom: 13px;
   border: 1px solid var(--steam-border);
 }
 
@@ -773,14 +773,14 @@ async function openExternalLink(url: string) {
   font-size: 14px;
   color: var(--steam-text-primary);
   font-weight: 600;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
 }
 
 .section h4 {
   font-size: 12px;
   color: var(--steam-text-secondary);
   font-weight: 500;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 
 /* 设置项样式（用于OpenSteamTool开关） */
@@ -788,9 +788,9 @@ async function openExternalLink(url: string) {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  padding: 10px 0;
+  padding: 8px 0;
   border-bottom: 1px solid rgba(255,255,255,0.05);
-  gap: 16px;
+  gap: 13px;
 }
 
 .setting-item:last-child {
@@ -800,14 +800,14 @@ async function openExternalLink(url: string) {
 .setting-info {
   flex: 1;
   min-width: 0;
-  padding-right: 16px;
+  padding-right: 13px;
 }
 
 .setting-name {
   font-size: 14px;
   font-weight: 500;
   color: var(--steam-text-primary);
-  margin: 0 0 4px 0;
+  margin: 0 0 3px 0;
   line-height: 1.4;
 }
 
@@ -830,21 +830,21 @@ async function openExternalLink(url: string) {
 .hint {
   font-size: 12px;
   color: var(--steam-text-secondary);
-  margin-bottom: 12px;
+  margin-bottom: 10px;
 }
 
 /* Steam路径显示 */
 .steam-path-display {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 
 .path-info {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 12px;
+  gap: 6px;
+  padding: 10px;
   background: var(--steam-bg-tertiary);
   border-radius: 4px;
   border: 1px solid var(--steam-border);
@@ -883,15 +883,15 @@ async function openExternalLink(url: string) {
 /* 文件选择 */
 .file-select-options {
   display: flex;
-  gap: 12px;
-  margin-bottom: 12px;
+  gap: 10px;
+  margin-bottom: 10px;
 }
 
 .selected-source {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px;
+  padding: 10px;
   background: var(--steam-bg-tertiary);
   border-radius: 4px;
   border: 1px solid var(--steam-border);
@@ -900,7 +900,7 @@ async function openExternalLink(url: string) {
 .source-info {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 3px;
   flex: 1;
   min-width: 0;
 }
@@ -922,9 +922,9 @@ async function openExternalLink(url: string) {
 /* 扫描结果 */
 .scan-stats {
   display: flex;
-  gap: 16px;
-  margin-bottom: 16px;
-  padding: 12px;
+  gap: 13px;
+  margin-bottom: 13px;
+  padding: 10px;
   background: var(--steam-bg-tertiary);
   border-radius: 4px;
 }
@@ -932,7 +932,7 @@ async function openExternalLink(url: string) {
 .stat-item {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 3px;
 }
 
 .stat-label {
@@ -949,13 +949,13 @@ async function openExternalLink(url: string) {
 .file-lists {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
 }
 
 .file-list-section {
   border: 1px solid var(--steam-border);
   border-radius: 4px;
-  padding: 12px;
+  padding: 10px;
   background: var(--steam-bg-tertiary);
 }
 
@@ -964,11 +964,11 @@ async function openExternalLink(url: string) {
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 3px;
 }
 
 .file-item {
-  padding: 6px 8px;
+  padding: 5px 6px;
   background: var(--steam-bg-primary);
   border-radius: 4px;
   font-size: 12px;
@@ -990,7 +990,7 @@ async function openExternalLink(url: string) {
   width: 100%;
   padding: 12px;
   font-size: 14px;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
 }
 
 .btn-restart-steam {
@@ -1004,12 +1004,12 @@ async function openExternalLink(url: string) {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
 }
 
 .stats {
   display: flex;
-  gap: 16px;
+  gap: 13px;
   font-size: 12px;
 }
 
@@ -1027,7 +1027,7 @@ async function openExternalLink(url: string) {
   border-radius: 4px;
   overflow: hidden;
   position: relative;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
 }
 
 .progress-fill {
@@ -1051,7 +1051,7 @@ async function openExternalLink(url: string) {
   overflow-y: auto;
   background: var(--steam-bg-tertiary);
   border-radius: 4px;
-  padding: 12px;
+  padding: 10px;
   font-family: Consolas, Monaco, monospace;
   font-size: 12px;
   line-height: 1.6;
@@ -1061,7 +1061,7 @@ async function openExternalLink(url: string) {
 .log-placeholder {
   color: var(--steam-text-muted);
   text-align: center;
-  padding: 24px;
+  padding: 19px;
 }
 
 .log-item {
@@ -1083,13 +1083,13 @@ async function openExternalLink(url: string) {
 
 .button-group {
   display: flex;
-  gap: 8px;
-  margin-top: 12px;
+  gap: 6px;
+  margin-top: 10px;
 }
 
 /* 信息区域 */
 .info-section {
-  margin-top: 16px;
+  margin-top: 13px;
 }
 
 .info-content {
@@ -1097,7 +1097,7 @@ async function openExternalLink(url: string) {
 }
 
 .info-block {
-  margin-bottom: 16px;
+  margin-bottom: 13px;
 }
 
 .info-block:last-child {
@@ -1106,18 +1106,18 @@ async function openExternalLink(url: string) {
 
 .info-block p {
   color: var(--steam-text-secondary);
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 
 .info-block ol,
 .info-block ul {
-  margin: 8px 0;
+  margin: 6px 0;
   padding-left: 20px;
   color: var(--steam-text-secondary);
 }
 
 .info-block li {
-  margin: 4px 0;
+  margin: 3px 0;
 }
 
 .info-block code {

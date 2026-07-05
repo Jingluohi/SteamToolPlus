@@ -1,0 +1,1057 @@
+<template>
+  <div class="achievements-config-panel">
+    <!-- 使用说明 -->
+    <div class="usage-guide">
+      <div class="guide-header">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="12" y1="16" x2="12" y2="12"/>
+          <line x1="12" y1="8" x2="12.01" y2="8"/>
+        </svg>
+        <span>格式说明</span>
+      </div>
+      <div class="guide-content">
+        <div class="guide-item">
+          <span class="guide-label">成就数据文件</span>
+          <span class="guide-value">achievements.json</span>
+        </div>
+        <div class="guide-item">
+          <span class="guide-label">成就图标</span>
+          <span class="guide-value">PNG/JPG/BMP 格式，推荐尺寸 64x64 或 128x128</span>
+        </div>
+        <div class="guide-item">
+          <span class="guide-label">成就ID</span>
+          <span class="guide-value">英文字母+下划线，如 achievement_first_blood</span>
+        </div>
+        <div class="guide-item">
+          <span class="guide-label">导入格式</span>
+          <span class="guide-value">JSON 数组，每个成就包含 name、displayName、description 字段</span>
+        </div>
+      </div>
+      <div class="guide-example">
+        <div class="example-title">JSON 示例：</div>
+        <pre class="example-code">[
+  {
+    "name": "achievement_first_blood",
+    "displayName": "第一滴血",
+    "description": "完成首次击杀",
+    "hidden": false,
+    "icon": "icons/achievement_1.png",
+    "iconGray": "icons/achievement_1_gray.png"
+  }
+]</pre>
+      </div>
+    </div>
+
+    <!-- 启用开关 -->
+    <div class="config-section">
+      <label class="toggle-label">
+        <input v-model="config.enabled" type="checkbox" class="toggle-input" />
+        <span class="toggle-slider"></span>
+        <span class="toggle-text">启用成就系统</span>
+      </label>
+    </div>
+
+    <template v-if="config.enabled">
+      <!-- 通知设置 -->
+      <div class="config-section">
+        <h4 class="section-title">通知设置</h4>
+        <label class="checkbox-label">
+          <input v-model="config.showNotifications" type="checkbox" />
+          <span>显示成就解锁通知</span>
+        </label>
+      </div>
+
+      <!-- 成就列表 -->
+      <div class="config-section">
+        <div class="section-header">
+          <h4 class="section-title">成就列表</h4>
+          <button class="btn-add" @click="addAchievement">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="12" y1="5" x2="12" y2="19"/>
+              <line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+            添加成就
+          </button>
+        </div>
+
+        <div class="achievements-list">
+          <div
+            v-for="(achievement, index) in config.achievements"
+            :key="index"
+            class="achievement-card"
+            :class="{ expanded: expandedIndex === index }"
+          >
+            <div class="achievement-header" @click="toggleExpand(index)">
+              <div class="achievement-icon">
+                <svg v-if="!achievement.icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="8" r="7"/>
+                  <polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/>
+                </svg>
+                <img v-else :src="achievement.icon" alt="achievement" />
+              </div>
+              <div class="achievement-info">
+                <span class="achievement-name">{{ achievement.displayName || achievement.name || '未命名成就' }}</span>
+                <span class="achievement-id">{{ achievement.name || '无ID' }}</span>
+              </div>
+              <div class="achievement-actions">
+                <span v-if="achievement.hidden" class="badge hidden">隐藏</span>
+                <button class="btn-icon" @click.stop="removeAchievement(index)">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                    <line x1="6" y1="6" x2="18" y2="18"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <div v-if="expandedIndex === index" class="achievement-details">
+              <div class="form-row">
+                <div class="form-group">
+                  <label>成就ID（唯一标识）</label>
+                  <input
+                    v-model="achievement.name"
+                    type="text"
+                    placeholder="例如：achievement_first_blood"
+                  />
+                </div>
+                <div class="form-group">
+                  <label>显示名称</label>
+                  <input
+                    v-model="achievement.displayName"
+                    type="text"
+                    placeholder="例如：第一滴血"
+                  />
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label>成就描述</label>
+                <textarea
+                  v-model="achievement.description"
+                  rows="2"
+                  placeholder="描述如何解锁此成就..."
+                ></textarea>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label class="checkbox-label">
+                    <input v-model="achievement.hidden" type="checkbox" />
+                    <span>隐藏成就（解锁前不显示描述）</span>
+                  </label>
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label>解锁图标</label>
+                  <div class="file-input-group">
+                    <input
+                      v-model="achievement.icon"
+                      type="text"
+                      placeholder="图标路径（可选）"
+                      readonly
+                    />
+                    <button class="btn-browse" @click="selectIcon(index, 'icon')">浏览</button>
+                    <button v-if="achievement.icon" class="btn-clear" @click="achievement.icon = ''">清除</button>
+                  </div>
+                  <p class="field-hint">PNG/JPG/BMP 格式，推荐 64x64 或 128x128</p>
+                </div>
+                <div class="form-group">
+                  <label>未解锁图标</label>
+                  <div class="file-input-group">
+                    <input
+                      v-model="achievement.iconGray"
+                      type="text"
+                      placeholder="灰色图标路径（可选）"
+                      readonly
+                    />
+                    <button class="btn-browse" @click="selectIcon(index, 'iconGray')">浏览</button>
+                    <button v-if="achievement.iconGray" class="btn-clear" @click="achievement.iconGray = ''">清除</button>
+                  </div>
+                  <p class="field-hint">与解锁图标同尺寸，灰色版本</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div v-if="config.achievements.length === 0" class="empty-state">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="8" r="7"/>
+              <polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/>
+            </svg>
+            <p>暂无成就，点击上方按钮添加</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 导入/导出 -->
+      <div class="config-section">
+        <h4 class="section-title">导入/导出</h4>
+        <div class="import-export-actions">
+          <button class="btn-secondary" @click="openSteamDB">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+              <polyline points="15 3 21 3 21 9"/>
+              <line x1="10" y1="14" x2="21" y2="3"/>
+            </svg>
+            打开 SteamDB
+          </button>
+          <button class="btn-secondary" @click="importFromFile">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/>
+              <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            从文件导入
+          </button>
+          <button class="btn-secondary" @click="exportConfig">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="17 8 12 3 7 8"/>
+              <line x1="12" y1="3" x2="12" y2="15"/>
+            </svg>
+            导出配置
+          </button>
+        </div>
+        <p class="config-hint">
+          提示：在 SteamDB 上找到游戏后，复制成就数据到 JSON 文件，然后使用"从文件导入"功能
+        </p>
+      </div>
+    </template>
+
+    <!-- 保存按钮 -->
+    <div class="panel-actions">
+      <button class="btn-primary" @click="saveConfig">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="20 6 9 17 4 12"/>
+        </svg>
+        保存配置
+      </button>
+    </div>
+
+    <!-- 保存成功提示 -->
+    <transition name="toast">
+      <div v-if="showToast" class="toast-success">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+          <polyline points="22 4 12 14.01 9 11.01"/>
+        </svg>
+        <span>成就系统配置已保存成功！</span>
+      </div>
+    </transition>
+  </div>
+</template>
+
+<script setup lang="ts">
+/**
+ * AchievementsConfigPanel.vue - 成就配置统一 Panel
+ * 供单独弹窗和完整配置管理器复用
+ */
+
+import { ref, shallowReactive, reactive, onMounted, onUnmounted } from 'vue'
+import { invoke } from '@tauri-apps/api/core'
+import { open } from '@tauri-apps/plugin-dialog'
+import { CONFIG_EVENTS } from '../../../constants/config-events'
+import type { AchievementsConfig, Achievement } from '../../../types/steam-config.types'
+
+const props = defineProps<{
+  gamePath: string
+  gameId: string
+}>()
+
+const emit = defineEmits<{
+  saved: []
+}>()
+
+const showToast = ref(false)
+
+/**
+ * 成就配置对象
+ * 外层使用 shallowReactive 减少深层代理开销；
+ * achievements 数组使用 reactive，确保成就卡片内的 v-model 能正常响应。
+ */
+const config = shallowReactive<AchievementsConfig>({
+  enabled: true,
+  showNotifications: true,
+  achievements: reactive([])
+})
+
+const expandedIndex = ref<number | null>(null)
+
+function toggleExpand(index: number) {
+  expandedIndex.value = expandedIndex.value === index ? null : index
+}
+
+function addAchievement() {
+  const newAchievement: Achievement = {
+    name: '',
+    displayName: '',
+    description: '',
+    hidden: false,
+    icon: undefined,
+    iconGray: undefined
+  }
+  config.achievements.push(newAchievement)
+  expandedIndex.value = config.achievements.length - 1
+}
+
+function removeAchievement(index: number) {
+  if (confirm('确定要删除这个成就吗？')) {
+    config.achievements.splice(index, 1)
+    if (expandedIndex.value === index) {
+      expandedIndex.value = null
+    }
+  }
+}
+
+async function selectIcon(achievementIndex: number, type: 'icon' | 'iconGray') {
+  try {
+    const selected = await open({
+      filters: [{
+        name: '图片文件',
+        extensions: ['png', 'jpg', 'jpeg', 'bmp']
+      }],
+      title: '选择成就图标'
+    })
+
+    if (selected && typeof selected === 'string') {
+      config.achievements[achievementIndex][type] = selected
+    }
+  } catch (error) {
+    // 选择失败时静默处理
+  }
+}
+
+async function openSteamDB() {
+  // 打开 SteamDB 网站，让用户手动查找成就数据
+  const appId = props.gameId || prompt('请输入 Steam AppID：')
+  if (appId) {
+    const url = `https://steamdb.info/app/${appId}/stats/`
+    await invoke('open_external_link', { url })
+  }
+}
+
+async function importFromFile() {
+  try {
+    const selected = await open({
+      filters: [{
+        name: 'JSON 文件',
+        extensions: ['json']
+      }],
+      title: '选择成就配置文件'
+    })
+
+    if (selected && typeof selected === 'string') {
+      const result = await invoke<{
+        success: boolean
+        achievements?: Achievement[]
+        message?: string
+      }>('import_achievements_from_file', {
+        filePath: selected
+      })
+
+      if (result.success && result.achievements) {
+        config.achievements = [...config.achievements, ...result.achievements]
+        alert(`成功导入 ${result.achievements.length} 个成就！`)
+      } else {
+        alert(`导入失败: ${result.message || '未知错误'}`)
+      }
+    }
+  } catch (error) {
+    alert(`导入失败: ${error}`)
+  }
+}
+
+async function exportConfig() {
+  try {
+    const result = await invoke<{
+      success: boolean
+      data?: string
+      message?: string
+    }>('export_achievements_config', {
+      gamePath: props.gamePath
+    })
+
+    if (result.success && result.data) {
+      // 复制到剪贴板
+      await navigator.clipboard.writeText(result.data)
+      alert('配置已复制到剪贴板！')
+    } else {
+      alert(`导出失败: ${result.message || '未知错误'}`)
+    }
+  } catch (error) {
+    alert(`导出失败: ${error}`)
+  }
+}
+
+async function saveConfig() {
+  // 验证数据
+  const invalidAchievements = config.achievements.filter(a => !a.name || !a.displayName)
+  if (invalidAchievements.length > 0) {
+    alert('请为所有成就填写ID和显示名称')
+    return
+  }
+
+  try {
+    const result = await invoke<{ success: boolean; message: string }>('save_achievements_config', {
+      gamePath: props.gamePath,
+      config
+    })
+
+    if (result.success) {
+      showToast.value = true
+      setTimeout(() => {
+        showToast.value = false
+      }, 3000)
+      emit('saved')
+      // 广播成就配置已保存事件，通知完整配置管理器等其它窗口刷新
+      window.dispatchEvent(new CustomEvent(CONFIG_EVENTS.ACHIEVEMENTS_SAVED, {
+        detail: { gamePath: props.gamePath }
+      }))
+    } else {
+      alert(`保存失败: ${result.message}`)
+    }
+  } catch (error) {
+    alert(`保存失败: ${error}`)
+  }
+}
+
+async function loadConfig() {
+  try {
+    const result = await invoke<{
+      exists: boolean
+      config?: AchievementsConfig
+    }>('load_achievements_config', {
+      gamePath: props.gamePath
+    })
+
+    if (result.exists && result.config) {
+      config.enabled = result.config.enabled ?? true
+      config.showNotifications = result.config.showNotifications ?? true
+      config.achievements = result.config.achievements || []
+    }
+  } catch (error) {
+    // 加载失败时使用默认值
+  }
+}
+
+/**
+ * 统一配置保存事件处理器
+ * 仅当事件携带的 gamePath 与当前 Panel 匹配时重新加载配置
+ */
+function onConfigSavedEvent(e: Event) {
+  const customEvent = e as CustomEvent<{ gamePath?: string }>
+  if (customEvent.detail?.gamePath === props.gamePath) {
+    loadConfig()
+  }
+}
+
+onMounted(() => {
+  loadConfig()
+  // 监听成就配置保存事件，与完整配置管理器实时同步
+  window.addEventListener(CONFIG_EVENTS.ACHIEVEMENTS_SAVED, onConfigSavedEvent)
+})
+
+onUnmounted(() => {
+  window.removeEventListener(CONFIG_EVENTS.ACHIEVEMENTS_SAVED, onConfigSavedEvent)
+})
+
+defineExpose({
+  load: loadConfig,
+  save: saveConfig
+})
+</script>
+
+<style scoped>
+.achievements-config-panel {
+  width: 100%;
+}
+
+/* 配置区域 */
+.config-section {
+  margin-bottom: 24px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--steam-border);
+}
+
+.config-section:last-of-type {
+  border-bottom: none;
+  margin-bottom: 0;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.section-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--steam-text-primary);
+  margin: 0;
+}
+
+/* 开关样式 */
+.toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+}
+
+.toggle-input {
+  display: none;
+}
+
+.toggle-slider {
+  width: 48px;
+  height: 26px;
+  background-color: var(--steam-border);
+  border-radius: 13px;
+  position: relative;
+  transition: background-color 0.2s ease;
+  flex-shrink: 0;
+}
+
+.toggle-slider::after {
+  content: '';
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  background-color: white;
+  border-radius: 50%;
+  top: 2px;
+  left: 2px;
+  transition: transform 0.2s ease;
+}
+
+.toggle-input:checked + .toggle-slider {
+  background-color: var(--steam-accent-blue);
+}
+
+.toggle-input:checked + .toggle-slider::after {
+  transform: translateX(22px);
+}
+
+.toggle-text {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--steam-text-primary);
+}
+
+/* 复选框样式 */
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--steam-text-primary);
+}
+
+.checkbox-label input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--steam-accent-blue);
+}
+
+/* 按钮样式 */
+.btn-primary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  background-color: var(--steam-accent-blue);
+  color: white;
+}
+
+.btn-primary:hover {
+  background-color: var(--steam-accent-hover);
+}
+
+.btn-primary svg {
+  width: 16px;
+  height: 16px;
+}
+
+.btn-secondary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border: 1px solid var(--steam-border);
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  background-color: var(--steam-bg-tertiary);
+  color: var(--steam-text-primary);
+}
+
+.btn-secondary:hover {
+  background-color: var(--steam-border);
+}
+
+.btn-secondary svg {
+  width: 14px;
+  height: 14px;
+}
+
+.btn-add {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  background-color: var(--steam-accent-blue);
+  color: white;
+}
+
+.btn-add:hover {
+  background-color: var(--steam-accent-hover);
+}
+
+.btn-add svg {
+  width: 14px;
+  height: 14px;
+}
+
+.btn-icon {
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 6px;
+  background-color: transparent;
+  color: var(--steam-text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.btn-icon:hover {
+  background-color: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+}
+
+.btn-icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* 成就列表 */
+.achievements-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.achievement-card {
+  background-color: var(--steam-bg-secondary);
+  border: 1px solid var(--steam-border);
+  border-radius: 10px;
+  overflow: hidden;
+  transition: all 0.15s ease;
+}
+
+.achievement-card:hover {
+  border-color: var(--steam-border);
+}
+
+.achievement-card.expanded {
+  border-color: var(--steam-accent-blue);
+}
+
+.achievement-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.achievement-header:hover {
+  background-color: var(--steam-bg-tertiary);
+}
+
+.achievement-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  background-color: var(--steam-bg-tertiary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.achievement-icon svg {
+  width: 24px;
+  height: 24px;
+  color: var(--steam-text-secondary);
+}
+
+.achievement-icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.achievement-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.achievement-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--steam-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.achievement-id {
+  font-size: 12px;
+  color: var(--steam-text-secondary);
+  font-family: monospace;
+}
+
+.achievement-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.badge {
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.badge.hidden {
+  background-color: rgba(245, 158, 11, 0.1);
+  color: #f59e0b;
+}
+
+.achievement-details {
+  padding: 16px;
+  border-top: 1px solid var(--steam-border);
+  background-color: var(--steam-bg-primary);
+}
+
+/* 表单样式 */
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-group label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--steam-text-primary);
+}
+
+.form-group input,
+.form-group textarea,
+.form-group select {
+  padding: 10px 12px;
+  border: 1px solid var(--steam-border);
+  border-radius: 8px;
+  background-color: var(--steam-bg-secondary);
+  color: var(--steam-text-primary);
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.form-group input:focus,
+.form-group textarea:focus,
+.form-group select:focus {
+  border-color: var(--steam-accent-blue);
+}
+
+.form-group textarea {
+  resize: vertical;
+  font-family: inherit;
+}
+
+.file-input-group {
+  display: flex;
+  gap: 8px;
+}
+
+.file-input-group input {
+  flex: 1;
+}
+
+.btn-browse,
+.btn-clear {
+  padding: 10px 14px;
+  border: 1px solid var(--steam-border);
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  background-color: var(--steam-bg-tertiary);
+  color: var(--steam-text-primary);
+  white-space: nowrap;
+}
+
+.btn-browse:hover,
+.btn-clear:hover {
+  background-color: var(--steam-border);
+}
+
+/* 空状态 */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  color: var(--steam-text-secondary);
+  gap: 12px;
+}
+
+.empty-state svg {
+  width: 48px;
+  height: 48px;
+  opacity: 0.5;
+}
+
+.empty-state p {
+  margin: 0;
+  font-size: 14px;
+}
+
+/* 使用说明 */
+.usage-guide {
+  background-color: var(--steam-bg-secondary);
+  border: 1px solid var(--steam-border);
+  border-radius: 10px;
+  padding: 16px 20px;
+  margin-bottom: 20px;
+}
+
+.guide-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--steam-accent-blue);
+}
+
+.guide-header svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.guide-content {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.guide-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.guide-item::before {
+  content: '';
+  display: block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--steam-accent-blue);
+  flex-shrink: 0;
+  margin-top: 7px;
+}
+
+.guide-label {
+  color: var(--steam-text-secondary);
+  white-space: nowrap;
+  min-width: 100px;
+  flex-shrink: 0;
+}
+
+.guide-value {
+  color: var(--steam-text-primary);
+  font-family: 'Consolas', 'Courier New', monospace;
+  font-size: 12px;
+  word-break: break-all;
+}
+
+.guide-example {
+  background-color: var(--steam-bg-primary);
+  border: 1px solid var(--steam-border);
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin-bottom: 10px;
+}
+
+.guide-example:last-of-type {
+  margin-bottom: 0;
+}
+
+.example-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--steam-text-primary);
+  margin-bottom: 8px;
+}
+
+.example-code {
+  font-size: 12px;
+  color: var(--steam-text-primary);
+  background-color: rgba(0, 0, 0, 0.2);
+  padding: 10px 14px;
+  border-radius: 6px;
+  overflow-x: auto;
+  line-height: 1.6;
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+/* 字段提示 */
+.field-hint {
+  font-size: 11px;
+  color: var(--steam-text-secondary);
+  margin: 4px 0 0 0;
+}
+
+.config-hint {
+  font-size: 12px;
+  color: var(--steam-text-secondary);
+  margin: 12px 0 0 0;
+  line-height: 1.5;
+}
+
+/* 导入/导出 */
+.import-export-actions {
+  display: flex;
+  gap: 12px;
+}
+
+/* 保存按钮区域 */
+.panel-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--steam-border);
+}
+
+/* 响应式 */
+@media (max-width: 600px) {
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+
+  .section-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .import-export-actions {
+    flex-direction: column;
+  }
+}
+
+/* 保存成功提示 */
+.toast-success {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: #10b981;
+  color: white;
+  padding: 12px 24px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 9999;
+}
+
+.toast-success svg {
+  width: 20px;
+  height: 20px;
+}
+
+.toast-enter-active {
+  animation: toast-in 0.3s ease;
+}
+
+.toast-leave-active {
+  animation: toast-out 0.3s ease;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+@keyframes toast-out {
+  from {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-20px);
+  }
+}
+</style>

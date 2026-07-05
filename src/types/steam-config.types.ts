@@ -868,8 +868,10 @@ export interface ColdClientLoaderConfig {
   extraDlls: string[]
   /** 启动参数 */
   launchArgs: string
+  /** 游戏主程序路径 */
+  exePath?: string
   /** 工作目录 */
-  workingDirectory?: string
+  workingDir?: string
 }
 
 // ============================================

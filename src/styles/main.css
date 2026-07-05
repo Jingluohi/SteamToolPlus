@@ -78,6 +78,12 @@
   --glass-bg-hover: rgba(22, 32, 46, 0.9);
   --glass-border: rgba(255, 255, 255, 0.08);
   --glass-backdrop: blur(20px) saturate(160%);
+
+  /* 配置弹窗玻璃态 - 与主程序同色系，透明度减半 */
+  --config-modal-bg: rgba(18, 20, 26, 0.41);
+  --config-modal-bg-hover: rgba(22, 32, 46, 0.55);
+  --config-modal-border: rgba(255, 255, 255, 0.08);
+  --config-modal-backdrop: blur(20px) saturate(160%);
   
   /* 圆角 */
   --radius-sm: 6px;
@@ -158,6 +164,12 @@
   --glass-bg-hover: rgba(255, 255, 255, 0.9);
   --glass-border: rgba(0, 0, 0, 0.08);
   --glass-backdrop: blur(20px) saturate(180%);
+
+  /* 配置弹窗玻璃态 - 与主程序同色系，透明度减半 */
+  --config-modal-bg: rgba(248, 249, 250, 0.375);
+  --config-modal-bg-hover: rgba(255, 255, 255, 0.55);
+  --config-modal-border: rgba(0, 0, 0, 0.08);
+  --config-modal-backdrop: blur(20px) saturate(180%);
 }
 
 /**

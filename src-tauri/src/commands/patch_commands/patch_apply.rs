@@ -346,15 +346,9 @@ pub async fn apply_steam_patch_basic(
     // 如果 steam_settings 已存在，先加载已有配置并保留
 
     // 写入 configs.main.ini
+    // 注意：基础配置应用时不应保留示例目录中的示例值，始终使用程序默认值生成
     let main_config_path = steam_settings_dir.join("configs.main.ini");
-    let main_config = if main_config_path.exists() {
-        let content = fs::read_to_string(&main_config_path)
-            .await
-            .map_err(|e| format!("读取已有 main 配置失败: {}", e))?;
-        super::config_core::parse_main_ini(&content)?
-    } else {
-        MainConfig::default_config()
-    };
+    let main_config = MainConfig::default_config();
     let main_config_content = main_config.to_ini();
 
     let mut main_file = fs::File::create(&main_config_path)
@@ -365,15 +359,9 @@ pub async fn apply_steam_patch_basic(
         .map_err(|e| format!("写入 configs.main.ini 失败: {}", e))?;
 
     // 写入 configs.user.ini
+    // 基础配置应用时使用程序默认值，避免示例目录中的示例值被保留
     let user_config_path = steam_settings_dir.join("configs.user.ini");
-    let user_config = if user_config_path.exists() {
-        let content = fs::read_to_string(&user_config_path)
-            .await
-            .map_err(|e| format!("读取已有 user 配置失败: {}", e))?;
-        super::config_core::parse_user_ini(&content)?
-    } else {
-        UserConfig::default_config()
-    };
+    let user_config = UserConfig::default_config();
     let user_config_content = user_config.to_ini();
 
     let mut user_file = fs::File::create(&user_config_path)
@@ -384,15 +372,9 @@ pub async fn apply_steam_patch_basic(
         .map_err(|e| format!("写入 configs.user.ini 失败: {}", e))?;
 
     // 写入 configs.app.ini
+    // 基础配置应用时使用程序默认值，确保 DLC 默认解锁全部且不带示例值
     let app_config_path = steam_settings_dir.join("configs.app.ini");
-    let app_config = if app_config_path.exists() {
-        let content = fs::read_to_string(&app_config_path)
-            .await
-            .map_err(|e| format!("读取已有 app 配置失败: {}", e))?;
-        super::config_core::parse_app_ini(&content)?
-    } else {
-        SteamAppConfig::default_config()
-    };
+    let app_config = SteamAppConfig::default_config();
     let app_config_content = app_config.to_ini();
 
     let mut app_file = fs::File::create(&app_config_path)
@@ -403,15 +385,9 @@ pub async fn apply_steam_patch_basic(
         .map_err(|e| format!("写入 configs.app.ini 失败: {}", e))?;
 
     // 写入 configs.overlay.ini
+    // 基础配置应用时使用程序默认值，避免示例目录中的示例值被保留
     let overlay_config_path = steam_settings_dir.join("configs.overlay.ini");
-    let overlay_config = if overlay_config_path.exists() {
-        let content = fs::read_to_string(&overlay_config_path)
-            .await
-            .map_err(|e| format!("读取已有 overlay 配置失败: {}", e))?;
-        super::config_core::parse_overlay_ini(&content)?
-    } else {
-        OverlayConfig::default_config()
-    };
+    let overlay_config = OverlayConfig::default_config();
     let overlay_config_content = overlay_config.to_ini();
 
     let mut overlay_file = fs::File::create(&overlay_config_path)

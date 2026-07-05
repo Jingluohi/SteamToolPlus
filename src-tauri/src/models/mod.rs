@@ -7,9 +7,11 @@ pub mod denuvo;
 pub mod game;
 pub mod window;
 pub mod steam_config;
+pub mod patch_state;
 
 pub use cache::*;
 pub use config::*;
 pub use denuvo::*;
 pub use game::*;
 pub use window::*;
+pub use patch_state::*;

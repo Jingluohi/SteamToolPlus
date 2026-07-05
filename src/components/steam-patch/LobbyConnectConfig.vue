@@ -2,14 +2,15 @@
   <div class="modal-overlay" @click="$emit('close')">
     <div class="modal-content" @click.stop>
       <div class="modal-header">
-        <div class="header-icon dlc">
+        <div class="header-icon lobby">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-            <line x1="12" y1="8" x2="12" y2="16"/>
-            <line x1="8" y1="12" x2="16" y2="12"/>
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+            <circle cx="9" cy="7" r="4"/>
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
           </svg>
         </div>
-        <h3>DLC 与 Depot 配置</h3>
+        <h3>Lobby Connect 配置</h3>
         <button class="close-btn" @click="$emit('close')">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <line x1="18" y1="6" x2="6" y2="18"/>
@@ -19,11 +20,21 @@
       </div>
 
       <div class="modal-body">
-        <AppConfigPanel
+        <LobbyConnectConfigPanel
           ref="panelRef"
-          :game-path="gamePath"
+          :game-path="props.gamePath"
           @saved="handleSaved"
         />
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn-secondary" @click="$emit('close')">取消</button>
+        <button class="btn-primary" @click="saveConfig">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+          保存配置
+        </button>
       </div>
     </div>
   </div>
@@ -31,11 +42,12 @@
 
 <script setup lang="ts">
 /**
- * DlcConfig.vue - DLC 与 Depot 配置单独弹窗
- * 现在仅作为容器，所有逻辑复用 AppConfigPanel
+ * LobbyConnectConfig.vue - Lobby Connect 配置单独弹窗
+ * 仅作为容器，具体逻辑复用 LobbyConnectConfigPanel
  */
 
-import AppConfigPanel from './panels/AppConfigPanel.vue'
+import { ref } from 'vue'
+import LobbyConnectConfigPanel from './panels/LobbyConnectConfigPanel.vue'
 
 const props = defineProps<{
   gamePath: string
@@ -47,9 +59,15 @@ const emit = defineEmits<{
   saved: []
 }>()
 
+const panelRef = ref<InstanceType<typeof LobbyConnectConfigPanel> | null>(null)
+
+function saveConfig() {
+  panelRef.value?.save()
+}
+
 function handleSaved() {
   emit('saved')
-  // 保存成功后自动关闭弹窗
+  // 延迟关闭弹窗，等待 Toast 消失后再关闭
   setTimeout(() => {
     emit('close')
   }, 3000)
@@ -77,8 +95,8 @@ function handleSaved() {
   border-radius: 12px;
   border: 1px solid var(--config-modal-border);
   width: 90%;
-  max-width: 600px;
-  max-height: 80vh;
+  max-width: 700px;
+  max-height: 85vh;
   display: flex;
   flex-direction: column;
 }
@@ -102,9 +120,9 @@ function handleSaved() {
   flex-shrink: 0;
 }
 
-.header-icon.dlc {
-  background-color: rgba(168, 85, 247, 0.1);
-  color: #a855f7;
+.header-icon.lobby {
+  background-color: rgba(14, 165, 233, 0.1);
+  color: #0ea5e9;
 }
 
 .header-icon svg {
@@ -149,5 +167,54 @@ function handleSaved() {
   flex: 1;
   overflow-y: auto;
   padding: 20px;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 16px 20px;
+  border-top: 1px solid var(--steam-border);
+  flex-shrink: 0;
+}
+
+.btn-primary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  background-color: var(--steam-accent-blue);
+  color: white;
+}
+
+.btn-primary:hover {
+  background-color: var(--steam-accent-hover);
+}
+
+.btn-primary svg {
+  width: 16px;
+  height: 16px;
+}
+
+.btn-secondary {
+  padding: 10px 20px;
+  border: 1px solid var(--steam-border);
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  background-color: var(--steam-bg-tertiary);
+  color: var(--steam-text-primary);
+}
+
+.btn-secondary:hover {
+  background-color: var(--steam-border);
 }
 </style>

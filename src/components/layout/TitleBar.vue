@@ -24,8 +24,24 @@
       </nav>
     </div>
 
-    <!-- 右侧区域：窗口控制按钮 -->
+    <!-- 右侧区域：主题切换和窗口控制按钮 -->
     <div class="title-bar-controls">
+      <!-- 主题切换按钮 -->
+      <button
+        class="control-btn theme-toggle-btn"
+        :title="themeStore.isDark ? '切换为浅色模式' : '切换为深色模式'"
+        @click="handleToggleTheme"
+      >
+        <!-- 深色模式下显示太阳图标（点击切换到浅色） -->
+        <svg v-if="themeStore.isDark" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zM2 13h2c.55 0 1-.45 1-1s-.45-1-1-1H2c-.55 0-1 .45-1 1s.45 1 1 1zm18 0h2c.55 0 1-.45 1-1s-.45-1-1-1h-2c-.55 0-1 .45-1 1s.45 1 1 1zM11 2v2c0 .55.45 1 1 1s1-.45 1-1V2c0-.55-.45-1-1-1s-1 .45-1 1zm0 18v2c0 .55.45 1 1 1s1-.45 1-1v-2c0-.55-.45-1-1-1s-1 .45-1 1zM5.99 4.58a.996.996 0 00-1.41 0 .996.996 0 000 1.41l1.06 1.06c.39.39 1.03.39 1.41 0s.39-1.03 0-1.41L5.99 4.58zm12.37 12.37a.996.996 0 00-1.41 0 .996.996 0 000 1.41l1.06 1.06c.39.39 1.03.39 1.41 0 .39-.39.39-1.03 0-1.41l-1.06-1.06zm1.06-10.96a.996.996 0 000-1.41.996.996 0 00-1.41 0l-1.06 1.06c-.39.39-.39 1.03 0 1.41s1.03.39 1.41 0l1.06-1.06zM7.05 18.36a.996.996 0 000 1.41.996.996 0 001.41 0l1.06-1.06c.39-.39.39-1.03 0-1.41s-1.03-.39-1.41 0l-1.06 1.06z"/>
+        </svg>
+        <!-- 浅色模式下显示月亮图标（点击切换到深色） -->
+        <svg v-else viewBox="0 0 24 24" fill="currentColor">
+          <path d="M9 2c-1.05 0-2.05.16-3 .46 1.69 1.24 2.79 3.26 2.79 5.54 0 3.87-3.13 7-7 7-1.06 0-2.06-.24-2.97-.66C.97 19.8 6.04 22 11.64 22c6.24 0 11.36-5.08 11.36-11.36 0-6.08-4.79-11.06-10.91-11.34-.03.01-.06.01-.09.01z"/>
+        </svg>
+      </button>
+
       <!-- 最小化按钮 -->
       <button
         class="control-btn"
@@ -75,11 +91,15 @@
 
 import { ref } from 'vue'
 import { useWindowStore } from '../../store/window.store'
+import { useThemeStore } from '../../store/theme.store'
+import { useConfigStore } from '../../store/config.store'
 import NavDropdown from './NavDropdown.vue'
 import type { NavMenuItem } from './NavDropdown.vue'
 
 // 获取窗口store
 const windowStore = useWindowStore()
+const themeStore = useThemeStore()
+const configStore = useConfigStore()
 
 // 是否最大化
 const isMaximized = ref(false)
@@ -147,6 +167,30 @@ const handleMaximize = () => {
 // 处理关闭
 const handleClose = () => {
   windowStore.close()
+}
+
+// 处理主题切换
+async function handleToggleTheme() {
+  // 切换主题模式
+  themeStore.toggleTheme()
+
+  // 同步保存到配置文件
+  const currentConfig = configStore.config
+  if (currentConfig) {
+    const newMode = themeStore.themeMode
+    const updateData = {
+      theme: {
+        mode: newMode,
+        followSystem: newMode === 'auto' || newMode === 'auto-solid',
+        customVars: currentConfig.theme.customVars || {}
+      }
+    }
+    try {
+      await configStore.updateConfig(updateData)
+    } catch {
+      // 保存失败时静默处理，不影响主题切换
+    }
+  }
 }
 </script>
 

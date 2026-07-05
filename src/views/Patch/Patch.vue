@@ -128,7 +128,7 @@
           </div>
         </div>
 
-        <!-- 实验版警告弹窗 -->
+        <!-- 功能版警告弹窗 -->
         <div v-if="showExperimentalWarning" class="modal-overlay" @click="showExperimentalWarning = false">
           <div class="modal-content warning-modal" @click.stop>
             <div class="modal-header">
@@ -137,10 +137,10 @@
                 <line x1="12" y1="9" x2="12" y2="13"/>
                 <line x1="12" y1="17" x2="12.01" y2="17"/>
               </svg>
-              <h4>实验版使用警告</h4>
+              <h4>功能版使用警告</h4>
             </div>
             <div class="modal-body">
-              <p>实验版包含以下高级功能，但可能存在稳定性问题：</p>
+              <p>功能版包含以下高级功能，但可能存在稳定性问题：</p>
               <ul>
                 <li>Steam 客户端模拟（steamclient.dll）</li>
                 <li>游戏内 Overlay（Shift+Tab）</li>
@@ -242,6 +242,20 @@
             </svg>
             重置
           </button>
+          <button
+            class="btn-secondary restore-btn"
+            :disabled="isRestoring || !gamePath"
+            @click="restoreGameFiles"
+          >
+            <svg v-if="!isRestoring" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="1 4 1 10 7 10"/>
+              <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>
+            </svg>
+            <svg v-else class="loading-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/>
+            </svg>
+            {{ isRestoring ? '还原中...' : '还原文件' }}
+          </button>
         </div>
       </div>
     </div>
@@ -298,9 +312,9 @@
               </svg>
             </div>
             <h4 class="feature-title">游戏内 Overlay</h4>
-            <p class="feature-desc">启用 Shift+Tab 游戏内覆盖界面（实验版功能）</p>
+            <p class="feature-desc">启用 Shift+Tab 游戏内覆盖界面（功能版）</p>
             <span class="feature-status" :class="{ configured: configStatus.overlay, disabled: !useExperimental }">
-              {{ !useExperimental ? '需要实验版' : configStatus.overlay ? '已配置' : '未配置' }}
+              {{ !useExperimental ? '需要功能版' : configStatus.overlay ? '已配置' : '未配置' }}
             </span>
           </div>
 
@@ -319,19 +333,18 @@
             </span>
           </div>
 
-          <!-- 物品/库存 -->
-          <div class="feature-card" @click="openItemsConfig">
-            <div class="feature-icon items">
+          <!-- DLC 配置 -->
+          <div class="feature-card" @click="openDlcConfig">
+            <div class="feature-icon dlc">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
-                <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
-                <line x1="12" y1="22.08" x2="12" y2="12"/>
+                <circle cx="12" cy="12" r="3"/>
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
               </svg>
             </div>
-            <h4 class="feature-title">物品与库存</h4>
-            <p class="feature-desc">配置游戏物品和初始库存</p>
-            <span class="feature-status" :class="{ configured: configStatus.items }">
-              {{ configStatus.items ? '已配置' : '未配置' }}
+            <h4 class="feature-title">DLC 配置</h4>
+            <p class="feature-desc">配置 DLC 解锁和 Depot 选项</p>
+            <span class="feature-status" :class="{ configured: configStatus.dlc }">
+              {{ configStatus.dlc ? '已配置' : '未配置' }}
             </span>
           </div>
 
@@ -403,7 +416,87 @@
             </span>
           </div>
 
-          <!-- 其他配置（DLC + 主配置） -->
+          <!-- 主配置 -->
+          <div class="feature-card" @click="openMainConfig">
+            <div class="feature-icon main">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="3"/>
+                <path d="M12 1v6m0 6v6m4.22-10.22l4.24-4.24M6.34 17.66l-4.24 4.24M23 12h-6m-6 0H1m20.24 4.24l-4.24-4.24M6.34 6.34L2.1 2.1"/>
+              </svg>
+            </div>
+            <h4 class="feature-title">主配置</h4>
+            <p class="feature-desc">配置模拟器核心选项、网络、统计等</p>
+            <span class="feature-status" :class="{ configured: configStatus.main }">
+              {{ configStatus.main ? '已配置' : '未配置' }}
+            </span>
+          </div>
+
+          <!-- 创意工坊模组 -->
+          <div class="feature-card" @click="openModsConfig">
+            <div class="feature-icon mods">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+                <line x1="12" y1="22.08" x2="12" y2="12"/>
+              </svg>
+            </div>
+            <h4 class="feature-title">创意工坊模组</h4>
+            <p class="feature-desc">配置 Steam 创意工坊订阅的本地模组</p>
+            <span class="feature-status" :class="{ configured: configStatus.mods }">
+              {{ configStatus.mods ? '已配置' : '未配置' }}
+            </span>
+          </div>
+
+          <!-- ColdClient -->
+          <div class="feature-card" @click="openColdClientConfig">
+            <div class="feature-icon coldclient">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+                <line x1="8" y1="21" x2="16" y2="21"/>
+                <line x1="12" y1="17" x2="12" y2="21"/>
+              </svg>
+            </div>
+            <h4 class="feature-title">ColdClient</h4>
+            <p class="feature-desc">配置 DLL 注入模式和启动参数</p>
+            <span class="feature-status" :class="{ configured: configStatus.coldclient }">
+              {{ configStatus.coldclient ? '已配置' : '未配置' }}
+            </span>
+          </div>
+
+          <!-- Lobby Connect -->
+          <div class="feature-card" @click="openLobbyConfig">
+            <div class="feature-icon lobby">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                <circle cx="9" cy="7" r="4"/>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+              </svg>
+            </div>
+            <h4 class="feature-title">Lobby Connect</h4>
+            <p class="feature-desc">配置直接加入指定 Steam 大厅</p>
+            <span class="feature-status" :class="{ configured: configStatus.lobby }">
+              {{ configStatus.lobby ? '已配置' : '未配置' }}
+            </span>
+          </div>
+
+          <!-- 物品/库存 -->
+          <div class="feature-card" @click="openItemsConfig">
+            <div class="feature-icon items">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+                <line x1="12" y1="22.08" x2="12" y2="12"/>
+              </svg>
+            </div>
+            <h4 class="feature-title">物品与库存</h4>
+            <p class="feature-desc">配置游戏物品和初始库存</p>
+            <span class="feature-status" :class="{ configured: configStatus.items }">
+              {{ configStatus.items ? '已配置' : '未配置' }}
+            </span>
+          </div>
+
+          <!-- 其他配置 -->
           <div class="feature-card" @click="openOtherConfig">
             <div class="feature-icon other">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -412,7 +505,7 @@
               </svg>
             </div>
             <h4 class="feature-title">其他配置</h4>
-            <p class="feature-desc">配置 DLC、Depot 和模拟器核心选项</p>
+            <p class="feature-desc">管理已安装应用、订阅群组、购买密钥等</p>
             <span class="feature-status" :class="{ configured: configStatus.other }">
               {{ configStatus.other ? '已配置' : '未配置' }}
             </span>
@@ -503,19 +596,53 @@
       @saved="onConfigSaved('main')"
     />
 
+    <ModsConfig
+      v-if="showModsModal"
+      :game-path="gamePath"
+      :game-id="steamAppId"
+      @close="showModsModal = false"
+      @saved="onConfigSaved('mods')"
+    />
+
+    <ColdClientConfig
+      v-if="showColdClientModal"
+      :game-path="gamePath"
+      :game-id="steamAppId"
+      @close="showColdClientModal = false"
+      @saved="onConfigSaved('coldclient')"
+    />
+
+    <LobbyConnectConfig
+      v-if="showLobbyModal"
+      :game-path="gamePath"
+      :game-id="steamAppId"
+      @close="showLobbyModal = false"
+      @saved="onConfigSaved('lobby')"
+    />
+
+    <OtherConfig
+      v-if="showOtherModal"
+      :game-path="gamePath"
+      :game-id="steamAppId"
+      @close="showOtherModal = false"
+      @saved="onConfigSaved('other')"
+    />
+
     <CompleteConfigManager
       v-if="showCompleteConfigManager"
       :game-path="gamePath"
       :game-id="steamAppId"
+      :use-experimental="useExperimental"
       @close="showCompleteConfigManager = false"
     />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 import { open } from '@tauri-apps/plugin-dialog'
+import { CONFIG_EVENTS } from '../../constants/config-events'
 
 // 导入子配置组件
 import LanMultiplayerConfig from '../../components/steam-patch/LanMultiplayerConfig.vue'
@@ -528,17 +655,21 @@ import LeaderboardsConfig from '../../components/steam-patch/LeaderboardsConfig.
 import StatsConfig from '../../components/steam-patch/StatsConfig.vue'
 import DlcConfig from '../../components/steam-patch/DlcConfig.vue'
 import MainConfig from '../../components/steam-patch/MainConfig.vue'
+import ModsConfig from '../../components/steam-patch/ModsConfig.vue'
+import ColdClientConfig from '../../components/steam-patch/ColdClientConfig.vue'
+import LobbyConnectConfig from '../../components/steam-patch/LobbyConnectConfig.vue'
+import OtherConfig from '../../components/steam-patch/OtherConfig.vue'
 import CompleteConfigManager from '../../components/steam-patch/CompleteConfigManager.vue'
 
 // ============================================
 // 状态
 // ============================================
 
-/** 模拟器模式：0=常规模式(steam_api.dll), 1=实验版模式(steamclient.dll) */
+/** 模拟器模式：0=常规模式(steam_api.dll), 1=高级模式(steamclient.dll) */
 const emulatorMode = ref(0)
-/** 是否使用实验版DLL（仅在常规模式下有效） */
+/** 是否使用功能版DLL（仅在常规模式下有效） */
 const useExperimental = ref(false)
-/** 是否显示实验版警告 */
+/** 是否显示功能版警告 */
 const showExperimentalWarning = ref(false)
 /** 游戏文件夹路径（steam_api.dll 所在文件夹） */
 const gamePath = ref('')
@@ -567,6 +698,9 @@ const configStatus = ref({
   user: false,
   leaderboards: false,
   stats: false,
+  mods: false,
+  coldclient: false,
+  lobby: false,
   other: false,
   dlc: false,
   main: false,
@@ -583,7 +717,14 @@ const showLeaderboardsModal = ref(false)
 const showStatsModal = ref(false)
 const showDlcModal = ref(false)
 const showMainModal = ref(false)
+const showModsModal = ref(false)
+const showColdClientModal = ref(false)
+const showLobbyModal = ref(false)
+const showOtherModal = ref(false)
 const showCompleteConfigManager = ref(false)
+
+/** 是否正在还原文件 */
+const isRestoring = ref(false)
 
 // ============================================
 // 计算属性
@@ -759,6 +900,9 @@ const resetAllConfig = () => {
     user: false,
     leaderboards: false,
     stats: false,
+    mods: false,
+    coldclient: false,
+    lobby: false,
     other: false,
     dlc: false,
     main: false,
@@ -782,7 +926,7 @@ const openLanMultiplayerConfig = () => {
 
 const openOverlayConfig = () => {
   if (!useExperimental.value) {
-    alert('Overlay 功能需要启用实验版才能使用')
+    alert('Overlay 功能需要启用功能版才能使用')
     return
   }
   showOverlayModal.value = true
@@ -816,10 +960,200 @@ const openCompleteConfigManager = () => {
   showCompleteConfigManager.value = true
 }
 
-const openOtherConfig = () => {
-  // 打开其他配置，可以同时管理 DLC 和主配置
+const openDlcConfig = () => {
   showDlcModal.value = true
 }
+
+const openOtherConfig = () => {
+  showOtherModal.value = true
+}
+
+const openMainConfig = () => {
+  showMainModal.value = true
+}
+
+const openModsConfig = () => {
+  showModsModal.value = true
+}
+
+const openColdClientConfig = () => {
+  showColdClientModal.value = true
+}
+
+const openLobbyConfig = () => {
+  showLobbyModal.value = true
+}
+
+/**
+ * 还原游戏文件
+ * 删除补丁生成的 steam_settings、steam_api(64).dll 等，并恢复 .bak 备份
+ */
+const restoreGameFiles = async () => {
+  if (!gamePath.value) {
+    alert('请先选择游戏文件夹')
+    return
+  }
+
+  const confirmed = confirm(
+    '确定要还原游戏文件吗？\n\n' +
+    '此操作将删除补丁生成的文件（steam_settings、steam_api.dll 等），' +
+    '并将 .bak 备份文件恢复为原始文件。'
+  )
+  if (!confirmed) return
+
+  isRestoring.value = true
+  try {
+    const result = await invoke<{
+      success: boolean
+      message: string
+      restoredFiles: string[]
+      removedFiles: string[]
+    }>('restore_game_files', {
+      gamePath: gamePath.value
+    })
+
+    if (result.success) {
+      alert(`还原成功！\n${result.message}`)
+      // 还原后重置所有配置状态
+      resetAllConfig()
+      basicConfigApplied.value = false
+    } else {
+      alert(`还原失败: ${result.message}`)
+    }
+  } catch (error) {
+    alert(`还原失败: ${error}`)
+  } finally {
+    isRestoring.value = false
+  }
+}
+
+/**
+ * 加载 Patch 页面持久化状态
+ * 在页面挂载时恢复用户之前填写的路径、模式等
+ */
+const loadPatchState = async () => {
+  try {
+    const state = await invoke<{
+      emulatorMode?: number
+      useExperimental?: boolean
+      gamePath?: string
+      gameExePath?: string
+      steamAppId?: string
+      basicConfigApplied?: boolean
+    }>('load_patch_state')
+
+    if (state.emulatorMode !== undefined) emulatorMode.value = state.emulatorMode
+    if (state.useExperimental !== undefined) useExperimental.value = state.useExperimental
+    if (state.gamePath !== undefined) gamePath.value = state.gamePath
+    if (state.gameExePath !== undefined) gameExePath.value = state.gameExePath
+    if (state.steamAppId !== undefined) steamAppId.value = state.steamAppId
+    if (state.basicConfigApplied !== undefined) basicConfigApplied.value = state.basicConfigApplied
+  } catch {
+    // 加载失败时使用默认值
+  }
+}
+
+/**
+ * 保存 Patch 页面状态
+ * 当关键状态变化时持久化到本地
+ */
+const savePatchState = async () => {
+  try {
+    await invoke('save_patch_state', {
+      state: {
+        emulatorMode: emulatorMode.value,
+        useExperimental: useExperimental.value,
+        gamePath: gamePath.value,
+        gameExePath: gameExePath.value,
+        steamAppId: steamAppId.value,
+        basicConfigApplied: basicConfigApplied.value,
+      }
+    })
+  } catch {
+    // 保存失败时静默处理，不影响用户操作
+  }
+}
+
+/**
+ * 统一配置保存事件处理器
+ * 当任意配置模块保存后，根据事件类型刷新对应状态标记
+ */
+function onConfigSavedEvent(event: Event) {
+  const customEvent = event as CustomEvent<{ gamePath?: string }>
+  if (customEvent.detail?.gamePath !== gamePath.value) return
+
+  switch (event.type) {
+    case CONFIG_EVENTS.LAN_SAVED:
+      configStatus.value.lanMultiplayer = true
+      break
+    case CONFIG_EVENTS.OVERLAY_SAVED:
+      configStatus.value.overlay = true
+      break
+    case CONFIG_EVENTS.ACHIEVEMENTS_SAVED:
+      configStatus.value.achievements = true
+      break
+    case CONFIG_EVENTS.ITEMS_SAVED:
+      configStatus.value.items = true
+      break
+    case CONFIG_EVENTS.CONTROLLER_SAVED:
+      configStatus.value.controller = true
+      break
+    case CONFIG_EVENTS.USER_SAVED:
+      configStatus.value.user = true
+      break
+    case CONFIG_EVENTS.LEADERBOARDS_SAVED:
+      configStatus.value.leaderboards = true
+      break
+    case CONFIG_EVENTS.STATS_SAVED:
+      configStatus.value.stats = true
+      break
+    case CONFIG_EVENTS.MODS_SAVED:
+      configStatus.value.mods = true
+      break
+    case CONFIG_EVENTS.COLDCLIENT_SAVED:
+      configStatus.value.coldclient = true
+      break
+    case CONFIG_EVENTS.LOBBY_SAVED:
+      configStatus.value.lobby = true
+      break
+    case CONFIG_EVENTS.OTHER_SAVED:
+      configStatus.value.other = true
+      break
+    case CONFIG_EVENTS.APP_SAVED:
+      configStatus.value.dlc = true
+      break
+    case CONFIG_EVENTS.MAIN_SAVED:
+      configStatus.value.main = true
+      break
+  }
+}
+
+// 监听关键状态变化，自动持久化 Patch 页面状态
+watch([
+  emulatorMode,
+  useExperimental,
+  gamePath,
+  gameExePath,
+  steamAppId,
+  basicConfigApplied
+], () => {
+  savePatchState()
+}, { deep: true })
+
+onMounted(() => {
+  loadPatchState()
+
+  // 监听所有配置保存事件，实时刷新功能卡片状态
+  Object.values(CONFIG_EVENTS).forEach((eventName) => {
+    window.addEventListener(eventName, onConfigSavedEvent)
+  })
+})
+
+onUnmounted(() => {
+  Object.values(CONFIG_EVENTS).forEach((eventName) => {
+    window.removeEventListener(eventName, onConfigSavedEvent)
+  })
+})
 
 // ============================================
 // Tooltip 控制
@@ -844,23 +1178,23 @@ const hideTooltip = () => {
   width: 100%;
   height: 100%;
   overflow-y: auto;
-  padding: 24px 32px;
+  padding: 15px 26px;
 }
 
 /* ============================================
    页面头部
    ============================================ */
 .page-header {
-  margin-bottom: 24px;
-  padding-bottom: 16px;
+  margin-bottom: 15px;
+  padding-bottom: 10px;
   border-bottom: 1px solid var(--steam-border);
 }
 
 .page-title-row {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 8px;
+  gap: 8px;
+  margin-bottom: 5px;
 }
 
 .page-title {
@@ -870,15 +1204,15 @@ const hideTooltip = () => {
   margin: 0;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
 }
 
 /* SteamDB 跳转链接按钮样式 */
 .steamdb-link {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
+  gap: 4px;
+  padding: 4px 10px;
   background-color: var(--steam-bg-tertiary);
   border: 1px solid var(--steam-border);
   border-radius: 6px;
@@ -916,18 +1250,18 @@ const hideTooltip = () => {
   background-color: rgba(var(--steam-bg-primary-rgb), 0.2);
   border-radius: 12px;
   border: 1px solid var(--steam-border);
-  padding: 20px;
-  margin-bottom: 20px;
+  padding: 13px;
+  margin-bottom: 13px;
 }
 
 .section-title {
   font-size: 16px;
   font-weight: 600;
   color: var(--steam-text-primary);
-  margin: 0 0 16px 0;
+  margin: 0 0 13px 0;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 6px;
 }
 
 .section-icon {
@@ -939,28 +1273,28 @@ const hideTooltip = () => {
 .section-desc {
   font-size: 13px;
   color: var(--steam-text-secondary);
-  margin: -8px 0 16px 0;
+  margin: -6px 0 13px 0;
 }
 
 /* ============================================
    基础配置
    ============================================ */
 .basic-config-section {
-  margin-bottom: 20px;
+  margin-bottom: 13px;
 }
 
 .config-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
+  margin-bottom: 13px;
 }
 
 /* 右侧配置选项容器 */
 .config-options-wrapper {
   display: flex;
   align-items: center;
-  gap: 24px;
+  gap: 15px;
 }
 
 .config-title {
@@ -970,7 +1304,7 @@ const hideTooltip = () => {
   margin: 0;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 6px;
 }
 
 .config-icon {
@@ -983,7 +1317,7 @@ const hideTooltip = () => {
 .emulator-mode-section {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 5px;
 }
 
 .mode-label-wrapper {
@@ -1000,14 +1334,14 @@ const hideTooltip = () => {
 
 .mode-options {
   display: flex;
-  gap: 12px;
+  gap: 8px;
 }
 
 .mode-radio {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 14px;
+  gap: 5px;
+  padding: 6px 11px;
   border-radius: 8px;
   border: 1px solid var(--steam-border);
   cursor: pointer;
@@ -1047,7 +1381,7 @@ const hideTooltip = () => {
   left: 50%;
   transform: translateX(-50%) scale(0.95);
   width: 280px;
-  padding: 12px 16px;
+  padding: 8px 13px;
   background-color: rgba(var(--steam-bg-primary-rgb), 0.2);
   border: 1px solid var(--steam-border);
   border-radius: 8px;
@@ -1092,7 +1426,7 @@ const hideTooltip = () => {
 .tooltip-content {
   font-size: 12px;
   color: var(--steam-text-secondary);
-  line-height: 1.6;
+  line-height: 1.0;
 }
 
 .tooltip-content strong {
@@ -1103,7 +1437,7 @@ const hideTooltip = () => {
 .dll-version-section {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 5px;
 }
 
 .dll-version-label-wrapper {
@@ -1120,14 +1454,14 @@ const hideTooltip = () => {
 
 .dll-version-options {
   display: flex;
-  gap: 12px;
+  gap: 8px;
 }
 
 .dll-radio {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 10px 16px;
+  padding: 6px 13px;
   border-radius: 6px;
   border: 1px solid var(--steam-border);
   cursor: pointer;
@@ -1158,7 +1492,7 @@ const hideTooltip = () => {
 
 /* 配置组 */
 .config-group {
-  margin-bottom: 20px;
+  margin-bottom: 13px;
 }
 
 .config-label {
@@ -1166,24 +1500,24 @@ const hideTooltip = () => {
   font-size: 14px;
   font-weight: 500;
   color: var(--steam-text-primary);
-  margin-bottom: 8px;
+  margin-bottom: 5px;
 }
 
 .config-label .required {
   color: #ef4444;
-  margin-left: 4px;
+  margin-left: 2px;
 }
 
 .config-label .optional {
   color: var(--steam-text-secondary);
   font-size: 12px;
   font-weight: 400;
-  margin-left: 4px;
+  margin-left: 2px;
 }
 
 .config-input {
   width: 100%;
-  padding: 10px 12px;
+  padding: 6px 10px;
   border: 1px solid var(--steam-border);
   border-radius: 8px;
   background-color: rgba(var(--steam-bg-secondary-rgb), 0.2);
@@ -1199,12 +1533,12 @@ const hideTooltip = () => {
 
 .path-input-group {
   display: flex;
-  gap: 8px;
+  gap: 5px;
 }
 
 .path-input {
   flex: 1;
-  padding: 10px 12px;
+  padding: 6px 10px;
   border: 1px solid var(--steam-border);
   border-radius: 8px;
   background-color: rgba(var(--steam-bg-secondary-rgb), 0.2);
@@ -1214,7 +1548,7 @@ const hideTooltip = () => {
 }
 
 .browse-btn {
-  padding: 10px 20px;
+  padding: 6px 16px;
   border: none;
   border-radius: 8px;
   background-color: var(--steam-accent-blue);
@@ -1234,7 +1568,7 @@ const hideTooltip = () => {
 }
 
 .clear-btn {
-  padding: 10px 16px;
+  padding: 6px 13px;
   border: 1px solid var(--steam-border);
   border-radius: 8px;
   background-color: rgba(var(--steam-bg-tertiary-rgb), 0.2);
@@ -1252,7 +1586,7 @@ const hideTooltip = () => {
 .config-hint {
   font-size: 12px;
   color: var(--steam-text-secondary);
-  margin: 6px 0 0 0;
+  margin: 4px 0 0 0;
 }
 
 /* 脱壳区域 */
@@ -1260,14 +1594,14 @@ const hideTooltip = () => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 8px;
+  margin-bottom: 5px;
 }
 
 .unpack-btn {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 8px 16px;
+  gap: 4px;
+  padding: 5px 13px;
   border: none;
   border-radius: 6px;
   background-color: var(--steam-accent-blue);
@@ -1312,8 +1646,8 @@ const hideTooltip = () => {
 }
 
 .unpack-message {
-  margin-top: 8px;
-  padding: 10px 12px;
+  margin-top: 5px;
+  padding: 6px 10px;
   border-radius: 6px;
   font-size: 13px;
 }
@@ -1331,9 +1665,9 @@ const hideTooltip = () => {
 /* 操作按钮 */
 .config-actions {
   display: flex;
-  gap: 12px;
-  margin-top: 24px;
-  padding-top: 20px;
+  gap: 8px;
+  margin-top: 15px;
+  padding-top: 13px;
   border-top: 1px solid var(--steam-border);
 }
 
@@ -1341,8 +1675,8 @@ const hideTooltip = () => {
 .btn-secondary {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 12px 24px;
+  gap: 5px;
+  padding: 8px 19px;
   border: none;
   border-radius: 8px;
   font-size: 14px;
@@ -1382,6 +1716,21 @@ const hideTooltip = () => {
   background-color: rgba(var(--steam-bg-tertiary-rgb), 0.4);
 }
 
+.btn-secondary.restore-btn {
+  border-color: rgba(239, 68, 68, 0.3);
+  color: #ef4444;
+}
+
+.btn-secondary.restore-btn:hover:not(:disabled) {
+  background-color: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.5);
+}
+
+.btn-secondary.restore-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .btn-primary svg,
 .btn-secondary svg {
   width: 16px;
@@ -1392,20 +1741,20 @@ const hideTooltip = () => {
    高级功能区域
    ============================================ */
 .advanced-features-section {
-  margin-bottom: 20px;
+  margin-bottom: 13px;
 }
 
 .feature-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 16px;
+  gap: 10px;
 }
 
 .feature-card {
   background-color: rgba(var(--steam-bg-secondary-rgb), 0.2);
   border: 1px solid var(--steam-border);
   border-radius: 10px;
-  padding: 16px;
+  padding: 10px;
   cursor: pointer;
   transition: all 0.15s ease;
   position: relative;
@@ -1423,7 +1772,7 @@ const hideTooltip = () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
 }
 
 .feature-icon svg {
@@ -1441,6 +1790,9 @@ const hideTooltip = () => {
 .feature-icon.stats { background-color: rgba(14, 165, 233, 0.1); color: #0ea5e9; }
 .feature-icon.dlc { background-color: rgba(168, 85, 247, 0.1); color: #a855f7; }
 .feature-icon.main { background-color: rgba(100, 116, 139, 0.1); color: #64748b; }
+.feature-icon.mods { background-color: rgba(168, 85, 247, 0.1); color: #a855f7; }
+.feature-icon.coldclient { background-color: rgba(100, 116, 139, 0.1); color: #64748b; }
+.feature-icon.lobby { background-color: rgba(14, 165, 233, 0.1); color: #0ea5e9; }
 .feature-icon.complete { background-color: rgba(16, 185, 129, 0.1); color: #10b981; }
 .feature-icon.other { background-color: rgba(100, 116, 139, 0.1); color: #64748b; }
 
@@ -1448,19 +1800,19 @@ const hideTooltip = () => {
   font-size: 14px;
   font-weight: 600;
   color: var(--steam-text-primary);
-  margin: 0 0 6px 0;
+  margin: 0 0 5px 0;
 }
 
 .feature-desc {
   font-size: 12px;
   color: var(--steam-text-secondary);
-  margin: 0 0 12px 0;
-  line-height: 1.4;
+  margin: 0 0 10px 0;
+  line-height: 0.9;
 }
 
 .feature-status {
   display: inline-block;
-  padding: 3px 8px;
+  padding: 2px 6px;
   border-radius: 4px;
   font-size: 11px;
   font-weight: 500;
@@ -1521,8 +1873,8 @@ const hideTooltip = () => {
 .modal-header {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 20px;
+  gap: 8px;
+  padding: 13px;
   border-bottom: 1px solid var(--steam-border);
 }
 
@@ -1540,24 +1892,24 @@ const hideTooltip = () => {
 }
 
 .modal-body {
-  padding: 20px;
+  padding: 13px;
 }
 
 .modal-body p {
   font-size: 14px;
   color: var(--steam-text-primary);
-  margin: 0 0 12px 0;
+  margin: 0 0 10px 0;
 }
 
 .modal-body ul {
-  margin: 0 0 16px 0;
-  padding-left: 20px;
+  margin: 0 0 13px 0;
+  padding-left: 13px;
 }
 
 .modal-body li {
   font-size: 13px;
   color: var(--steam-text-secondary);
-  margin-bottom: 6px;
+  margin-bottom: 4px;
 }
 
 .warning-text {
@@ -1566,7 +1918,7 @@ const hideTooltip = () => {
 }
 
 .modal-footer {
-  padding: 16px 20px;
+  padding: 10px 16px;
   border-top: 1px solid var(--steam-border);
   display: flex;
   justify-content: flex-end;
@@ -1577,7 +1929,7 @@ const hideTooltip = () => {
    ============================================ */
 @media (max-width: 768px) {
   .steam-patch-inject-view {
-    padding: 16px;
+    padding: 10px;
   }
 
   .feature-grid {
@@ -1586,7 +1938,7 @@ const hideTooltip = () => {
 
   .config-header {
     flex-direction: column;
-    gap: 12px;
+    gap: 8px;
     align-items: flex-start;
   }
 

@@ -20,8 +20,8 @@
       <div class="modal-body">
         <!-- 配置标签页 -->
         <div class="config-tabs">
-          <button 
-            v-for="tab in tabs" 
+          <button
+            v-for="tab in tabs"
             :key="tab.id"
             class="tab-btn"
             :class="{ active: activeTab === tab.id }"
@@ -32,399 +32,62 @@
           </button>
         </div>
 
-        <!-- 格式说明 -->
-        <div class="usage-guide">
-          <div class="guide-header">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="12" cy="12" r="10"/>
-              <line x1="12" y1="16" x2="12" y2="12"/>
-              <line x1="12" y1="8" x2="12.01" y2="8"/>
-            </svg>
-            <span>格式说明</span>
-          </div>
-          <div v-if="activeTab === 'items'" class="guide-content">
-            <div class="guide-item">
-              <span class="guide-label">物品定义文件</span>
-              <span class="guide-value">items.json（所有物品定义）</span>
-            </div>
-            <div class="guide-item">
-              <span class="guide-label">初始库存文件</span>
-              <span class="guide-value">default_items.json（物品ID=数量）</span>
-            </div>
-            <div class="guide-item">
-              <span class="guide-label">物品ID</span>
-              <span class="guide-value">数字，注意部分游戏有ID范围限制</span>
-            </div>
-            <div class="guide-item">
-              <span class="guide-label">最大堆叠</span>
-              <span class="guide-value">数字，表示该物品可堆叠的最大数量</span>
-            </div>
-          </div>
-          <div v-if="activeTab === 'mods'" class="guide-content">
-            <div class="guide-item">
-              <span class="guide-label">模组目录结构</span>
-              <span class="guide-value">steam_settings/mods/&lt;MOD编号&gt;/</span>
-            </div>
-            <div class="guide-item">
-              <span class="guide-label">模组配置文件</span>
-              <span class="guide-value">mods.json（可选）</span>
-            </div>
-            <div class="guide-item">
-              <span class="guide-label">模组预览图</span>
-              <span class="guide-value">steam_settings/mod_images/&lt;MOD编号&gt;/</span>
-            </div>
-            <div class="guide-item">
-              <span class="guide-label">MOD编号</span>
-              <span class="guide-value">对应创意工坊文件ID（纯数字）</span>
-            </div>
-          </div>
-          <div v-if="activeTab === 'leaderboards'" class="guide-content">
-            <div class="guide-item">
-              <span class="guide-label">排行榜定义文件</span>
-              <span class="guide-value">leaderboards.txt</span>
-            </div>
-            <div class="guide-item">
-              <span class="guide-label">文件格式</span>
-              <span class="guide-value">名称=排序方式=显示类型</span>
-            </div>
-            <div class="guide-item">
-              <span class="guide-label">排序方式</span>
-              <span class="guide-value">0=无 1=升序 2=降序</span>
-            </div>
-            <div class="guide-item">
-              <span class="guide-label">显示类型</span>
-              <span class="guide-value">0=无 1=数字 2=时间秒 3=毫秒</span>
-            </div>
-          </div>
-          <div v-if="activeTab === 'controller'" class="guide-content">
-            <div class="guide-item">
-              <span class="guide-label">控制器定义</span>
-              <span class="guide-value">steam_settings/controller/ACTION_SET.txt</span>
-            </div>
-            <div class="guide-item">
-              <span class="guide-label">数字按键</span>
-              <span class="guide-value">ACTION_NAME=BUTTON_NAME</span>
-            </div>
-            <div class="guide-item">
-              <span class="guide-label">模拟按键</span>
-              <span class="guide-value">ACTION_NAME=ANALOG_NAME=模式</span>
-            </div>
-            <div class="guide-item">
-              <span class="guide-label">多按键绑定</span>
-              <span class="guide-value">ACTION_NAME=A,B（逗号分隔）</span>
-            </div>
-          </div>
-          <div v-if="activeTab === 'other'" class="guide-content">
-            <div class="guide-item">
-              <span class="guide-label">已安装应用</span>
-              <span class="guide-value">installed_app_ids.txt（每行一个AppID）</span>
-            </div>
-            <div class="guide-item">
-              <span class="guide-label">订阅群组</span>
-              <span class="guide-value">subscribed_groups.txt（每行一个群组ID）</span>
-            </div>
-            <div class="guide-item">
-              <span class="guide-label">购买密钥</span>
-              <span class="guide-value">purchased_keys.txt（appid=KEY）</span>
-            </div>
-            <div class="guide-item">
-              <span class="guide-label">支持语言</span>
-              <span class="guide-value">supported_languages.txt（每行一个语言代码）</span>
-            </div>
-          </div>
-          <div v-if="activeTab === 'coldclient'" class="guide-content">
-            <div class="guide-item">
-              <span class="guide-label">注入模式</span>
-              <span class="guide-value">direct=直接注入，loader=使用加载器</span>
-            </div>
-            <div class="guide-item">
-              <span class="guide-label">额外DLL</span>
-              <span class="guide-value">在游戏启动前注入的额外DLL列表</span>
-            </div>
-          </div>
-          <div v-if="activeTab === 'lobby'" class="guide-content">
-            <div class="guide-item">
-              <span class="guide-label">大厅ID</span>
-              <span class="guide-value">Steam 大厅的唯一标识符</span>
-            </div>
-            <div class="guide-item">
-              <span class="guide-label">连接密码</span>
-              <span class="guide-value">部分游戏大厅可能需要密码</span>
-            </div>
-          </div>
-          <div v-if="activeTab === 'items'" class="guide-example">
-            <div class="example-title">items.json 示例：</div>
-            <pre class="example-code">[
-  {
-    "itemId": 1001,
-    "name": "Health Potion",
-    "stackable": true,
-    "maxStackSize": 99
-  },
-  {
-    "itemId": 1002,
-    "name": "Sword",
-    "stackable": false,
-    "maxStackSize": 1
-  }
-]</pre>
-          </div>
-          <div v-if="activeTab === 'leaderboards'" class="guide-example">
-            <div class="example-title">leaderboards.txt 示例：</div>
-            <pre class="example-code">high_score=2=1
-best_time=1=2
-kill_count=2=1</pre>
-          </div>
-          <div v-if="activeTab === 'other'" class="guide-example">
-            <div class="example-title">purchased_keys.txt 示例：</div>
-            <pre class="example-code"># appid=KEY
-123456=ABCDE-FGHIJ-KLMNO
-789012=PQRST-UVWXY-Z1234</pre>
-          </div>
-          <p class="guide-tip">提示：详细格式说明请参考 gbe_fork 官方文档或 steam_settings.EXAMPLE 目录</p>
-        </div>
-
-        <!-- 配置内容区 -->
+        <!-- 配置内容区：全部使用共享 Panel -->
         <div class="config-content">
-          <!-- 物品配置 -->
           <div v-if="activeTab === 'items'" class="tab-panel">
-            <div class="panel-header">
-              <label class="toggle-label">
-                <input v-model="configs.items.enabled" type="checkbox" class="toggle-input" />
-                <span class="toggle-slider"></span>
-                <span class="toggle-text">启用物品系统</span>
-              </label>
-            </div>
-            <div v-if="configs.items.enabled" class="panel-body">
-              <div class="section-header">
-                <h4>物品定义</h4>
-                <button class="btn-add" @click="addItem">添加物品</button>
-              </div>
-              <div class="list-container">
-                <div v-for="(item, index) in configs.items.itemDefinitions" :key="index" class="list-item">
-                  <input v-model="item.id" placeholder="物品ID" />
-                  <input v-model="item.name" placeholder="物品名称" />
-                  <input v-model="item.maxStackSize" type="number" placeholder="最大堆叠" />
-                  <button class="btn-icon" @click="removeItem(index)">×</button>
-                </div>
-              </div>
-            </div>
+            <ItemsConfigPanel
+              ref="itemsConfigPanelRef"
+              :game-path="props.gamePath"
+              @saved="handleItemsSaved"
+            />
           </div>
 
-          <!-- 模组配置 -->
           <div v-if="activeTab === 'mods'" class="tab-panel">
-            <div class="panel-header">
-              <label class="toggle-label">
-                <input v-model="configs.mods.enabled" type="checkbox" class="toggle-input" />
-                <span class="toggle-slider"></span>
-                <span class="toggle-text">启用创意工坊模组</span>
-              </label>
-            </div>
-            <div v-if="configs.mods.enabled" class="panel-body">
-              <div class="section-header">
-                <h4>已订阅模组</h4>
-                <button class="btn-add" @click="addMod">添加模组</button>
-              </div>
-              <div class="list-container">
-                <div v-for="(mod, index) in configs.mods.subscribedMods" :key="index" class="list-item">
-                  <input v-model="mod.publishedFileId" placeholder="模组ID" />
-                  <input v-model="mod.title" placeholder="模组标题" />
-                  <select v-model="mod.visibility">
-                    <option value="public">公开</option>
-                    <option value="friends">好友</option>
-                    <option value="private">私有</option>
-                  </select>
-                  <button class="btn-icon" @click="removeMod(index)">×</button>
-                </div>
-              </div>
-            </div>
+            <ModsConfigPanel
+              ref="modsConfigPanelRef"
+              :game-path="props.gamePath"
+              @saved="handleModsSaved"
+            />
           </div>
 
-          <!-- 排行榜配置 -->
           <div v-if="activeTab === 'leaderboards'" class="tab-panel">
-            <div class="panel-header">
-              <label class="toggle-label">
-                <input v-model="configs.leaderboards.enabled" type="checkbox" class="toggle-input" />
-                <span class="toggle-slider"></span>
-                <span class="toggle-text">启用排行榜</span>
-              </label>
-            </div>
-            <div v-if="configs.leaderboards.enabled" class="panel-body">
-              <div class="section-header">
-                <h4>排行榜列表</h4>
-                <button class="btn-add" @click="addLeaderboard">添加排行榜</button>
-              </div>
-              <div class="list-container">
-                <div v-for="(lb, index) in configs.leaderboards.leaderboards" :key="index" class="list-item">
-                  <input v-model="lb.name" placeholder="排行榜ID" />
-                  <input v-model="lb.displayName" placeholder="显示名称" />
-                  <select v-model="lb.sortMethod">
-                    <option value="asc">升序</option>
-                    <option value="desc">降序</option>
-                  </select>
-                  <button class="btn-icon" @click="removeLeaderboard(index)">×</button>
-                </div>
-              </div>
-            </div>
+            <LeaderboardsConfigPanel
+              ref="leaderboardsConfigPanelRef"
+              :game-path="props.gamePath"
+              @saved="handleLeaderboardsSaved"
+            />
           </div>
 
-          <!-- 控制器配置 -->
           <div v-if="activeTab === 'controller'" class="tab-panel">
-            <div class="panel-header">
-              <label class="toggle-label">
-                <input v-model="configs.controller.enabled" type="checkbox" class="toggle-input" />
-                <span class="toggle-slider"></span>
-                <span class="toggle-text">启用控制器支持</span>
-              </label>
-            </div>
-            <div v-if="configs.controller.enabled" class="panel-body">
-              <div class="form-row">
-                <div class="form-group">
-                  <label>控制器类型</label>
-                  <select v-model="configs.controller.controllerType">
-                    <option value="xbox">Xbox</option>
-                    <option value="playstation">PlayStation</option>
-                    <option value="nintendo">Nintendo</option>
-                    <option value="generic">通用</option>
-                  </select>
-                </div>
-              </div>
-              <div class="form-row">
-                <div class="form-group">
-                  <label>左摇杆死区</label>
-                  <input v-model.number="configs.controller.deadzone.leftStick" type="number" step="0.01" min="0" max="1" />
-                </div>
-                <div class="form-group">
-                  <label>右摇杆死区</label>
-                  <input v-model.number="configs.controller.deadzone.rightStick" type="number" step="0.01" min="0" max="1" />
-                </div>
-              </div>
-              <div class="form-row">
-                <div class="form-group">
-                  <label>震动强度</label>
-                  <input v-model.number="configs.controller.rumble.intensity" type="number" step="0.1" min="0" max="1" />
-                </div>
-                <div class="form-group">
-                  <label class="checkbox-label">
-                    <input v-model="configs.controller.rumble.enabled" type="checkbox" />
-                    <span>启用震动</span>
-                  </label>
-                </div>
-              </div>
-            </div>
+            <ControllerConfigPanel
+              ref="controllerConfigPanelRef"
+              :game-path="props.gamePath"
+              @saved="handleControllerSaved"
+            />
           </div>
 
-          <!-- 其他配置 -->
           <div v-if="activeTab === 'other'" class="tab-panel">
-            <div class="panel-body">
-              <!-- 已安装应用ID -->
-              <div class="config-section">
-                <h4>已安装应用ID</h4>
-                <textarea 
-                  v-model="otherConfigs.installedAppIds" 
-                  rows="3"
-                  placeholder="每行一个AppID"
-                ></textarea>
-              </div>
-
-              <!-- 订阅群组 -->
-              <div class="config-section">
-                <h4>订阅群组ID</h4>
-                <textarea 
-                  v-model="otherConfigs.subscribedGroups" 
-                  rows="3"
-                  placeholder="每行一个群组ID"
-                ></textarea>
-              </div>
-
-              <!-- 购买密钥 -->
-              <div class="config-section">
-                <h4>CD密钥</h4>
-                <textarea 
-                  v-model="otherConfigs.purchasedKeys" 
-                  rows="3"
-                  placeholder="每行一个密钥"
-                ></textarea>
-              </div>
-
-              <!-- 支持语言 -->
-              <div class="config-section">
-                <h4>支持语言</h4>
-                <div class="checkbox-group">
-                  <label v-for="lang in availableLanguages" :key="lang.code" class="checkbox-label">
-                    <input 
-                      type="checkbox" 
-                      :value="lang.code"
-                      v-model="selectedLanguages"
-                    />
-                    <span>{{ lang.name }}</span>
-                  </label>
-                </div>
-              </div>
-            </div>
+            <OtherConfigPanel
+              ref="otherConfigPanelRef"
+              :game-path="props.gamePath"
+              @saved="handleOtherSaved"
+            />
           </div>
 
-          <!-- ColdClientLoader 配置 -->
           <div v-if="activeTab === 'coldclient'" class="tab-panel">
-            <div class="panel-header">
-              <label class="toggle-label">
-                <input v-model="configs.coldClientLoader.enabled" type="checkbox" class="toggle-input" />
-                <span class="toggle-slider"></span>
-                <span class="toggle-text">启用 ColdClientLoader</span>
-              </label>
-            </div>
-            <div v-if="configs.coldClientLoader.enabled" class="panel-body">
-              <div class="form-row">
-                <div class="form-group">
-                  <label>注入模式</label>
-                  <select v-model="configs.coldClientLoader.injectionMode">
-                    <option value="direct">直接注入</option>
-                    <option value="loader">使用加载器</option>
-                  </select>
-                </div>
-              </div>
-              <div class="form-group">
-                <label>启动参数</label>
-                <input v-model="configs.coldClientLoader.launchArgs" placeholder="游戏启动参数" />
-              </div>
-              <div class="form-group">
-                <label>额外DLL列表（每行一个）</label>
-                <textarea 
-                  v-model="coldClientDlls" 
-                  rows="4"
-                  placeholder="例如：extra.dll&#10;plugin.dll"
-                ></textarea>
-              </div>
-            </div>
+            <ColdClientLoaderConfigPanel
+              ref="coldClientLoaderConfigPanelRef"
+              :game-path="props.gamePath"
+              @saved="handleColdClientSaved"
+            />
           </div>
 
-          <!-- Lobby Connect 配置 -->
           <div v-if="activeTab === 'lobby'" class="tab-panel">
-            <div class="panel-header">
-              <label class="toggle-label">
-                <input v-model="configs.lobbyConnect.enabled" type="checkbox" class="toggle-input" />
-                <span class="toggle-slider"></span>
-                <span class="toggle-text">启用 Lobby Connect</span>
-              </label>
-            </div>
-            <div v-if="configs.lobbyConnect.enabled" class="panel-body">
-              <div class="form-row">
-                <div class="form-group">
-                  <label class="checkbox-label">
-                    <input v-model="configs.lobbyConnect.autoJoin" type="checkbox" />
-                    <span>自动加入大厅</span>
-                  </label>
-                </div>
-              </div>
-              <div class="form-group">
-                <label>目标大厅ID</label>
-                <input v-model="configs.lobbyConnect.targetLobbyId" placeholder="输入大厅ID" />
-              </div>
-              <div class="form-group">
-                <label>连接密码（可选）</label>
-                <input v-model="configs.lobbyConnect.password" type="password" placeholder="大厅密码" />
-              </div>
-            </div>
+            <LobbyConnectConfigPanel
+              ref="lobbyConnectConfigPanelRef"
+              :game-path="props.gamePath"
+              @saved="handleLobbySaved"
+            />
           </div>
         </div>
       </div>
@@ -443,19 +106,21 @@ kill_count=2=1</pre>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { invoke } from '@tauri-apps/api/core'
-import type { 
-  ItemsConfig, 
-  ModsConfig, 
-  LeaderboardsConfig, 
-  ControllerConfig,
-  ColdClientLoaderConfig,
-  LobbyConnectConfig,
-  ItemDefinition,
-  WorkshopMod,
-  Leaderboard
-} from '../../../src/types/steam-config.types'
+/**
+ * AdvancedConfig.vue - 高级配置管理
+ * 现在作为各共享 Panel 的容器，所有具体逻辑复用 Panel 组件
+ * 实现「完整配置管理器」与单独窗口共用同一套数据模型和保存/加载逻辑
+ */
+
+import { ref, onMounted, onUnmounted } from 'vue'
+import { CONFIG_EVENTS } from '../../constants/config-events'
+import ItemsConfigPanel from './panels/ItemsConfigPanel.vue'
+import ModsConfigPanel from './panels/ModsConfigPanel.vue'
+import LeaderboardsConfigPanel from './panels/LeaderboardsConfigPanel.vue'
+import ControllerConfigPanel from './panels/ControllerConfigPanel.vue'
+import ColdClientLoaderConfigPanel from './panels/ColdClientLoaderConfigPanel.vue'
+import LobbyConnectConfigPanel from './panels/LobbyConnectConfigPanel.vue'
+import OtherConfigPanel from './panels/OtherConfigPanel.vue'
 
 const props = defineProps<{
   gamePath: string
@@ -469,6 +134,15 @@ const emit = defineEmits<{
 
 const activeTab = ref('items')
 
+// Panel 组件引用
+const itemsConfigPanelRef = ref<InstanceType<typeof ItemsConfigPanel> | null>(null)
+const modsConfigPanelRef = ref<InstanceType<typeof ModsConfigPanel> | null>(null)
+const leaderboardsConfigPanelRef = ref<InstanceType<typeof LeaderboardsConfigPanel> | null>(null)
+const controllerConfigPanelRef = ref<InstanceType<typeof ControllerConfigPanel> | null>(null)
+const coldClientLoaderConfigPanelRef = ref<InstanceType<typeof ColdClientLoaderConfigPanel> | null>(null)
+const lobbyConnectConfigPanelRef = ref<InstanceType<typeof LobbyConnectConfigPanel> | null>(null)
+const otherConfigPanelRef = ref<InstanceType<typeof OtherConfigPanel> | null>(null)
+
 const tabs = [
   { id: 'items', name: '物品', icon: '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M12 8v8m-4-4h8"/>' },
   { id: 'mods', name: '模组', icon: '<path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/>' },
@@ -479,273 +153,76 @@ const tabs = [
   { id: 'lobby', name: 'Lobby', icon: '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>' },
 ]
 
-// 配置数据
-const configs = ref({
-  items: { enabled: false, itemDefinitions: [], initialItems: [] } as ItemsConfig,
-  mods: { enabled: false, subscribedMods: [], autoUpdate: false } as ModsConfig,
-  leaderboards: { enabled: false, leaderboards: [] } as LeaderboardsConfig,
-  controller: {
-    enabled: false,
-    controllerType: 'xbox',
-    bindings: [],
-    deadzone: { leftStick: 0.1, rightStick: 0.1, leftTrigger: 0.1, rightTrigger: 0.1 },
-    rumble: { enabled: true, intensity: 0.8 },
-    customGlyphs: { enabled: false, path: '' }
-  } as ControllerConfig,
-  coldClientLoader: { enabled: false, injectionMode: 'direct', extraDlls: [], launchArgs: '' } as ColdClientLoaderConfig,
-  lobbyConnect: { enabled: false, autoJoin: false, targetLobbyId: '', password: '' } as LobbyConnectConfig,
-})
+// 各 Panel 保存后的处理（Panel 自己会显示提示并广播事件）
+function handleItemsSaved() { /* Panel 已处理 */ }
+function handleModsSaved() { /* Panel 已处理 */ }
+function handleLeaderboardsSaved() { /* Panel 已处理 */ }
+function handleControllerSaved() { /* Panel 已处理 */ }
+function handleColdClientSaved() { /* Panel 已处理 */ }
+function handleLobbySaved() { /* Panel 已处理 */ }
+function handleOtherSaved() { /* Panel 已处理 */ }
 
-// 其他配置
-const otherConfigs = ref({
-  installedAppIds: '',
-  subscribedGroups: '',
-  purchasedKeys: '',
-})
-
-const selectedLanguages = ref<string[]>([])
-
-const coldClientDlls = computed({
-  get: () => configs.value.coldClientLoader.extraDlls.join('\n'),
-  set: (val: string) => {
-    configs.value.coldClientLoader.extraDlls = val.split('\n').filter(s => s.trim())
-  }
-})
-
-const availableLanguages = [
-  { code: 'schinese', name: '简体中文' },
-  { code: 'tchinese', name: '繁体中文' },
-  { code: 'english', name: '英语' },
-  { code: 'japanese', name: '日语' },
-  { code: 'korean', name: '韩语' },
-  { code: 'russian', name: '俄语' },
-  { code: 'german', name: '德语' },
-  { code: 'french', name: '法语' },
-  { code: 'spanish', name: '西班牙语' },
-  { code: 'portuguese', name: '葡萄牙语' },
-  { code: 'polish', name: '波兰语' },
-  { code: 'turkish', name: '土耳其语' },
-]
-
-// 物品操作
-function addItem() {
-  configs.value.items.itemDefinitions.push({
-    id: '',
-    name: '',
-    stackable: true,
-    maxStackSize: 99
-  } as ItemDefinition)
-}
-
-function removeItem(index: number) {
-  configs.value.items.itemDefinitions.splice(index, 1)
-}
-
-// 模组操作
-function addMod() {
-  configs.value.mods.subscribedMods.push({
-    publishedFileId: '',
-    title: '',
-    visibility: 'public',
-    files: []
-  } as WorkshopMod)
-}
-
-function removeMod(index: number) {
-  configs.value.mods.subscribedMods.splice(index, 1)
-}
-
-// 排行榜操作
-function addLeaderboard() {
-  configs.value.leaderboards.leaderboards.push({
-    name: '',
-    displayName: '',
-    sortMethod: 'desc',
-    displayType: 'numeric',
-    entries: []
-  } as Leaderboard)
-}
-
-function removeLeaderboard(index: number) {
-  configs.value.leaderboards.leaderboards.splice(index, 1)
-}
-
-// 保存所有配置
+/**
+ * 保存所有配置
+ * 并发调用所有 Panel 的 save()，由 Panel 自行广播同步事件
+ */
 async function saveAllConfigs() {
   try {
-    // 保存各个配置：无论是否启用都调用保存，禁用时保存空配置以清空文件
-    const promises = []
-
-    promises.push(invoke('save_items_config', {
-      gamePath: props.gamePath,
-      config: configs.value.items.enabled ? configs.value.items : { enabled: false, itemDefinitions: [], initialItems: [] }
-    }))
-
-    promises.push(invoke('save_mods_config', {
-      gamePath: props.gamePath,
-      config: configs.value.mods.enabled ? configs.value.mods : { enabled: false, subscribedMods: [], autoUpdate: false }
-    }))
-
-    promises.push(invoke('save_leaderboards_config', {
-      gamePath: props.gamePath,
-      config: configs.value.leaderboards.enabled ? configs.value.leaderboards : { enabled: false, leaderboards: [] }
-    }))
-
-    // 保存控制器配置（无论是否启用，确保文件内容与当前状态一致）
-    promises.push(invoke('save_controller_config', {
-      gamePath: props.gamePath,
-      config: configs.value.controller
-    }))
-
-    // 保存 ColdClientLoader 配置
-    promises.push(invoke('save_coldclient_config', {
-      gamePath: props.gamePath,
-      config: configs.value.coldClientLoader
-    }))
-
-    // 保存 Lobby Connect 配置
-    promises.push(invoke('save_lobby_connect_config', {
-      gamePath: props.gamePath,
-      config: configs.value.lobbyConnect
-    }))
-
-    // 保存其他配置
-    promises.push(saveOtherConfigs())
+    const promises = [
+      itemsConfigPanelRef.value?.save(),
+      modsConfigPanelRef.value?.save(),
+      leaderboardsConfigPanelRef.value?.save(),
+      controllerConfigPanelRef.value?.save(),
+      coldClientLoaderConfigPanelRef.value?.save(),
+      lobbyConnectConfigPanelRef.value?.save(),
+      otherConfigPanelRef.value?.save(),
+    ].filter(Boolean) as Promise<any>[]
 
     await Promise.all(promises)
 
     emit('saved')
-    // 广播配置已保存事件，通知完整配置管理器等其它窗口刷新
-    window.dispatchEvent(new CustomEvent('overlay-config-saved', {
-      detail: { gamePath: props.gamePath }
-    }))
     emit('close')
   } catch (error) {
     alert(`保存失败: ${error}`)
   }
 }
 
-async function saveOtherConfigs() {
-  // 保存 installed_app_ids.txt
-  const appIds = otherConfigs.value.installedAppIds
-    .split('\n')
-    .map(s => s.trim())
-    .filter(s => s)
-  await invoke('save_installed_app_ids', {
-    gamePath: props.gamePath,
-    appIds
-  })
-
-  // 保存 subscribed_groups.txt
-  const groupIds = otherConfigs.value.subscribedGroups
-    .split('\n')
-    .map(s => s.trim())
-    .filter(s => s)
-  await invoke('save_subscribed_groups', {
-    gamePath: props.gamePath,
-    groupIds
-  })
-
-  // 保存 purchased_keys.txt (格式: appid=KEY)
-  const keys = otherConfigs.value.purchasedKeys
-    .split('\n')
-    .map(s => s.trim())
-    .filter(s => s && !s.startsWith('#'))
-  await invoke('save_purchased_keys', {
-    gamePath: props.gamePath,
-    keys
-  })
-
-  // 保存 supported_languages.txt
-  await invoke('save_supported_languages', {
-    gamePath: props.gamePath,
-    languages: selectedLanguages.value
-  })
-}
-
-async function loadConfigs() {
-  try {
-    // 加载各个配置
-    const [itemsResult, modsResult, leaderboardsResult, controllerResult, coldClientResult, lobbyResult] = await Promise.all([
-      invoke<{ exists: boolean; config?: ItemsConfig }>('load_items_config', { gamePath: props.gamePath }),
-      invoke<{ exists: boolean; config?: ModsConfig }>('load_mods_config', { gamePath: props.gamePath }),
-      invoke<{ exists: boolean; config?: LeaderboardsConfig }>('load_leaderboards_config', { gamePath: props.gamePath }),
-      invoke<{ exists: boolean; config?: ControllerConfig }>('load_controller_config', { gamePath: props.gamePath }),
-      invoke<{ exists: boolean; config?: ColdClientLoaderConfig }>('load_coldclient_config', { gamePath: props.gamePath }),
-      invoke<{ exists: boolean; config?: LobbyConnectConfig }>('load_lobby_connect_config', { gamePath: props.gamePath }),
-    ])
-
-    if (itemsResult.exists && itemsResult.config) {
-      configs.value.items = itemsResult.config
+// 同步事件处理器：当其它窗口保存配置且 gamePath 匹配时，刷新对应 Panel
+function createSyncHandler(panelRef: { value: { load: () => void | Promise<void> } | null }) {
+  return (event: Event) => {
+    const customEvent = event as CustomEvent<{ gamePath?: string }>
+    if (customEvent.detail?.gamePath === props.gamePath) {
+      panelRef.value?.load()
     }
-    if (modsResult.exists && modsResult.config) {
-      configs.value.mods = modsResult.config
-    }
-    if (leaderboardsResult.exists && leaderboardsResult.config) {
-      configs.value.leaderboards = leaderboardsResult.config
-    }
-    if (controllerResult.exists && controllerResult.config) {
-      configs.value.controller = controllerResult.config
-    }
-    if (coldClientResult.exists && coldClientResult.config) {
-      configs.value.coldClientLoader = coldClientResult.config
-    }
-    if (lobbyResult.exists && lobbyResult.config) {
-      configs.value.lobbyConnect = lobbyResult.config
-    }
-
-    // 加载其他配置
-    await loadOtherConfigs()
-  } catch (error) {
-    // 加载失败时使用默认值
   }
 }
 
-async function loadOtherConfigs() {
-  try {
-    // 加载 installed_app_ids.txt（包括空数组，确保外部清空后文本区同步）
-    const appIds = await invoke<string[]>('load_installed_app_ids', { gamePath: props.gamePath })
-    otherConfigs.value.installedAppIds = Array.isArray(appIds) ? appIds.join('\n') : ''
-
-    // 加载 subscribed_groups.txt（包括空数组）
-    const groupIds = await invoke<string[]>('load_subscribed_groups', { gamePath: props.gamePath })
-    otherConfigs.value.subscribedGroups = Array.isArray(groupIds) ? groupIds.join('\n') : ''
-
-    // 加载 purchased_keys.txt（包括空数组）
-    const keys = await invoke<string[]>('load_purchased_keys', { gamePath: props.gamePath })
-    otherConfigs.value.purchasedKeys = Array.isArray(keys) ? keys.join('\n') : ''
-
-    // 加载 supported_languages.txt（包括空数组）
-    const languages = await invoke<string[]>('load_supported_languages', { gamePath: props.gamePath })
-    selectedLanguages.value = Array.isArray(languages) ? languages : []
-  } catch (error) {
-    // 加载失败时使用默认值
-  }
-}
-
-let configSyncHandler: ((e: Event) => void) | null = null
+const handlers: { event: string; handler: (e: Event) => void }[] = [
+  { event: CONFIG_EVENTS.ITEMS_SAVED, handler: createSyncHandler(itemsConfigPanelRef) },
+  { event: CONFIG_EVENTS.MODS_SAVED, handler: createSyncHandler(modsConfigPanelRef) },
+  { event: CONFIG_EVENTS.LEADERBOARDS_SAVED, handler: createSyncHandler(leaderboardsConfigPanelRef) },
+  { event: CONFIG_EVENTS.CONTROLLER_SAVED, handler: createSyncHandler(controllerConfigPanelRef) },
+  { event: CONFIG_EVENTS.COLDCLIENT_SAVED, handler: createSyncHandler(coldClientLoaderConfigPanelRef) },
+  { event: CONFIG_EVENTS.LOBBY_SAVED, handler: createSyncHandler(lobbyConnectConfigPanelRef) },
+  { event: CONFIG_EVENTS.OTHER_SAVED, handler: createSyncHandler(otherConfigPanelRef) },
+]
 
 onMounted(() => {
-  loadConfigs()
-
-  configSyncHandler = (e: Event) => {
-    const customEvent = e as CustomEvent<{ gamePath?: string }>
-    if (customEvent.detail?.gamePath === props.gamePath) {
-      loadConfigs()
-    }
-  }
-  window.addEventListener('overlay-config-saved', configSyncHandler)
+  handlers.forEach(({ event, handler }) => {
+    window.addEventListener(event, handler)
+  })
 })
 
 onUnmounted(() => {
-  if (configSyncHandler) {
-    window.removeEventListener('overlay-config-saved', configSyncHandler)
-  }
+  handlers.forEach(({ event, handler }) => {
+    window.removeEventListener(event, handler)
+  })
 })
 </script>
 
 <style scoped>
 .modal-overlay {
+  backdrop-filter: var(--config-modal-backdrop);
   position: fixed;
   top: 0;
   left: 0;
@@ -759,9 +236,10 @@ onUnmounted(() => {
 }
 
 .modal-content {
-  background-color: var(--steam-bg-primary);
+  background-color: var(--config-modal-bg);
+  backdrop-filter: var(--config-modal-backdrop);
   border-radius: 12px;
-  border: 1px solid var(--steam-border);
+  border: 1px solid var(--config-modal-border);
   width: 90%;
   max-width: 900px;
   max-height: 85vh;
@@ -907,120 +385,7 @@ onUnmounted(() => {
   to { opacity: 1; transform: translateY(0); }
 }
 
-.panel-header {
-  margin-bottom: 20px;
-  padding-bottom: 16px;
-  border-bottom: 1px solid var(--steam-border);
-}
-
-.panel-body {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.section-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 12px;
-}
-
-.section-header h4 {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--steam-text-primary);
-  margin: 0;
-}
-
-/* 开关样式 */
-.toggle-label {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  cursor: pointer;
-}
-
-.toggle-input {
-  display: none;
-}
-
-.toggle-slider {
-  width: 48px;
-  height: 26px;
-  background-color: var(--steam-border);
-  border-radius: 13px;
-  position: relative;
-  transition: background-color 0.2s ease;
-  flex-shrink: 0;
-}
-
-.toggle-slider::after {
-  content: '';
-  position: absolute;
-  width: 22px;
-  height: 22px;
-  background-color: white;
-  border-radius: 50%;
-  top: 2px;
-  left: 2px;
-  transition: transform 0.2s ease;
-}
-
-.toggle-input:checked + .toggle-slider {
-  background-color: var(--steam-accent-blue);
-}
-
-.toggle-input:checked + .toggle-slider::after {
-  transform: translateX(22px);
-}
-
-.toggle-text {
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--steam-text-primary);
-}
-
 /* 按钮 */
-.btn-add {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 14px;
-  border: none;
-  border-radius: 6px;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  background-color: var(--steam-accent-blue);
-  color: white;
-}
-
-.btn-add:hover {
-  background-color: var(--steam-accent-hover);
-}
-
-.btn-icon {
-  width: 28px;
-  height: 28px;
-  border: none;
-  border-radius: 6px;
-  background-color: transparent;
-  color: var(--steam-text-secondary);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.15s ease;
-  font-size: 18px;
-}
-
-.btn-icon:hover {
-  background-color: rgba(239, 68, 68, 0.1);
-  color: #ef4444;
-}
-
 .btn-primary {
   display: flex;
   align-items: center;
@@ -1061,263 +426,9 @@ onUnmounted(() => {
   background-color: var(--steam-border);
 }
 
-/* 列表容器 */
-.list-container {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.list-item {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  padding: 12px;
-  background-color: var(--steam-bg-secondary);
-  border-radius: 8px;
-  border: 1px solid var(--steam-border);
-}
-
-.list-item input,
-.list-item select {
-  flex: 1;
-  padding: 8px 10px;
-  border: 1px solid var(--steam-border);
-  border-radius: 6px;
-  background-color: var(--steam-bg-primary);
-  color: var(--steam-text-primary);
-  font-size: 13px;
-  outline: none;
-}
-
-.list-item input:focus,
-.list-item select:focus {
-  border-color: var(--steam-accent-blue);
-}
-
-/* 表单 */
-.form-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-}
-
-.form-group {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.form-group label {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--steam-text-primary);
-}
-
-.form-group input,
-.form-group select,
-.form-group textarea {
-  padding: 10px 12px;
-  border: 1px solid var(--steam-border);
-  border-radius: 8px;
-  background-color: var(--steam-bg-secondary);
-  color: var(--steam-text-primary);
-  font-size: 14px;
-  outline: none;
-  transition: border-color 0.15s ease;
-}
-
-.form-group input:focus,
-.form-group select:focus,
-.form-group textarea:focus {
-  border-color: var(--steam-accent-blue);
-}
-
-.form-group textarea {
-  resize: vertical;
-  font-family: inherit;
-}
-
-/* 复选框组 */
-.checkbox-group {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
-}
-
-.checkbox-label {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-  font-size: 13px;
-  color: var(--steam-text-primary);
-}
-
-.checkbox-label input[type="checkbox"] {
-  width: 16px;
-  height: 16px;
-  accent-color: var(--steam-accent-blue);
-}
-
-/* 配置区域 */
-.config-section {
-  padding: 16px;
-  background-color: var(--steam-bg-secondary);
-  border-radius: 10px;
-  border: 1px solid var(--steam-border);
-}
-
-.config-section h4 {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--steam-text-primary);
-  margin: 0 0 12px 0;
-}
-
 @media (max-width: 768px) {
   .config-tabs {
     flex-wrap: wrap;
-  }
-  
-  .form-row {
-    grid-template-columns: 1fr;
-  }
-  
-  .checkbox-group {
-    grid-template-columns: repeat(2, 1fr);
-  }
-  
-  .list-item {
-    flex-direction: column;
-    align-items: stretch;
-  }
-}
-
-/* 使用说明 */
-.usage-guide {
-  background-color: var(--steam-bg-secondary);
-  border: 1px solid var(--steam-border);
-  border-radius: 10px;
-  padding: 16px 20px;
-  margin: 0 16px 16px 16px;
-}
-
-.guide-header {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 14px;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--steam-accent-blue);
-}
-
-.guide-header svg {
-  width: 18px;
-  height: 18px;
-  flex-shrink: 0;
-}
-
-.guide-content {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  margin-bottom: 16px;
-}
-
-.guide-item {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  font-size: 13px;
-  line-height: 1.6;
-}
-
-.guide-item::before {
-  content: '';
-  display: block;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background-color: var(--steam-accent-blue);
-  flex-shrink: 0;
-  margin-top: 7px;
-}
-
-.guide-label {
-  color: var(--steam-text-secondary);
-  white-space: nowrap;
-  min-width: 100px;
-  flex-shrink: 0;
-}
-
-.guide-value {
-  color: var(--steam-text-primary);
-  font-family: 'Consolas', 'Courier New', monospace;
-  font-size: 12px;
-  word-break: break-all;
-}
-
-.guide-example {
-  background-color: var(--steam-bg-primary);
-  border: 1px solid var(--steam-border);
-  border-radius: 8px;
-  padding: 12px 14px;
-  margin-bottom: 10px;
-}
-
-.guide-example:last-of-type {
-  margin-bottom: 0;
-}
-
-.example-title {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--steam-text-primary);
-  margin-bottom: 8px;
-}
-
-.example-code {
-  font-size: 12px;
-  color: var(--steam-text-primary);
-  background-color: rgba(0, 0, 0, 0.2);
-  padding: 10px 14px;
-  border-radius: 6px;
-  overflow-x: auto;
-  line-height: 1.6;
-  margin: 0;
-  white-space: pre-wrap;
-  word-break: break-all;
-}
-
-.guide-tip {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  font-size: 12px;
-  color: var(--steam-accent-blue);
-  margin-top: 14px;
-  line-height: 1.5;
-  padding: 8px 12px;
-  background-color: rgba(59, 130, 246, 0.08);
-  border-radius: 6px;
-}
-
-.guide-tip::before {
-  content: '';
-  display: block;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background-color: var(--steam-accent-blue);
-  flex-shrink: 0;
-  margin-top: 6px;
-}
-
-@media (max-width: 600px) {
-  .guide-content {
-    grid-template-columns: 1fr;
   }
 }
 </style>

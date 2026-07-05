@@ -556,6 +556,7 @@ pub async fn load_main_config(
 }
 
 /// 解析主配置 INI 内容
+#[allow(dead_code)]
 pub fn parse_main_ini(content: &str) -> Result<MainConfig, String> {
     let mut config = MainConfig::default_config();
     let mut current_section = String::new();
@@ -740,8 +741,16 @@ pub fn parse_user_ini(content: &str) -> Result<UserConfig, String> {
                 }
                 "user::saves" => {
                     match key {
-                        "saves_folder_name" => config.saves_folder_name = Some(value.to_string()),
-                        "local_save_path" => config.local_save_path = Some(value.to_string()),
+                        "saves_folder_name" => {
+                            if !value.is_empty() {
+                                config.saves_folder_name = Some(value.to_string());
+                            }
+                        }
+                        "local_save_path" => {
+                            if !value.is_empty() {
+                                config.local_save_path = Some(value.to_string());
+                            }
+                        }
                         _ => {}
                     }
                 }

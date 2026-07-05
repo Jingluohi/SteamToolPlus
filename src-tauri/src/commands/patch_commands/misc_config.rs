@@ -3,7 +3,7 @@
 // 自定义广播、自动接受邀请、音效、头像、字体、HTTP响应、默认物品等
 
 use std::path::Path;
-use super::common::ConfigSaveResult;
+use super::common::{ConfigLoadResult, ConfigSaveResult};
 
 // ============================================
 // 已安装应用ID
@@ -1356,4 +1356,25 @@ pub async fn load_lan_multiplayer_config(
         "whitelist": whitelist,
         "listenPort": listen_port
     }))
+}
+
+// ============================================
+// 其他配置综合检查
+// ============================================
+
+/// 加载其他配置（仅检查存在性）
+/// 检查 installed_app_ids.txt / subscribed_groups.txt / purchased_keys.txt / supported_languages.txt
+#[tauri::command]
+pub async fn load_other_config(game_path: String) -> Result<ConfigLoadResult<()>, String> {
+    let steam_settings_dir = Path::new(&game_path).join("steam_settings");
+    let exists = [
+        steam_settings_dir.join("installed_app_ids.txt"),
+        steam_settings_dir.join("subscribed_groups.txt"),
+        steam_settings_dir.join("purchased_keys.txt"),
+        steam_settings_dir.join("supported_languages.txt"),
+    ]
+    .iter()
+    .any(|p| p.exists());
+
+    Ok(ConfigLoadResult { exists, config: None })
 }

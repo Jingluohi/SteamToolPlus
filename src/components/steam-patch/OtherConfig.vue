@@ -2,16 +2,13 @@
   <div class="modal-overlay" @click="$emit('close')">
     <div class="modal-content" @click.stop>
       <div class="modal-header">
-        <div class="header-icon controller">
+        <div class="header-icon other">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="2" y="8" width="20" height="12" rx="2"/>
-            <path d="M6 12h4"/>
-            <path d="M8 10v4"/>
-            <circle cx="16" cy="13" r="1"/>
-            <circle cx="18" cy="11" r="1"/>
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
           </svg>
         </div>
-        <h3>控制器支持配置</h3>
+        <h3>其他配置</h3>
         <button class="close-btn" @click="$emit('close')">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <line x1="18" y1="6" x2="6" y2="18"/>
@@ -21,7 +18,7 @@
       </div>
 
       <div class="modal-body">
-        <ControllerConfigPanel
+        <OtherConfigPanel
           ref="panelRef"
           :game-path="props.gamePath"
           @saved="handleSaved"
@@ -43,12 +40,12 @@
 
 <script setup lang="ts">
 /**
- * ControllerConfig.vue - 控制器配置独立窗口
- * 现在仅作为 ControllerConfigPanel 的容器，所有业务逻辑复用 Panel 组件
+ * OtherConfig.vue - 其他配置单独弹窗
+ * 仅作为容器，具体逻辑复用 OtherConfigPanel
  */
 
 import { ref } from 'vue'
-import ControllerConfigPanel from './panels/ControllerConfigPanel.vue'
+import OtherConfigPanel from './panels/OtherConfigPanel.vue'
 
 const props = defineProps<{
   gamePath: string
@@ -60,7 +57,7 @@ const emit = defineEmits<{
   saved: []
 }>()
 
-const panelRef = ref<InstanceType<typeof ControllerConfigPanel> | null>(null)
+const panelRef = ref<InstanceType<typeof OtherConfigPanel> | null>(null)
 
 function saveConfig() {
   panelRef.value?.save()
@@ -68,6 +65,7 @@ function saveConfig() {
 
 function handleSaved() {
   emit('saved')
+  // 延迟关闭弹窗，等待 Toast 消失后再关闭
   setTimeout(() => {
     emit('close')
   }, 3000)
@@ -95,7 +93,7 @@ function handleSaved() {
   border-radius: 12px;
   border: 1px solid var(--config-modal-border);
   width: 90%;
-  max-width: 650px;
+  max-width: 700px;
   max-height: 85vh;
   display: flex;
   flex-direction: column;
@@ -120,9 +118,9 @@ function handleSaved() {
   flex-shrink: 0;
 }
 
-.header-icon.controller {
-  background-color: rgba(239, 68, 68, 0.1);
-  color: #ef4444;
+.header-icon.other {
+  background-color: rgba(100, 116, 139, 0.1);
+  color: #64748b;
 }
 
 .header-icon svg {

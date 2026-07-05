@@ -19,6 +19,7 @@ mod config_core;
 mod game_features;
 mod misc_config;
 mod tools;
+mod patch_state;
 
 // 重新导出所有公开命令
 pub use common::*;
@@ -29,3 +30,4 @@ pub use config_core::*;
 pub use game_features::*;
 pub use misc_config::*;
 pub use tools::*;
+pub use patch_state::*;

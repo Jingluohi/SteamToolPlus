@@ -536,6 +536,9 @@ fn main() {
             patch_commands::save_controller_config,
             patch_commands::save_dlc_config,
             patch_commands::save_lan_multiplayer_config,
+            // Patch 页面状态命令
+            patch_commands::load_patch_state,
+            patch_commands::save_patch_state,
             // 配置加载命令
             patch_commands::load_main_config,
             patch_commands::load_user_config,
@@ -593,6 +596,7 @@ fn main() {
             patch_commands::load_custom_broadcasts,
             patch_commands::save_auto_accept_invite,
             patch_commands::load_auto_accept_invite,
+            patch_commands::load_other_config,
             // ColdClientLoader 和 lobby_connect 配置命令
             patch_commands::save_coldclient_config,
             patch_commands::load_coldclient_config,
