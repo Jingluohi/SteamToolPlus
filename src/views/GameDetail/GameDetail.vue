@@ -1,12 +1,5 @@
 <template>
   <div class="game-detail-page">
-    <!-- 首次使用配置弹窗 -->
-    <FirstTimeSetupModal
-      :show="showFirstTimeSetup"
-      @close="handleFirstTimeSetupClose"
-      @confirm="handleFirstTimeSetupConfirm"
-    />
-
     <!-- 二维码弹窗 -->
     <QRCodeModal
       v-model="showQRCodeModal"
@@ -143,6 +136,16 @@
               v-if="manifestCheckStatus === 'not_found'"
               class="import-no-files"
             >
+              <!-- 清单下载详细说明 -->
+              <div class="manifest-guide-box">
+                       <h4 class="guide-title">操作步骤：</h4>
+                <ol class="guide-steps">
+                  <li><strong>第一步：</strong>点击下方网盘按钮下载该游戏的清单7z压缩包（每个游戏对应一个清单7z文件，游戏ID就是7z文件名）</li>
+                  <li><strong>第二步：</strong>在下方选择"7z文件"选择7z文件，或者，在".vdf / .lua 和 .manifest所在文件夹"点击"选择"后选择7z解压后的文件夹</li>
+                  <li><strong>第三步：</strong>选择完成后点击"开始下载"按钮，程序会从Steam服务器下载游戏文件到您指定的路径</li>
+                </ol>
+              </div>
+
               <!-- 下载引导 -->
               <div class="download-guide">
                 <p class="download-guide-title">点击下载对应清单文件7z，id：{{ gameId }}</p>
@@ -353,6 +356,25 @@
           class="tab-panel"
         >
           <h3 class="panel-title">{{ tab.name }}</h3>
+
+          <!-- 补丁操作详细说明（仅当存在下载链接时显示） -->
+          <div v-if="tab.downloadUrls && tab.downloadUrls.length > 0" class="patch-guide-box">
+            <h4 class="guide-title">补丁是什么？为什么需要补丁？</h4>
+            <p class="guide-text">通过清单下载的是Steam正版分流文件，没有经过正版验证无法直接运行。补丁文件（通常为7z压缩包）包含了破解/模拟所需的DLL、配置文件等，将其应用到游戏目录后即可正常运行游戏。</p>
+            <h4 class="guide-title">操作步骤：</h4>
+            <ol class="guide-steps">
+              <li><strong>第一步：</strong>先在页面顶部选择"游戏路径"，定位到游戏主程序（exe文件）所在的文件夹</li>
+              <li><strong>第二步：</strong>查看下方"本地补丁状态"，如果显示"本地补丁未下载"，请点击网盘按钮下载该补丁的7z压缩包</li>
+              <li><strong>第三步：</strong>下载完成后有两种方式应用补丁：
+                <ul class="sub-steps">
+                  <li>方式一：点击"选择补丁文件（7z）并应用"按钮，直接选择刚下载的7z文件，程序会自动解压并应用到游戏目录</li>
+                  <li>方式二：手动解压7z文件到下方显示的"补丁路径"目录，然后点击"应用补丁"按钮</li>
+                </ul>
+              </li>
+              <li><strong>第四步：</strong>等待应用完成，成功后即可运行游戏</li>
+            </ol>
+          </div>
+
           <div class="patch-info">
             <!-- 本地补丁状态 -->
             <div class="patch-status" :class="{ 'local-exists': isPatchLocalExists(tab.patchType) }">
@@ -525,22 +547,6 @@
                   <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
                 </svg>
                 {{ isImportingWithOpenSteamTool ? '入库中...' : 'opensteamtool入库（推荐）' }}
-              </button>
-
-              <!-- SteamTools传统入库按钮 -->
-              <button
-                class="import-steamtools-btn-large"
-                :class="{ disabled: !canImportToSteam, loading: isImportingToSteam }"
-                :disabled="!canImportToSteam || isImportingToSteam"
-                @click="importToSteam"
-              >
-                <svg v-if="isImportingToSteam" class="loading-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/>
-                </svg>
-                <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
-                </svg>
-                {{ isImportingToSteam ? '入库中...' : 'steamtools入库' }}
               </button>
 
               <!-- 重启Steam按钮 -->
@@ -783,7 +789,6 @@ import { getCategoryName, getCategoryColor } from '../../constants/game'
 import { safeAsync } from '../../utils/async-helper'
 import { getFileName, sanitizeGameFolderName } from '../../utils/file-helper'
 import { useConfigStore } from '../../store/config.store'
-import FirstTimeSetupModal from '../../components/manifest/FirstTimeSetupModal.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -865,13 +870,11 @@ const downloadProgress = ref<DownloadProgressType>({
 let monitorInterval: number | null = null
 
 // 入库Steam状态
-const isImportingToSteam = ref(false)
 const isImportingWithOpenSteamTool = ref(false)
 const manifestExists = ref(false)
 const hasLua = ref(false)
 const hasVdf = ref(false)
 const hasManifest = ref(false)
-const showFirstTimeSetup = ref(false)
 
 // 自定义清单源状态
 const importSourceMode = ref<'7z' | 'folder'>('7z')
@@ -964,32 +967,8 @@ const openQingdanQRCode = async () => {
 
 const canImportToSteam = computed(() => {
   // 只要有lua就可以入库（内置清单或自定义源）
-  return (hasLua.value || importSourceReady.value) && !isImportingToSteam.value
+  return hasLua.value || importSourceReady.value
 })
-// 首次使用配置 - 关闭
-function handleFirstTimeSetupClose() {
-  showFirstTimeSetup.value = false
-}
-
-// 首次使用配置 - 确认
-async function handleFirstTimeSetupConfirm() {
-  try {
-    // 保存标志到 config.json
-    await configStore.updateConfig({
-      launch: {
-        startMinimizedToTray: configStore.config?.launch?.startMinimizedToTray ?? false,
-        hideToTrayOnClose: configStore.config?.launch?.hideToTrayOnClose ?? false,
-        verifyBeforeLaunch: configStore.config?.launch?.verifyBeforeLaunch ?? false,
-        manifestImportInitialized: true
-      }
-    })
-    alert('配置已保存，请完成初始化操作后重新点击入库按钮。')
-  } catch (error) {
-    alert(`保存配置失败: ${error}`)
-  } finally {
-    showFirstTimeSetup.value = false
-  }
-}
 
 // 可用的标签页
 // 优先级：游戏下载 > 解压即玩 > steam入库 > 各类补丁
@@ -2157,118 +2136,6 @@ const selectDownloadManifestFolder = async () => {
 }
 
 /**
- * 导入游戏到Steam
- */
-const importToSteam = async () => {
-  if (isImportingToSteam.value) return
-
-  // 检查是否是第一次使用清单入库（从config.json读取）
-  const hasCompletedSetup = configStore.config?.launch?.manifestImportInitialized
-  if (!hasCompletedSetup) {
-    // 显示首次使用配置弹窗
-    showFirstTimeSetup.value = true
-    return
-  }
-
-  // 检查是否设置了Steam路径
-  let steamPath = configStore.config?.gameDirs?.steamPath
-  
-  if (!steamPath) {
-    // 未设置Steam路径，弹出选择对话框
-    const selected = await open({
-      directory: true,
-      title: '请选择Steam安装目录'
-    })
-    
-    if (!selected) {
-      // 用户取消了选择
-      return
-    }
-    
-    // 保存选择的Steam路径到配置
-    steamPath = selected
-    await configStore.updateConfig({
-      gameDirs: {
-        steamPath: selected,
-        coversPath: configStore.config?.gameDirs?.coversPath || 'data/covers'
-      }
-    })
-  }
-
-  isImportingToSteam.value = true
-
-  try {
-    let result: {
-      success: boolean
-      message: string
-      importedLua: number
-      importedManifest: number
-      convertedVdf: number
-    }
-
-    if (importSourceReady.value) {
-      // 使用自定义清单源
-      const folderPath = importSourceMode.value === '7z'
-        ? selectedImportTempPath.value
-        : selectedImportPath.value
-
-      const scanResult = await invoke<{
-        luaFiles: string[]
-        manifestFiles: string[]
-        vdfFiles: string[]
-      }>('scan_manifest_folder', {
-        folderPath
-      })
-
-      result = await invoke<{
-        success: boolean
-        message: string
-        importedLua: number
-        importedManifest: number
-        convertedVdf: number
-      }>('import_manifest_to_steam', {
-        steamPath,
-        luaFiles: scanResult.luaFiles,
-        manifestFiles: scanResult.manifestFiles,
-        vdfFiles: scanResult.vdfFiles
-      })
-    } else {
-      // 使用内置清单
-      result = await invoke<{
-        success: boolean
-        message: string
-        importedLua: number
-        importedManifest: number
-        convertedVdf: number
-      }>('import_game_manifest_to_steam', {
-        gameId: gameId.value
-      })
-    }
-
-    if (result.success) {
-      // 显示成功弹窗，包含重启Steam按钮
-      const shouldRestart = confirm(
-        `入库成功！\n\n` +
-        `- Lua文件: ${result.importedLua}个\n` +
-        `- Manifest文件: ${result.importedManifest}个\n` +
-        `${result.convertedVdf > 0 ? `- VDF转换: ${result.convertedVdf}个\n` : ''}` +
-        `\n请重启Steam以查看导入的游戏。\n\n是否立即重启Steam？`
-      )
-
-      if (shouldRestart) {
-        await restartSteam()
-      }
-    } else {
-      alert(`入库失败: ${result.message}`)
-    }
-  } catch (error) {
-    alert(`入库失败: ${error}`)
-  } finally {
-    isImportingToSteam.value = false
-  }
-}
-
-/**
  * 使用OpenSteamTool内核导入游戏到Steam
  */
 const importWithOpenSteamTool = async () => {
@@ -2309,6 +2176,7 @@ const importWithOpenSteamTool = async () => {
 
   // 高级模式确认
   const advancedMode = configStore.config?.opensteamtool?.advancedMode ?? false
+  const hotReload = configStore.config?.opensteamtool?.hotReload ?? true
   if (advancedMode) {
     const confirmAdvanced = confirm(
       '高级模式已启用，将写入Windows注册表。\n\n' +
@@ -2352,7 +2220,8 @@ const importWithOpenSteamTool = async () => {
         folderPath: folderPath,
         gameName: game.value.chinese_name || game.value.game_name || gameId.value,
         appId: appId,
-        advancedMode: advancedMode
+        advancedMode: advancedMode,
+        hotReload: hotReload
       })
     } else {
       // 使用内置清单
@@ -2369,7 +2238,8 @@ const importWithOpenSteamTool = async () => {
         gameId: gameId.value,
         gameName: game.value.chinese_name || game.value.game_name || gameId.value,
         appId: appId,
-        advancedMode: advancedMode
+        advancedMode: advancedMode,
+        hotReload: hotReload
       })
     }
 
@@ -2901,42 +2771,6 @@ const restartSteam = async () => {
   background-color: #c82333;
 }
 
-/* 入库Steam按钮 */
-.import-steam-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 12px 24px;
-  border: none;
-  border-radius: 8px;
-  background-color: #10b981;
-  color: white;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background-color 0.15s ease;
-}
-
-.import-steam-btn svg {
-  width: 18px;
-  height: 18px;
-}
-
-.import-steam-btn:hover:not(.disabled) {
-  background-color: #059669;
-}
-
-.import-steam-btn.disabled {
-  background-color: var(--steam-text-secondary);
-  cursor: not-allowed;
-  opacity: 0.5;
-}
-
-.import-steam-btn.loading {
-  cursor: wait;
-}
-
 /* 下载说明样式 */
 .download-description {
   margin: 12px 0;
@@ -3148,7 +2982,7 @@ const restartSteam = async () => {
 .download-buttons {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
+  align-items: flex-start;
   gap: 10px;
   margin-bottom: 7px;
 }
@@ -3458,6 +3292,45 @@ const restartSteam = async () => {
   font-style: italic;
 }
 
+.opensteamtool-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  width: 100%;
+}
+
+.option-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.option-label {
+  font-size: 12px;
+  color: var(--steam-text-secondary);
+  font-weight: 500;
+}
+
+.option-item .form-input {
+  width: 100%;
+  padding: 8px 10px;
+  background: var(--steam-bg-tertiary);
+  border: 1px solid var(--steam-border);
+  border-radius: 4px;
+  color: var(--steam-text-primary);
+  font-size: 13px;
+}
+
+.option-item .form-input::placeholder {
+  color: var(--steam-text-muted);
+}
+
+@media (max-width: 700px) {
+  .opensteamtool-options {
+    grid-template-columns: 1fr;
+  }
+}
+
 .import-opensteamtool-btn-large {
   display: inline-flex;
   align-items: center;
@@ -3489,41 +3362,6 @@ const restartSteam = async () => {
 }
 
 .import-opensteamtool-btn-large svg {
-  width: 16px;
-  height: 16px;
-}
-
-.import-steamtools-btn-large {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 12px 26px;
-  border: none;
-  border-radius: 8px;
-  background-color: #3b82f6;
-  color: white;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background-color 0.15s ease;
-}
-
-.import-steamtools-btn-large:hover:not(.disabled) {
-  background-color: #2563eb;
-}
-
-.import-steamtools-btn-large.disabled {
-  background-color: var(--steam-text-secondary);
-  cursor: not-allowed;
-  opacity: 0.5;
-}
-
-.import-steamtools-btn-large.loading {
-  cursor: wait;
-}
-
-.import-steamtools-btn-large svg {
   width: 16px;
   height: 16px;
 }
@@ -3608,6 +3446,103 @@ const restartSteam = async () => {
   flex-direction: column;
   gap: 10px;
   width: 100%;
+}
+
+/* 清单下载详细说明框 */
+.manifest-guide-box {
+  background: rgba(102, 192, 244, 0.08);
+  border: 1px solid var(--steam-border);
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-bottom: 10px;
+}
+
+.manifest-guide-box .guide-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--steam-text-primary);
+  margin: 0 0 6px 0;
+}
+
+.manifest-guide-box .guide-title:not(:first-child) {
+  margin-top: 10px;
+}
+
+.manifest-guide-box .guide-text {
+  font-size: 13px;
+  color: var(--steam-text-secondary);
+  line-height: 1.6;
+  margin: 0;
+}
+
+.manifest-guide-box .guide-steps {
+  margin: 6px 0 0 0;
+  padding-left: 20px;
+  color: var(--steam-text-secondary);
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.manifest-guide-box .guide-steps li {
+  margin-bottom: 6px;
+}
+
+.manifest-guide-box .guide-steps strong {
+  color: var(--steam-accent-blue);
+}
+
+/* 补丁操作详细说明框 */
+.patch-guide-box {
+  background: rgba(102, 192, 244, 0.08);
+  border: 1px solid var(--steam-border);
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-bottom: 10px;
+}
+
+.patch-guide-box .guide-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--steam-text-primary);
+  margin: 0 0 6px 0;
+}
+
+.patch-guide-box .guide-title:not(:first-child) {
+  margin-top: 10px;
+}
+
+.patch-guide-box .guide-text {
+  font-size: 13px;
+  color: var(--steam-text-secondary);
+  line-height: 1.6;
+  margin: 0;
+}
+
+.patch-guide-box .guide-steps {
+  margin: 6px 0 0 0;
+  padding-left: 20px;
+  color: var(--steam-text-secondary);
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.patch-guide-box .guide-steps li {
+  margin-bottom: 6px;
+}
+
+.patch-guide-box .guide-steps strong {
+  color: var(--steam-accent-blue);
+}
+
+.patch-guide-box .sub-steps {
+  margin: 4px 0 0 0;
+  padding-left: 20px;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.patch-guide-box .sub-steps li {
+  margin-bottom: 3px;
 }
 
 .download-guide {

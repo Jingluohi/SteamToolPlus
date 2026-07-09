@@ -1,12 +1,5 @@
 <template>
   <div class="manifest-import-page">
-    <!-- 首次使用配置弹窗 -->
-    <FirstTimeSetupModal
-      :show="showFirstTimeSetup"
-      @close="handleFirstTimeSetupClose"
-      @confirm="handleFirstTimeSetupConfirm"
-    />
-
     <!-- 清单下载夸克网盘二维码弹窗 -->
     <QRCodeModal
       v-model="showQRCodeModal"
@@ -75,26 +68,63 @@
           </div>
         </div>
 
-        <!-- OpenSteamTool内核开关 -->
+        <!-- OpenSteamTool内核配置 -->
         <div class="section">
           <h3>入库方式</h3>
           <div class="setting-item">
             <div class="setting-info">
-              <h4 class="setting-name">使用OpenSteamTool内核入库（推荐）</h4>
-              <p class="setting-desc">启用后使用OpenSteamTool内核注入方式入库，兼容性更好，不需要manifest文件也可入库</p>
-            </div>
-            <div class="setting-control">
-              <Toggle v-model="useOpenSteamTool" />
+              <h4 class="setting-name">使用OpenSteamTool内核入库</h4>
+              <p class="setting-desc">通过OpenSteamTool内核注入方式入库，兼容性更好，不需要manifest文件也可入库</p>
             </div>
           </div>
 
-          <div v-if="useOpenSteamTool" class="setting-item">
+          <div class="setting-item">
+            <div class="setting-info">
+              <h4 class="setting-name">热加载入库</h4>
+              <p class="setting-desc">开启后入库时不重启Steam，依赖OpenSteamTool的文件监视自动加载新游戏</p>
+            </div>
+            <div class="setting-control">
+              <Toggle v-model="hotReload" />
+            </div>
+          </div>
+
+          <div class="setting-item">
             <div class="setting-info">
               <h4 class="setting-name">高级模式</h4>
               <p class="setting-desc">启用后会写入Windows注册表，通常用于Denuvo/在线游戏（需要二次确认）</p>
             </div>
             <div class="setting-control">
               <Toggle v-model="advancedMode" />
+            </div>
+          </div>
+
+          <div class="setting-item setting-item-vertical">
+            <div class="setting-info">
+              <h4 class="setting-name">访问令牌 (Access Token)</h4>
+              <p class="setting-desc">可选，用于下载受保护的游戏或DLC，仅在从VDF自动生成Lua时生效</p>
+            </div>
+            <div class="setting-control setting-control-full">
+              <input
+                v-model="accessToken"
+                type="text"
+                class="form-input"
+                placeholder="输入访问令牌，留空则不添加 addtoken"
+              />
+            </div>
+          </div>
+
+          <div class="setting-item setting-item-vertical">
+            <div class="setting-info">
+              <h4 class="setting-name">成就数据 SteamID</h4>
+              <p class="setting-desc">可选，用于拉取指定Steam账号的成就数据，仅在从VDF自动生成Lua时生效</p>
+            </div>
+            <div class="setting-control setting-control-full">
+              <input
+                v-model="statsSteamId"
+                type="text"
+                class="form-input"
+                placeholder="输入SteamID，留空则不添加 setStat"
+              />
             </div>
           </div>
         </div>
@@ -194,7 +224,7 @@
             :loading="isImporting"
             @click="startImport"
           >
-            {{ isImporting ? '入库中...' : (useOpenSteamTool ? '开始OpenSteamTool内核入库' : '开始清单入库') }}
+            {{ isImporting ? '入库中...' : '开始OpenSteamTool入库' }}
           </Button>
           <Button
             variant="secondary"
@@ -255,7 +285,8 @@
                 <li>配置Steam安装路径</li>
                 <li>选择包含清单文件的文件夹或压缩包</li>
                 <li>程序自动扫描并识别文件</li>
-                <li>点击"开始清单入库"完成操作</li>
+                <li>点击"开始OpenSteamTool入库"完成操作</li>
+                <li>如果Steam已运行，可使用热加载入库避免重启</li>
               </ol>
             </div>
 
@@ -283,7 +314,6 @@ import { open } from '@tauri-apps/plugin-dialog'
 import { open as openShell } from '@tauri-apps/plugin-shell'
 import Button from '../../components/common/Button.vue'
 import Toggle from '../GlobalSettings/components/Toggle.vue'
-import FirstTimeSetupModal from '../../components/manifest/FirstTimeSetupModal.vue'
 import QRCodeModal from '../../components/common/QRCodeModal.vue'
 import { useConfigStore } from '../../store/config.store'
 
@@ -346,13 +376,15 @@ const logs = ref<LogItem[]>([])
 const progressPercent = ref(0)
 const importStats = ref<ImportStats>({ total: 0, success: 0, fail: 0 })
 const logArea = ref<HTMLDivElement>()
-const showFirstTimeSetup = ref(false)
-const isFirstTimeSetup = ref(false)
 
-// OpenSteamTool内核模式开关
-const useOpenSteamTool = ref(false)
 // 高级模式开关（写入注册表等）
 const advancedMode = ref(false)
+// 热加载开关（Steam运行时不重启）
+const hotReload = ref(true)
+// 访问令牌（用于受保护的游戏/DLC）
+const accessToken = ref('')
+// 成就数据SteamID（用于setStat）
+const statsSteamId = ref('')
 
 // 计算属性
 const sourceTypeText = computed(() => {
@@ -364,12 +396,7 @@ const canImport = computed(() => {
     return false
   }
   // OpenSteamTool内核模式只需要Lua或VDF文件（manifest可选）
-  if (useOpenSteamTool.value) {
-    return scanResults.value.luaFiles.length > 0 || scanResults.value.vdfFiles.length > 0
-  }
-  // 传统steamtools模式需要Lua/VDF和manifest
-  return (scanResults.value.luaFiles.length > 0 || scanResults.value.vdfFiles.length > 0) &&
-         scanResults.value.manifestFiles.length > 0
+  return scanResults.value.luaFiles.length > 0 || scanResults.value.vdfFiles.length > 0
 })
 
 // 监听Steam路径变化（从全局配置读取）
@@ -391,36 +418,10 @@ onMounted(async () => {
   }
   // 从全局配置读取OpenSteamTool设置
   if (configStore.config?.opensteamtool) {
-    useOpenSteamTool.value = configStore.config.opensteamtool.kernelInstalled || false
     advancedMode.value = configStore.config.opensteamtool.advancedMode || false
+    hotReload.value = configStore.config.opensteamtool.hotReload ?? true
   }
 })
-
-// 首次使用配置 - 关闭
-function handleFirstTimeSetupClose() {
-  showFirstTimeSetup.value = false
-}
-
-// 首次使用配置 - 确认
-async function handleFirstTimeSetupConfirm() {
-  try {
-    // 保存标志到 config.json
-    await configStore.updateConfig({
-      launch: {
-        startMinimizedToTray: configStore.config?.launch?.startMinimizedToTray ?? false,
-        hideToTrayOnClose: configStore.config?.launch?.hideToTrayOnClose ?? false,
-        verifyBeforeLaunch: configStore.config?.launch?.verifyBeforeLaunch ?? false,
-        manifestImportInitialized: true
-      }
-    })
-    addLog('配置已保存', 'success')
-    addLog('请完成初始化操作后重新点击开始入库', 'info')
-    isFirstTimeSetup.value = false
-    showFirstTimeSetup.value = false
-  } catch (error) {
-    addLog(`保存配置失败: ${error}`, 'error')
-  }
-}
 
 // 添加日志
 function addLog(message: string, type: 'info' | 'success' | 'error' = 'info') {
@@ -543,16 +544,8 @@ async function startImport() {
     return
   }
 
-  // 检查是否是第一次使用清单入库（从config.json读取）
-  const hasCompletedSetup = configStore.config?.launch?.manifestImportInitialized
-  if (!hasCompletedSetup) {
-    // 显示首次使用配置弹窗
-    showFirstTimeSetup.value = true
-    return
-  }
-
   // OpenSteamTool高级模式二次确认
-  if (useOpenSteamTool.value && advancedMode.value) {
+  if (advancedMode.value) {
     const confirmAdvanced = confirm(
       '高级模式已启用，将写入Windows注册表。\n\n' +
       '这通常用于Denuvo/在线游戏，但也可能带来风险。\n\n' +
@@ -568,68 +561,40 @@ async function startImport() {
   progressPercent.value = 0
 
   addLog('='.repeat(60), 'info')
-  addLog(useOpenSteamTool.value ? '开始OpenSteamTool内核入库操作' : '开始清单入库操作', 'info')
+  addLog('开始OpenSteamTool入库操作', 'info')
   addLog('='.repeat(60), 'info')
 
   try {
-    if (useOpenSteamTool.value) {
-      // 使用OpenSteamTool内核模式入库
-      const result = await invoke<{
-        success: boolean
-        message: string
-        kernelInstalled: boolean
-        luaWritten: boolean
-        manifestCopied: number
-        steamRestarted: boolean
-        advancedEnabled: boolean
-      }>('import_manifest_with_opensteamtool', {
-        steamPath: steamPath.value,
-        folderPath: extractedFolderPath.value,
-        advancedMode: advancedMode.value
-      })
+    const result = await invoke<{
+      success: boolean
+      message: string
+      kernelInstalled: boolean
+      luaWritten: boolean
+      manifestCopied: number
+      steamRestarted: boolean
+      advancedEnabled: boolean
+    }>('import_manifest_with_opensteamtool', {
+      steamPath: steamPath.value,
+      folderPath: extractedFolderPath.value,
+      advancedMode: advancedMode.value,
+      hotReload: hotReload.value,
+      accessToken: accessToken.value || undefined,
+      statsSteamId: statsSteamId.value || undefined
+    })
 
-      if (result.success) {
-        addLog('', 'info')
-        addLog('OpenSteamTool入库操作完成！', 'success')
-        addLog(`  - 内核DLL: ${result.kernelInstalled ? '已安装' : '未安装'}`, 'success')
-        addLog(`  - Lua文件: ${result.luaWritten ? '已写入' : '未写入'}`, 'success')
-        addLog(`  - Manifest文件: ${result.manifestCopied}个`, 'success')
-        addLog(`  - Steam: ${result.steamRestarted ? '已重启' : '未重启'}`, 'success')
-        if (result.advancedEnabled) {
-          addLog('  - 高级模式: 已启用（写入注册表）', 'info')
-        }
-        addLog('', 'info')
-      } else {
-        addLog(`OpenSteamTool入库失败: ${result.message}`, 'error')
+    if (result.success) {
+      addLog('', 'info')
+      addLog('OpenSteamTool入库操作完成！', 'success')
+      addLog(`  - 内核DLL: ${result.kernelInstalled ? '已安装' : '未安装'}`, 'success')
+      addLog(`  - Lua文件: ${result.luaWritten ? '已写入' : '未写入'}`, 'success')
+      addLog(`  - Manifest文件: ${result.manifestCopied}个`, 'success')
+      addLog(`  - Steam: ${result.steamRestarted ? '已重启' : '未重启'}`, 'success')
+      if (result.advancedEnabled) {
+        addLog('  - 高级模式: 已启用（写入注册表）', 'info')
       }
+      addLog('', 'info')
     } else {
-      // 使用传统steamtools模式入库
-      const result = await invoke<{
-        success: boolean
-        message: string
-        importedLua: number
-        importedManifest: number
-        convertedVdf: number
-      }>('import_manifest_to_steam', {
-        steamPath: steamPath.value,
-        luaFiles: scanResults.value.luaFiles,
-        manifestFiles: scanResults.value.manifestFiles,
-        vdfFiles: scanResults.value.vdfFiles
-      })
-
-      if (result.success) {
-        addLog('', 'info')
-        addLog('入库操作完成！', 'success')
-        addLog(`  - Lua文件: ${result.importedLua}个`, 'success')
-        addLog(`  - Manifest文件: ${result.importedManifest}个`, 'success')
-        if (result.convertedVdf > 0) {
-          addLog(`  - VDF转换: ${result.convertedVdf}个`, 'success')
-        }
-        addLog('', 'info')
-        addLog('提示: 请重启Steam以查看导入的游戏', 'info')
-      } else {
-        addLog(`入库失败: ${result.message}`, 'error')
-      }
+      addLog(`OpenSteamTool入库失败: ${result.message}`, 'error')
     }
   } catch (error) {
     addLog(`入库操作失败: ${error}`, 'error')
@@ -825,6 +790,36 @@ async function openExternalLink(url: string) {
   justify-content: flex-end;
   align-items: center;
   padding-top: 2px;
+}
+
+.setting-item-vertical {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.setting-item-vertical .setting-info {
+  padding-right: 0;
+}
+
+.setting-control-full {
+  width: 100%;
+  min-width: auto;
+  justify-content: flex-start;
+}
+
+.setting-control-full .form-input {
+  width: 100%;
+  padding: 8px 10px;
+  background: var(--steam-bg-tertiary);
+  border: 1px solid var(--steam-border);
+  border-radius: 4px;
+  color: var(--steam-text-primary);
+  font-size: 13px;
+}
+
+.setting-control-full .form-input::placeholder {
+  color: var(--steam-text-muted);
 }
 
 .hint {

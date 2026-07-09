@@ -106,30 +106,3 @@ pub fn log_to_file(level: LogLevel, message: &str) {
     }
 }
 
-/// 记录调试日志
-#[allow(dead_code)]
-pub fn debug(message: &str) {
-    log_to_file(LogLevel::Debug, message);
-    log_to_json(LogLevel::Debug, message, "rust");
-}
-
-/// 记录信息日志
-#[allow(dead_code)]
-pub fn info(message: &str) {
-    log_to_file(LogLevel::Info, message);
-    log_to_json(LogLevel::Info, message, "rust");
-}
-
-/// 记录警告日志
-#[allow(dead_code)]
-pub fn warn(message: &str) {
-    log_to_file(LogLevel::Warn, message);
-    log_to_json(LogLevel::Warn, message, "rust");
-}
-
-/// 记录错误日志
-#[allow(dead_code)]
-pub fn error(message: &str) {
-    log_to_file(LogLevel::Error, message);
-    log_to_json(LogLevel::Error, message, "rust");
-}

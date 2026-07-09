@@ -13,13 +13,6 @@ export async function getGames(): Promise<Game[]> {
 }
 
 /**
- * 获取单个游戏详情
- */
-export async function getGame(id: string): Promise<Game | null> {
-  return invoke<Game | null>('get_game', { id })
-}
-
-/**
  * 启动游戏
  */
 export async function launchGame(gameId: string): Promise<void> {

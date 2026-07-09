@@ -1,7 +1,7 @@
 // 窗口服务
 // 实现窗口管理的业务逻辑
 
-use crate::models::{SetWindowSizeRequest, WindowOperationResult, WindowState};
+use crate::models::{SetWindowSizeRequest, WindowOperationResult};
 use tauri::Window;
 
 /// 窗口服务接口
@@ -16,9 +16,6 @@ pub trait WindowServiceTrait: Send + Sync {
     fn toggle_fullscreen(&self, window: &Window) -> WindowOperationResult;
     /// 设置窗口大小
     fn set_size(&self, window: &Window, request: SetWindowSizeRequest) -> WindowOperationResult;
-    /// 获取窗口状态
-    #[allow(dead_code)]
-    fn get_state(&self, window: &Window) -> WindowState;
 }
 
 /// 窗口服务实现
@@ -126,27 +123,6 @@ impl WindowServiceTrait for WindowService {
                 success: false,
                 error: Some(e.to_string()),
             },
-        }
-    }
-
-    /// 获取窗口状态
-    #[allow(dead_code)]
-    fn get_state(&self, window: &Window) -> WindowState {
-        let inner_size = window.inner_size().unwrap_or(tauri::PhysicalSize {
-            width: 1600,
-            height: 900,
-        });
-        let outer_position = window.outer_position().unwrap_or(tauri::PhysicalPosition { x: 0, y: 0 });
-        let maximized = window.is_maximized().unwrap_or(false);
-        let fullscreen = window.is_fullscreen().unwrap_or(false);
-
-        WindowState {
-            width: inner_size.width,
-            height: inner_size.height,
-            x: outer_position.x,
-            y: outer_position.y,
-            maximized,
-            fullscreen,
         }
     }
 }

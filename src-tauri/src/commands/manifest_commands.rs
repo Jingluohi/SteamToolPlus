@@ -1,6 +1,6 @@
 /**
  * manifest_commands.rs - 清单入库命令模块
- * 提供清单文件扫描、解压、VDF转Lua、复制到Steam目录等功能
+ * 提供清单文件扫描、解压、VDF转Lua、复制到资源目录等功能
  */
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -177,10 +177,19 @@ fn extract_manifest_ids(dir: &Path, _depots: &[(String, String)]) -> std::collec
 }
 
 /// 生成Lua格式内容
+/// 
+/// # 参数
+/// - `main_app_id`: 主游戏AppID
+/// - `depots`: depot列表，每项为(depot_id, decryption_key)
+/// - `manifest_map`: depot_id到manifest_id的映射
+/// - `access_token`: 可选的访问令牌，用于下载受保护的游戏/DLC
+/// - `stats_steam_id`: 可选的SteamID，用于拉取该账号的成就数据
 fn generate_lua(
     main_app_id: u64,
     depots: &[(String, String)],
-    manifest_map: &std::collections::HashMap<String, String>
+    manifest_map: &std::collections::HashMap<String, String>,
+    access_token: Option<&str>,
+    stats_steam_id: Option<&str>,
 ) -> String {
     let mut lines = Vec::new();
 
@@ -192,6 +201,14 @@ fn generate_lua(
         lines.push(format!("addappid({},0,\"{}\")", depot_id, key));
     }
 
+    // 添加访问令牌（用于受保护的游戏/DLC）
+    if let Some(token) = access_token {
+        let token = token.trim();
+        if !token.is_empty() {
+            lines.push(format!("addtoken({},\"{}\")", main_app_id, token));
+        }
+    }
+
     // 添加setManifestid
     for (depot_id, _) in depots {
         if let Some(manifest_id) = manifest_map.get(depot_id) {
@@ -199,11 +216,28 @@ fn generate_lua(
         }
     }
 
+    // 添加成就数据SteamID
+    if let Some(steam_id) = stats_steam_id {
+        let steam_id = steam_id.trim();
+        if !steam_id.is_empty() {
+            lines.push(format!("setStat({},\"{}\")", main_app_id, steam_id));
+        }
+    }
+
     lines.join("\n")
 }
 
 /// 将VDF文件转换为Lua文件
-pub fn convert_vdf_to_lua_internal(vdf_path: &Path) -> Result<PathBuf, String> {
+/// 
+/// # 参数
+/// - `vdf_path`: VDF文件路径
+/// - `access_token`: 可选的访问令牌
+/// - `stats_steam_id`: 可选的成就数据SteamID
+pub fn convert_vdf_to_lua_internal(
+    vdf_path: &Path,
+    access_token: Option<&str>,
+    stats_steam_id: Option<&str>,
+) -> Result<PathBuf, String> {
     // 读取VDF文件内容
     let content = fs::read_to_string(vdf_path).map_err(|e| format!("读取VDF文件失败: {}", e))?;
 
@@ -223,7 +257,7 @@ pub fn convert_vdf_to_lua_internal(vdf_path: &Path) -> Result<PathBuf, String> {
     let manifest_map = extract_manifest_ids(parent, &depots);
 
     // 生成Lua内容
-    let lua_content = generate_lua(main_app_id, &depots, &manifest_map);
+    let lua_content = generate_lua(main_app_id, &depots, &manifest_map, access_token, stats_steam_id);
 
     // 生成输出文件路径
     let output_path = parent.join(format!("{}.lua", main_app_id));
@@ -232,120 +266,6 @@ pub fn convert_vdf_to_lua_internal(vdf_path: &Path) -> Result<PathBuf, String> {
     fs::write(&output_path, lua_content).map_err(|e| format!("写入Lua文件失败: {}", e))?;
 
     Ok(output_path)
-}
-
-/// 导入清单到Steam
-/// 将Lua文件复制到Steam/config/stplug-in/，Manifest文件复制到Steam/config/depotcache/
-#[tauri::command]
-pub fn import_manifest_to_steam(
-    steam_path: String,
-    lua_files: Vec<String>,
-    manifest_files: Vec<String>,
-    vdf_files: Vec<String>
-) -> Result<serde_json::Value, String> {
-    let steam_path = Path::new(&steam_path);
-
-    // 检查Steam路径
-    if !steam_path.exists() {
-        return Err("Steam路径不存在".to_string());
-    }
-
-    // 构建目标路径
-    let stplugin_dir = steam_path.join("config").join("stplug-in");
-    let depotcache_dir = steam_path.join("config").join("depotcache");
-
-    // 确保目标目录存在
-    fs::create_dir_all(&stplugin_dir).map_err(|e| format!("创建stplug-in目录失败: {}", e))?;
-    fs::create_dir_all(&depotcache_dir).map_err(|e| format!("创建depotcache目录失败: {}", e))?;
-
-    let mut imported_lua = 0;
-    let mut imported_manifest = 0;
-    let mut converted_vdf = 0;
-
-    // 处理VDF文件（转换为Lua）
-    let mut converted_lua_files = Vec::new();
-    for vdf_file in &vdf_files {
-        let vdf_path = Path::new(vdf_file);
-        match convert_vdf_to_lua_internal(vdf_path) {
-            Ok(lua_path) => {
-                converted_lua_files.push(lua_path.to_string_lossy().to_string());
-                converted_vdf += 1;
-            }
-            Err(e) => {
-                log::warn!("转换VDF文件失败 {}: {}", vdf_file, e);
-            }
-        }
-    }
-
-    // 合并原始Lua文件和转换后的Lua文件
-    let all_lua_files: Vec<String> = lua_files.into_iter()
-        .chain(converted_lua_files)
-        .collect();
-
-    // 复制Lua文件
-    let mut lua_errors = Vec::new();
-    for lua_file in &all_lua_files {
-        let source = Path::new(lua_file);
-        if let Some(filename) = source.file_name() {
-            let dest = stplugin_dir.join(filename);
-            match fs::copy(source, &dest) {
-                Ok(_) => {
-                    imported_lua += 1;
-                    log::info!("已复制Lua文件: {} -> {}", lua_file, dest.display());
-                }
-                Err(e) => {
-                    let err_msg = format!("复制Lua文件失败 {}: {}", lua_file, e);
-                    log::error!("{}", err_msg);
-                    lua_errors.push(err_msg);
-                }
-            }
-        }
-    }
-
-    // 复制Manifest文件
-    let mut manifest_errors = Vec::new();
-    for manifest_file in &manifest_files {
-        let source = Path::new(manifest_file);
-        if let Some(filename) = source.file_name() {
-            let dest = depotcache_dir.join(filename);
-            match fs::copy(source, &dest) {
-                Ok(_) => {
-                    imported_manifest += 1;
-                    log::info!("已复制Manifest文件: {} -> {}", manifest_file, dest.display());
-                }
-                Err(e) => {
-                    let err_msg = format!("复制Manifest文件失败 {}: {}", manifest_file, e);
-                    log::error!("{}", err_msg);
-                    manifest_errors.push(err_msg);
-                }
-            }
-        }
-    }
-
-    // 检查是否有错误
-    if !lua_errors.is_empty() || !manifest_errors.is_empty() {
-        let mut error_msg = String::from("清单入库部分失败:\n");
-        for err in &lua_errors {
-            error_msg.push_str(&format!("- {}\n", err));
-        }
-        for err in &manifest_errors {
-            error_msg.push_str(&format!("- {}\n", err));
-        }
-        return Err(error_msg);
-    }
-
-    // 检查是否导入了任何文件
-    if imported_lua == 0 && imported_manifest == 0 {
-        return Err("没有成功导入任何文件，请检查文件是否存在".to_string());
-    }
-
-    Ok(json!({
-        "success": true,
-        "message": "清单入库完成",
-        "importedLua": imported_lua,
-        "importedManifest": imported_manifest,
-        "convertedVdf": converted_vdf
-    }))
 }
 
 /// 重启Steam
@@ -486,240 +406,6 @@ pub fn check_game_manifest_exists(app: AppHandle, game_id: String) -> Result<ser
         "hasManifest": has_manifest,
         "canImport": can_import
     }))
-}
-
-/// 导入游戏清单到Steam（用于游戏详情页）
-/// 从 resources/manifest/{game_id}/ 读取清单文件并导入
-#[tauri::command]
-pub fn import_game_manifest_to_steam(app: AppHandle, game_id: String) -> Result<serde_json::Value, String> {
-    // 从配置中读取Steam路径
-    let config = crate::services::ConfigService::new();
-    let app_config = config.get_config();
-    let steam_path = app_config.game_dirs.steam_path
-        .ok_or("未配置Steam路径，请前往全局设置配置")?;
-
-    // 获取资源目录路径
-    let resource_dir = get_resource_dir(&app)?;
-    // 构建manifest目录路径
-    let manifest_dir = resource_dir.join("manifest").join(&game_id);
-
-    // 检查目录是否存在
-    if !manifest_dir.exists() {
-        return Err("未找到游戏清单目录".to_string());
-    }
-
-    // 扫描文件
-    let mut lua_files = Vec::new();
-    let mut manifest_files = Vec::new();
-    let mut vdf_files = Vec::new();
-
-    if let Ok(entries) = fs::read_dir(&manifest_dir) {
-        for entry in entries.flatten() {
-            let path = entry.path();
-            if let Some(ext) = path.extension() {
-                let ext = ext.to_string_lossy().to_lowercase();
-                let path_str = path.to_string_lossy().to_string();
-                match ext.as_str() {
-                    "lua" => lua_files.push(path_str),
-                    "manifest" => manifest_files.push(path_str),
-                    "vdf" => vdf_files.push(path_str),
-                    _ => {}
-                }
-            }
-        }
-    }
-
-    // 检查是否有lua或vdf
-    if lua_files.is_empty() && vdf_files.is_empty() {
-        return Err("未找到.lua或.vdf文件".to_string());
-    }
-
-    // 调用通用的导入函数
-    import_manifest_to_steam(steam_path, lua_files, manifest_files, vdf_files)
-}
-
-/// 首次使用清单入库配置
-/// 打开SteamTools和示例文件夹，供用户完成初始化
-#[tauri::command]
-pub fn setup_manifest_import_first_time(app: AppHandle) -> Result<serde_json::Value, String> {
-    use std::process::Command;
-
-    // 获取资源目录
-    let resource_dir = get_resource_dir(&app)?;
-    log::info!("资源目录: {}", resource_dir.display());
-
-    // SteamTools路径
-    let steamtools_exe = resource_dir.join("SteamTools").join("SteamTools.exe");
-    log::info!("SteamTools路径: {}", steamtools_exe.display());
-
-    // 示例文件夹路径
-    let example_folder = resource_dir.join("第一次使用清单入库请将这个文件夹中的内容拖入_steamtools_的图标");
-    log::info!("示例文件夹路径: {}", example_folder.display());
-
-    // 检查SteamTools是否存在
-    if !steamtools_exe.exists() {
-        log::error!("未找到SteamTools.exe: {}", steamtools_exe.display());
-        return Err(format!("未找到SteamTools.exe，路径: {}", steamtools_exe.display()));
-    }
-
-    // 检查示例文件夹是否存在
-    if !example_folder.exists() {
-        log::error!("未找到示例文件夹: {}", example_folder.display());
-        return Err(format!("未找到示例文件夹，路径: {}", example_folder.display()));
-    }
-
-    // 启动SteamTools - 使用Command直接启动
-    let steamtools_path_str = steamtools_exe.to_string_lossy().to_string();
-    log::info!("正在启动SteamTools: {}", steamtools_path_str);
-
-    #[cfg(target_os = "windows")]
-    let steam_result = {
-        use std::os::windows::process::CommandExt;
-        const CREATE_NO_WINDOW: u32 = 0x08000000;
-        Command::new(&steamtools_path_str)
-            .creation_flags(CREATE_NO_WINDOW)
-            .spawn()
-    };
-
-    #[cfg(not(target_os = "windows"))]
-    let steam_result = Command::new(&steamtools_path_str).spawn();
-
-    match steam_result {
-        Ok(_) => {
-            log::info!("已启动SteamTools: {}", steamtools_exe.display());
-        }
-        Err(e) => {
-            log::error!("启动SteamTools失败: {}", e);
-            return Err(format!("启动SteamTools失败: {}", e));
-        }
-    }
-
-    // 打开示例文件夹 - 使用explorer.exe
-    let example_folder_str = example_folder.to_string_lossy().to_string();
-    log::info!("正在打开示例文件夹: {}", example_folder_str);
-
-    #[cfg(target_os = "windows")]
-    let folder_result = {
-        use std::os::windows::process::CommandExt;
-        const CREATE_NO_WINDOW: u32 = 0x08000000;
-        Command::new("explorer.exe")
-            .arg(&example_folder_str)
-            .creation_flags(CREATE_NO_WINDOW)
-            .spawn()
-    };
-
-    #[cfg(not(target_os = "windows"))]
-    let folder_result = Command::new("xdg-open")
-        .arg(&example_folder_str)
-        .spawn();
-
-    match folder_result {
-        Ok(_) => {
-            log::info!("已打开示例文件夹: {}", example_folder.display());
-        }
-        Err(e) => {
-            log::error!("打开示例文件夹失败: {}", e);
-            // 不返回错误，因为SteamTools已经启动了
-        }
-    }
-
-    Ok(json!({
-        "success": true,
-        "message": "SteamTools和示例文件夹已打开"
-    }))
-}
-
-/// 打开SteamTools
-/// 供用户手动启动SteamTools
-#[tauri::command]
-pub fn open_steamtools(app: AppHandle) -> Result<serde_json::Value, String> {
-    use std::process::Command;
-
-    // 获取资源目录
-    let resource_dir = get_resource_dir(&app)?;
-    let steamtools_exe = resource_dir.join("SteamTools").join("SteamTools.exe");
-
-    // 检查SteamTools是否存在
-    if !steamtools_exe.exists() {
-        return Err(format!("未找到SteamTools.exe，路径: {}", steamtools_exe.display()));
-    }
-
-    // 启动SteamTools
-    let steamtools_path_str = steamtools_exe.to_string_lossy().to_string();
-
-    #[cfg(target_os = "windows")]
-    let result = {
-        use std::os::windows::process::CommandExt;
-        const CREATE_NO_WINDOW: u32 = 0x08000000;
-        Command::new(&steamtools_path_str)
-            .creation_flags(CREATE_NO_WINDOW)
-            .spawn()
-    };
-
-    #[cfg(not(target_os = "windows"))]
-    let result = Command::new(&steamtools_path_str).spawn();
-
-    match result {
-        Ok(_) => {
-            log::info!("已启动SteamTools: {}", steamtools_exe.display());
-            Ok(json!({
-                "success": true,
-                "message": "SteamTools已启动"
-            }))
-        }
-        Err(e) => {
-            log::error!("启动SteamTools失败: {}", e);
-            Err(format!("启动SteamTools失败: {}", e))
-        }
-    }
-}
-
-/// 打开示例文件夹
-/// 供用户手动打开示例文件夹
-#[tauri::command]
-pub fn open_example_folder(app: AppHandle) -> Result<serde_json::Value, String> {
-    use std::process::Command;
-
-    // 获取资源目录
-    let resource_dir = get_resource_dir(&app)?;
-    let example_folder = resource_dir.join("第一次使用清单入库请将这个文件夹中的内容拖入_steamtools_的图标");
-
-    // 检查示例文件夹是否存在
-    if !example_folder.exists() {
-        return Err(format!("未找到示例文件夹，路径: {}", example_folder.display()));
-    }
-
-    // 打开示例文件夹
-    let example_folder_str = example_folder.to_string_lossy().to_string();
-
-    #[cfg(target_os = "windows")]
-    let result = {
-        use std::os::windows::process::CommandExt;
-        const CREATE_NO_WINDOW: u32 = 0x08000000;
-        Command::new("explorer.exe")
-            .arg(&example_folder_str)
-            .creation_flags(CREATE_NO_WINDOW)
-            .spawn()
-    };
-
-    #[cfg(not(target_os = "windows"))]
-    let result = Command::new("xdg-open")
-        .arg(&example_folder_str)
-        .spawn();
-
-    match result {
-        Ok(_) => {
-            log::info!("已打开示例文件夹: {}", example_folder.display());
-            Ok(json!({
-                "success": true,
-                "message": "示例文件夹已打开"
-            }))
-        }
-        Err(e) => {
-            log::error!("打开示例文件夹失败: {}", e);
-            Err(format!("打开示例文件夹失败: {}", e))
-        }
-    }
 }
 
 /// 在指定深度内查找包含 .lua 或 .vdf 文件的文件夹

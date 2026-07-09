@@ -3,24 +3,6 @@
 
 use serde::{Deserialize, Serialize};
 
-/// 窗口状态
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[allow(dead_code)]
-pub struct WindowState {
-    /// 窗口宽度
-    pub width: u32,
-    /// 窗口高度
-    pub height: u32,
-    /// 窗口位置X
-    pub x: i32,
-    /// 窗口位置Y
-    pub y: i32,
-    /// 是否最大化
-    pub maximized: bool,
-    /// 是否全屏
-    pub fullscreen: bool,
-}
-
 /// 窗口操作结果
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WindowOperationResult {

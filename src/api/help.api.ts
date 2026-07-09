@@ -12,11 +12,3 @@ import { invoke } from '@tauri-apps/api/core'
 export async function readReadmeFile(): Promise<string> {
   return invoke<string>('read_readme_file')
 }
-
-/**
- * 检查使用说明文件是否存在
- * @returns 文件是否存在
- */
-export async function checkReadmeExists(): Promise<boolean> {
-  return invoke<boolean>('check_readme_exists')
-}

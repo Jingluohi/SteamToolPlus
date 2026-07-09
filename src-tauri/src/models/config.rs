@@ -129,6 +129,8 @@ pub struct OpenSteamToolConfig {
     pub kernel_installed: bool,
     /// 是否启用高级模式（写注册表等）
     pub advanced_mode: bool,
+    /// 是否使用热加载入库（Steam运行时不重启，依赖OpenSteamTool文件监视自动加载）
+    pub hot_reload: bool,
 }
 
 impl Default for OpenSteamToolConfig {
@@ -136,6 +138,7 @@ impl Default for OpenSteamToolConfig {
         Self {
             kernel_installed: false,
             advanced_mode: false,
+            hot_reload: true,
         }
     }
 }
@@ -158,30 +161,3 @@ pub struct UpdateConfigRequest {
     pub opensteamtool: Option<OpenSteamToolConfig>,
 }
 
-/// 部分更新游戏目录配置
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-#[allow(dead_code)]
-pub struct PartialGameDirConfig {
-    /// Steam安装路径
-    pub steam_path: Option<String>,
-    /// 游戏默认下载路径
-    pub default_download_path: Option<String>,
-    /// 封面图存储路径
-    pub covers_path: Option<String>,
-}
-
-/// 部分更新启动配置
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-#[allow(dead_code)]
-pub struct PartialLaunchConfig {
-    /// 程序启动后最小化到托盘
-    pub start_minimized_to_tray: Option<bool>,
-    /// 关闭程序后隐藏在托盘（默认开启）
-    pub hide_to_tray_on_close: Option<bool>,
-    /// 启动前检查游戏文件
-    pub verify_before_launch: Option<bool>,
-    /// 清单入库功能是否已完成首次初始化
-    pub manifest_import_initialized: Option<bool>,
-}

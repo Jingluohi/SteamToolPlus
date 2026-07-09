@@ -117,51 +117,11 @@ export async function getCachedLibraryImage(gameId: string): Promise<string> {
 }
 
 /**
- * 预加载多个游戏的封面图片到缓存
- * @param gameIds 游戏ID数组
- */
-export async function preloadCoverImages(gameIds: string[]): Promise<void> {
-  await Promise.all(gameIds.map(id => getCachedCoverImage(id)))
-}
-
-/**
- * 预加载多个游戏的库背景图片到缓存
- * @param gameIds 游戏ID数组
- */
-export async function preloadLibraryImages(gameIds: string[]): Promise<void> {
-  await Promise.all(gameIds.map(id => getCachedLibraryImage(id)))
-}
-
-/**
- * 清空封面图片缓存
- */
-export function clearCoverImageCache(): void {
-  coverImageCache.clear()
-}
-
-/**
- * 清空库背景图片缓存
- */
-export function clearLibraryImageCache(): void {
-  libraryImageCache.clear()
-}
-
-/**
  * 清空所有图片缓存
  */
 export function clearAllImageCaches(): void {
   coverImageCache.clear()
   libraryImageCache.clear()
-}
-
-/**
- * 获取缓存统计信息
- */
-export function getCacheStats(): { cover: number; library: number } {
-  return {
-    cover: coverImageCache.size,
-    library: libraryImageCache.size
-  }
 }
 
 /**

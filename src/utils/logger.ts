@@ -32,27 +32,6 @@ export async function logToFile(level: LogLevel, message: string, source: string
 }
 
 /**
- * 记录调试日志
- */
-export async function debugLog(message: string): Promise<void> {
-  await logToFile(LogLevel.DEBUG, message)
-}
-
-/**
- * 记录信息日志
- */
-export async function infoLog(message: string): Promise<void> {
-  await logToFile(LogLevel.INFO, message)
-}
-
-/**
- * 记录警告日志
- */
-export async function warnLog(message: string): Promise<void> {
-  await logToFile(LogLevel.WARN, message)
-}
-
-/**
  * 记录错误日志
  */
 export async function errorLog(message: string): Promise<void> {

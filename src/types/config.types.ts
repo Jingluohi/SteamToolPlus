@@ -90,6 +90,8 @@ export interface OpenSteamToolConfig {
   kernelInstalled: boolean
   /** 是否启用高级模式（写注册表等） */
   advancedMode: boolean
+  /** 是否使用热加载入库（Steam运行时不重启，依赖OpenSteamTool文件监视自动加载） */
+  hotReload: boolean
 }
 
 /**

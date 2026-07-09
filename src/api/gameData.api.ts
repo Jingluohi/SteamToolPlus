@@ -67,13 +67,6 @@ export async function upsertGameData(game: GameData): Promise<void> {
 }
 
 /**
- * 删除游戏数据
- */
-export async function removeGameData(gameId: string): Promise<void> {
-  return invoke<void>('remove_game_data', { gameId })
-}
-
-/**
  * 更新下载状态
  */
 export async function updateGameDownloadStatus(
@@ -82,23 +75,6 @@ export async function updateGameDownloadStatus(
   progress: number
 ): Promise<void> {
   return invoke<void>('update_game_download_status', { gameId, status, progress })
-}
-
-/**
- * 更新游戏时长
- */
-export async function updateGamePlayTime(
-  gameId: string,
-  additionalMinutes: number
-): Promise<void> {
-  return invoke<void>('update_game_play_time', { gameId, additionalMinutes })
-}
-
-/**
- * 检查游戏是否存在
- */
-export async function checkGameExists(gameId: string): Promise<boolean> {
-  return invoke<boolean>('check_game_exists', { gameId })
 }
 
 /**

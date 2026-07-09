@@ -641,13 +641,8 @@ fn main() {
             manifest_commands::extract_archive,
             manifest_commands::extract_manifest_archive,
             manifest_commands::copy_folder_to_manifest,
-            manifest_commands::import_manifest_to_steam,
             manifest_commands::restart_steam,
             manifest_commands::check_game_manifest_exists,
-            manifest_commands::import_game_manifest_to_steam,
-            manifest_commands::setup_manifest_import_first_time,
-            manifest_commands::open_steamtools,
-            manifest_commands::open_example_folder,
             // OpenSteamTool内核命令
             opensteamtool_commands::get_steam_path,
             opensteamtool_commands::detect_steam_path_auto,
@@ -658,6 +653,9 @@ fn main() {
             opensteamtool_commands::import_with_opensteamtool_command,
             opensteamtool_commands::import_game_with_opensteamtool,
             opensteamtool_commands::import_manifest_with_opensteamtool,
+            opensteamtool_commands::check_steam_running,
+            opensteamtool_commands::generate_opensteamtool_config,
+            opensteamtool_commands::clean_steamtools_residuals_command,
             // Denuvo 授权管理命令
             denuvo_commands::get_active_steam_user,
             denuvo_commands::read_denuvo_auth_from_registry,

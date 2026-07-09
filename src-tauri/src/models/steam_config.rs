@@ -404,7 +404,10 @@ impl SteamAppConfig {
                 depot_ids: vec![],
                 dlc_paths: HashMap::new(),
             },
-            controller: AppControllerConfig::default(),
+            controller: AppControllerConfig {
+                steam_input: Some(true),
+                r#type: Some("XBOX360".to_string()),
+            },
             cloud_saves: CloudSavesConfig::default(),
         }
     }

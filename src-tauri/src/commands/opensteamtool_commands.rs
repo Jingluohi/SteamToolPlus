@@ -8,9 +8,10 @@ use tauri::AppHandle;
 use crate::commands::manifest_commands::convert_vdf_to_lua_internal;
 use crate::services::config_service::{ConfigService, ConfigServiceTrait};
 use crate::services::opensteamtool_service::{
-    detect_steam_path, get_kernel_dll_info, install_kernel, is_kernel_installed,
+    clean_steamtools_residuals, detect_steam_path, generate_opensteamtool_toml,
+    get_kernel_dll_info, install_kernel, is_kernel_installed, is_steam_running,
     uninstall_kernel, import_with_opensteamtool, OpenSteamToolImportOptions,
-    OpenSteamToolImportResult,
+    OpenSteamToolImportResult, SteamToolsCleanResult,
 };
 use crate::utils::resource_utils::get_resource_dir;
 
@@ -105,6 +106,7 @@ pub fn import_with_opensteamtool_command(
     install_kernel: Option<bool>,
     restart_steam: Option<bool>,
     advanced_mode: Option<bool>,
+    hot_reload: Option<bool>,
 ) -> Result<OpenSteamToolImportResult, String> {
     let options = OpenSteamToolImportOptions {
         steam_path,
@@ -115,6 +117,7 @@ pub fn import_with_opensteamtool_command(
         install_kernel: install_kernel.unwrap_or(true),
         restart_steam: restart_steam.unwrap_or(true),
         advanced_mode: advanced_mode.unwrap_or(false),
+        hot_reload: hot_reload.unwrap_or(true),
     };
 
     import_with_opensteamtool(&app, options)
@@ -159,12 +162,21 @@ fn scan_manifest_files_recursive(
 
 /// 尝试将VDF文件转换为Lua文件
 /// 返回转换后的Lua文件路径列表
-fn convert_vdf_files_to_lua(vdf_files: &[String]) -> Vec<String> {
+/// 
+/// # 参数
+/// - `vdf_files`: VDF文件路径列表
+/// - `access_token`: 可选的访问令牌，用于下载受保护的游戏/DLC
+/// - `stats_steam_id`: 可选的成就数据SteamID
+fn convert_vdf_files_to_lua(
+    vdf_files: &[String],
+    access_token: Option<&str>,
+    stats_steam_id: Option<&str>,
+) -> Vec<String> {
     let mut converted_lua_files = Vec::new();
 
     for vdf_file in vdf_files {
         let vdf_path = PathBuf::from(vdf_file);
-        match convert_vdf_to_lua_internal(&vdf_path) {
+        match convert_vdf_to_lua_internal(&vdf_path, access_token, stats_steam_id) {
             Ok(lua_path) => {
                 converted_lua_files.push(lua_path.to_string_lossy().to_string());
             }
@@ -187,6 +199,9 @@ pub fn import_game_with_opensteamtool(
     game_name: String,
     app_id: u32,
     advanced_mode: Option<bool>,
+    hot_reload: Option<bool>,
+    access_token: Option<String>,
+    stats_steam_id: Option<String>,
 ) -> Result<OpenSteamToolImportResult, String> {
     // 获取资源目录
     let resource_dir = get_resource_dir(&app)?;
@@ -210,7 +225,11 @@ pub fn import_game_with_opensteamtool(
 
     // 没有Lua但有VDF时，自动转换VDF为Lua
     if lua_files.is_empty() && !vdf_files.is_empty() {
-        let converted = convert_vdf_files_to_lua(&vdf_files);
+        let converted = convert_vdf_files_to_lua(
+            &vdf_files,
+            access_token.as_deref(),
+            stats_steam_id.as_deref(),
+        );
         lua_files.extend(converted);
     }
 
@@ -230,6 +249,7 @@ pub fn import_game_with_opensteamtool(
         install_kernel: true,
         restart_steam: true,
         advanced_mode: advanced_mode.unwrap_or(false),
+        hot_reload: hot_reload.unwrap_or(true),
     };
 
     import_with_opensteamtool(&app, options)
@@ -245,6 +265,9 @@ pub fn import_manifest_with_opensteamtool(
     game_name: Option<String>,
     app_id: Option<u32>,
     advanced_mode: Option<bool>,
+    hot_reload: Option<bool>,
+    access_token: Option<String>,
+    stats_steam_id: Option<String>,
 ) -> Result<OpenSteamToolImportResult, String> {
     let folder_path = Path::new(&folder_path);
 
@@ -265,7 +288,11 @@ pub fn import_manifest_with_opensteamtool(
 
     // 没有Lua但有VDF时，自动转换VDF为Lua
     if lua_files.is_empty() && !vdf_files.is_empty() {
-        let converted = convert_vdf_files_to_lua(&vdf_files);
+        let converted = convert_vdf_files_to_lua(
+            &vdf_files,
+            access_token.as_deref(),
+            stats_steam_id.as_deref(),
+        );
         lua_files.extend(converted);
     }
 
@@ -295,9 +322,36 @@ pub fn import_manifest_with_opensteamtool(
         install_kernel: true,
         restart_steam: true,
         advanced_mode: advanced_mode.unwrap_or(false),
+        hot_reload: hot_reload.unwrap_or(true),
     };
 
     import_with_opensteamtool(&app, options)
+}
+
+/// 检测Steam是否正在运行
+#[tauri::command]
+pub fn check_steam_running() -> Result<serde_json::Value, String> {
+    let running = is_steam_running();
+    Ok(serde_json::json!({
+        "running": running
+    }))
+}
+
+/// 生成默认 opensteamtool.toml 配置文件到 Steam 根目录
+#[tauri::command]
+pub fn generate_opensteamtool_config(steam_path: String) -> Result<serde_json::Value, String> {
+    let toml_path = generate_opensteamtool_toml(&steam_path)?;
+    Ok(serde_json::json!({
+        "success": true,
+        "path": toml_path.to_string_lossy().to_string(),
+        "message": "opensteamtool.toml 生成成功"
+    }))
+}
+
+/// 清理 SteamTools 残留文件和注册表项
+#[tauri::command]
+pub fn clean_steamtools_residuals_command(steam_path: String) -> Result<SteamToolsCleanResult, String> {
+    clean_steamtools_residuals(&steam_path)
 }
 
 /// 从Lua内容中提取AppID

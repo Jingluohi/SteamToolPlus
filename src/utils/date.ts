@@ -28,47 +28,6 @@ export function formatDate(date: Date | string, format: string = 'YYYY-MM-DD'): 
 }
 
 /**
- * 格式化相对时间
- * @param date 日期对象或字符串
- * @returns 相对时间字符串
- */
-export function formatRelativeTime(date: Date | string): string {
-  const d = typeof date === 'string' ? new Date(date) : date
-  const now = new Date()
-  const diff = now.getTime() - d.getTime()
-  
-  const seconds = Math.floor(diff / 1000)
-  const minutes = Math.floor(seconds / 60)
-  const hours = Math.floor(minutes / 60)
-  const days = Math.floor(hours / 24)
-  const months = Math.floor(days / 30)
-  const years = Math.floor(days / 365)
-  
-  if (years > 0) return `${years}年前`
-  if (months > 0) return `${months}个月前`
-  if (days > 0) return `${days}天前`
-  if (hours > 0) return `${hours}小时前`
-  if (minutes > 0) return `${minutes}分钟前`
-  return '刚刚'
-}
-
-/**
- * 格式化时长
- * @param seconds 秒数
- * @returns 格式化后的时长字符串 (MM:SS 或 HH:MM:SS)
- */
-export function formatDuration(seconds: number): string {
-  const hours = Math.floor(seconds / 3600)
-  const minutes = Math.floor((seconds % 3600) / 60)
-  const secs = seconds % 60
-
-  if (hours > 0) {
-    return `${hours}:${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`
-  }
-  return `${minutes}:${String(secs).padStart(2, '0')}`
-}
-
-/**
  * 格式化时长为中文可读格式
  * @param seconds 秒数
  * @returns 中文时长字符串（如：1小时30分）

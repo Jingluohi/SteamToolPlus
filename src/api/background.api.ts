@@ -91,42 +91,6 @@ export function getPageBackgroundFiles(
 }
 
 /**
- * 获取当前应该显示的背景文件URL
- * @param config 背景配置
- * @param pageType 页面类型
- * @param currentIndex 当前轮播索引
- */
-export async function getCurrentBackgroundUrl(
-  config: BackgroundConfig,
-  pageType: PageType,
-  currentIndex: number = 0
-): Promise<string | null> {
-  const pageFiles = getPageBackgroundFiles(config, pageType)
-
-  if (pageFiles.length === 0) {
-    return null
-  }
-
-  const pageConfig = getPageBackgroundConfig(config, pageType)
-  let targetFile: BackgroundFile
-
-  if (pageConfig?.mode === 'single') {
-    // 单张模式
-    targetFile = pageFiles.find(f => f.id === pageConfig.currentFileId) || pageFiles[0]
-  } else {
-    // 轮播或随机模式
-    const index = currentIndex % pageFiles.length
-    targetFile = pageFiles[index]
-  }
-
-  try {
-    return await getBackgroundFileUrl(targetFile.path)
-  } catch (err) {
-    return null
-  }
-}
-
-/**
  * 获取下一张背景图片的索引
  * @param config 背景配置
  * @param pageType 页面类型
@@ -158,16 +122,3 @@ export function getNextBackgroundIndex(
     return (currentIndex + 1) % enabledCount
   }
 }
-
-/**
- * 扫描背景文件目录，自动添加新文件
- */
-export async function scanBackgroundFiles(): Promise<BackgroundFile[]> {
-  return invoke<BackgroundFile[]>('scan_background_files')
-}
-
-// 兼容旧API的别名
-export const addBackgroundImage = addBackgroundFile
-export const removeBackgroundImage = removeBackgroundFile
-export const getBackgroundImageUrl = getBackgroundFileUrl
-export const scanBackgroundImages = scanBackgroundFiles

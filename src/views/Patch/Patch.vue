@@ -781,6 +781,12 @@ const selectGameExe = async () => {
  * 脱壳游戏主程序
  * 使用 Steamless.CLI.exe 移除 Steam 壳保护
  */
+/**
+ * 脱壳失败时的统一提示文案
+ * 用于替换后端返回的具体错误信息，给用户更友好的指引
+ */
+const UNPACK_FAILURE_HINT = '脱壳失败，该exe文件未被加密，可能你只要进行配置就能运行，不要脱壳（虚幻引擎的以win64-shipping-exe结尾的程序可能加密）'
+
 const unpackGameExe = async () => {
   if (!gameExePath.value) return
 
@@ -799,16 +805,22 @@ const unpackGameExe = async () => {
       gameExePath: gameExePath.value
     })
 
-    unpackSuccess.value = result.success
-    unpackError.value = !result.success
-    unpackMessage.value = result.message
-
     if (result.success) {
+      unpackSuccess.value = true
+      unpackError.value = false
+      unpackMessage.value = result.message
       alert('脱壳成功！原文件已备份为 .bak，脱壳后的文件已替换原文件，可直接运行游戏')
+    } else {
+      // 脱壳失败时显示统一提示，不保留后端原始错误信息
+      unpackError.value = true
+      unpackSuccess.value = false
+      unpackMessage.value = UNPACK_FAILURE_HINT
     }
   } catch (error) {
+    // 脱壳异常时同样显示统一提示
     unpackError.value = true
-    unpackMessage.value = `脱壳失败: ${error}`
+    unpackSuccess.value = false
+    unpackMessage.value = UNPACK_FAILURE_HINT
   } finally {
     isUnpacking.value = false
   }

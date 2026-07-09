@@ -44,6 +44,8 @@ pub struct OpenSteamToolImportOptions {
     pub restart_steam: bool,
     /// 是否启用高级模式（写注册表等）
     pub advanced_mode: bool,
+    /// 是否使用热加载（Steam运行时不重启，依赖文件监视自动加载新Lua）
+    pub hot_reload: bool,
 }
 
 /// OpenSteamTool导入结果
@@ -315,6 +317,183 @@ pub fn restart_steam(steam_path: &str) -> Result<(), String> {
     Ok(())
 }
 
+/// 检测Steam是否正在运行
+/// 通过 tasklist 检查 steam.exe 进程是否存在
+pub fn is_steam_running() -> bool {
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x08000000;
+
+        let output = Command::new("tasklist")
+            .args(["/FI", "IMAGENAME eq steam.exe", "/NH"])
+            .creation_flags(CREATE_NO_WINDOW)
+            .output();
+
+        if let Ok(output) = output {
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            return stdout.contains("steam.exe");
+        }
+    }
+
+    false
+}
+
+/// 生成默认 opensteamtool.toml 配置文件到 Steam 根目录
+/// 按官方 example 生成，使用默认的 opensteamtool manifest 源和中国友好的 wudrm 备用源
+pub fn generate_opensteamtool_toml(steam_path: &str) -> Result<PathBuf, String> {
+    let steam_path = Path::new(steam_path);
+    if !steam_path.exists() {
+        return Err("Steam路径不存在".to_string());
+    }
+
+    let toml_content = r#"# opensteamtool.toml — OpenSteamTool configuration
+# Place at: <Steam>/opensteamtool.toml
+# This file is loaded at startup and hot-reloaded after changes.
+
+[log]
+# Log verbosity for all log files (Debug build only).
+# Valid: trace, debug, info, warn, error
+level = "info"
+
+[manifest]
+# Upstream API for depot manifest request codes.
+# "opensteamtool" -> https://manifest.opensteamtool.com/{gid}
+# "wudrm"         -> http://gmrc.wudrm.com/manifest/{gid} (recommended for China users)
+# "steamrun"      -> https://manifest.steam.run/api/manifest/{gid}
+url = "wudrm"
+
+# HTTP timeouts for manifest requests (milliseconds).
+timeout_resolve_ms = 5000
+timeout_connect_ms = 5000
+timeout_send_ms    = 10000
+timeout_recv_ms    = 10000
+
+[lua]
+# Additional Lua config directories (optional).
+# paths = []
+
+[stats]
+# Query https://stats.opensteamtool.com/{appid} when no Lua setStat override exists.
+# Priority: setStat > stats API when enabled and valid > hardcoded preset SteamID.
+enable_api = true
+
+[inject]
+# Optional library injection into game processes.
+enabled = false
+# library_x64 = "OpenSteamTool.GameHook.x64.dll"
+# library_x86 = "OpenSteamTool.GameHook.x86.dll"
+
+[remote]
+# Optional metadata mirror. Leave unset to use GitHub with jsDelivr fallback.
+# Custom mirror template must include {channel}, {component}, and {sha256}.
+# url_template = "https://your.server/{channel}/{component}/{sha256}.toml"
+# url_template = "https://fast.jsdelivr.net/gh/OpenSteam001/steam-monitor@{channel}/{component}/{sha256}.toml"
+"#;
+
+    let toml_path = steam_path.join("opensteamtool.toml");
+    fs::write(&toml_path, toml_content)
+        .map_err(|e| format!("写入 opensteamtool.toml 失败: {}", e))?;
+
+    log::info!("已生成 opensteamtool.toml: {}", toml_path.display());
+    Ok(toml_path)
+}
+
+/// SteamTools 残留清理结果
+#[derive(Debug, Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SteamToolsCleanResult {
+    pub success: bool,
+    pub removed_files: Vec<String>,
+    pub removed_dirs: Vec<String>,
+    pub removed_registry_keys: Vec<String>,
+    pub message: String,
+}
+
+/// 清理 SteamTools 残留文件和注册表项
+/// 包括：Steam/config/stplug-in/ 目录、已知的 SteamTools DLL、相关注册表项
+pub fn clean_steamtools_residuals(steam_path: &str) -> Result<SteamToolsCleanResult, String> {
+    let steam_path = Path::new(steam_path);
+    if !steam_path.exists() {
+        return Err("Steam路径不存在".to_string());
+    }
+
+    let mut removed_files = Vec::new();
+    let mut removed_dirs = Vec::new();
+    let mut removed_registry_keys = Vec::new();
+
+    // 1. 清理 SteamTools 专用的 stplug-in 目录
+    let stplugin_dir = steam_path.join("config").join("stplug-in");
+    if stplugin_dir.exists() {
+        match fs::remove_dir_all(&stplugin_dir) {
+            Ok(_) => removed_dirs.push(stplugin_dir.to_string_lossy().to_string()),
+            Err(e) => log::warn!("清理 stplug-in 目录失败: {}", e),
+        }
+    }
+
+    // 2. 清理已知的 SteamTools DLL 文件（在 Steam 根目录）
+    let known_steamtools_files = [
+        "steamtools.dll",
+        "SteamTools.dll",
+        "stplug-in.dll",
+        "stplugin.dll",
+        "SteamToolsLoader.dll",
+        "steamclient64.dll.backup.steamtools",
+        "steamclient.dll.backup.steamtools",
+    ];
+    for file_name in &known_steamtools_files {
+        let file_path = steam_path.join(file_name);
+        if file_path.exists() {
+            match fs::remove_file(&file_path) {
+                Ok(_) => removed_files.push(file_path.to_string_lossy().to_string()),
+                Err(e) => log::warn!("删除 SteamTools 文件失败 {}: {}", file_path.display(), e),
+            }
+        }
+    }
+
+    // 3. 清理可能残留的 SteamTools 注册表项（仅 Windows）
+    #[cfg(target_os = "windows")]
+    {
+        use winreg::enums::{HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE};
+        use winreg::RegKey;
+
+
+        let steamtools_registry_paths = [
+            (HKEY_CURRENT_USER, r"Software\Valve\Steam\SteamTools"),
+            (HKEY_CURRENT_USER, r"Software\SteamTools"),
+            (HKEY_LOCAL_MACHINE, r"Software\Valve\Steam\SteamTools"),
+            (HKEY_LOCAL_MACHINE, r"Software\SteamTools"),
+        ];
+
+        for (hkey, path) in &steamtools_registry_paths {
+            let root = RegKey::predef(*hkey);
+            if root.open_subkey(path).is_ok() {
+                match root.delete_subkey_all(path) {
+                    Ok(_) => removed_registry_keys.push(format!("{:?}\\{}", hkey, path)),
+                    Err(e) => log::warn!("删除注册表项失败 {}: {}", path, e),
+                }
+            }
+        }
+    }
+
+    let total_removed = removed_files.len() + removed_dirs.len() + removed_registry_keys.len();
+    let message = if total_removed > 0 {
+        format!("已清理 {} 处 SteamTools 残留", total_removed)
+    } else {
+        "未检测到 SteamTools 残留".to_string()
+    };
+
+    log::info!("{}", message);
+
+    Ok(SteamToolsCleanResult {
+        success: true,
+        removed_files,
+        removed_dirs,
+        removed_registry_keys,
+        message,
+    })
+}
+
 /// 从Lua脚本内容中提取AppID
 /// 支持 addappid(appid) 格式
 fn extract_app_id_from_lua(lua_content: &str) -> Option<u32> {
@@ -378,10 +557,18 @@ pub fn import_with_opensteamtool(
     }
 
     // 6. 重启Steam（如果需要）
+    // 热加载模式下：只要Steam正在运行就不重启，依赖OpenSteamTool的文件监视自动加载新Lua
     let mut steam_restarted = false;
-    if options.restart_steam {
-        restart_steam(&steam_path)?;
-        steam_restarted = true;
+    let should_restart = options.restart_steam && !options.hot_reload;
+    if should_restart {
+        if is_steam_running() {
+            restart_steam(&steam_path)?;
+            steam_restarted = true;
+        } else {
+            log::info!("Steam未运行，跳过重启步骤");
+        }
+    } else if options.hot_reload {
+        log::info!("热加载模式已启用，Steam保持运行，OpenSteamTool将自动重新加载Lua配置");
     }
 
     let message = format!(
@@ -390,7 +577,7 @@ pub fn import_with_opensteamtool(
         app_id,
         manifest_copied,
         if kernel_installed { "已安装" } else { "未安装" },
-        if steam_restarted { "已重启" } else { "未重启" }
+        if steam_restarted { "已重启" } else if options.hot_reload { "热加载" } else { "未重启" }
     );
 
     Ok(OpenSteamToolImportResult {

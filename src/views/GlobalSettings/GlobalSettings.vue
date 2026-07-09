@@ -106,6 +106,18 @@
 
         <div class="setting-item">
           <div class="setting-info">
+            <h3 class="setting-name">Steam运行状态</h3>
+            <p class="setting-desc">检测Steam客户端是否正在运行，用于决定入库时是否需要重启</p>
+          </div>
+          <div class="setting-control">
+            <span class="status-badge" :class="steamRunningStatus.running ? 'success' : 'warning'">
+              {{ steamRunningStatus.checking ? '检测中...' : (steamRunningStatus.running ? '运行中' : '未运行') }}
+            </span>
+          </div>
+        </div>
+
+        <div class="setting-item">
+          <div class="setting-info">
             <h3 class="setting-name">安装/卸载内核</h3>
             <p class="setting-desc">手动安装或卸载OpenSteamTool内核DLL到Steam目录</p>
           </div>
@@ -135,11 +147,55 @@
 
         <div class="setting-item">
           <div class="setting-info">
+            <h3 class="setting-name">热加载入库</h3>
+            <p class="setting-desc">开启后入库时不重启Steam，依赖OpenSteamTool的文件监视自动加载新游戏</p>
+          </div>
+          <div class="setting-control">
+            <Toggle v-model="settings.openSteamToolHotReload" />
+          </div>
+        </div>
+
+        <div class="setting-item">
+          <div class="setting-info">
             <h3 class="setting-name">高级模式</h3>
             <p class="setting-desc">启用后会写入Windows注册表，通常用于Denuvo/在线游戏（需要二次确认）</p>
           </div>
           <div class="setting-control">
             <Toggle v-model="settings.openSteamToolAdvancedMode" />
+          </div>
+        </div>
+
+        <div class="setting-item">
+          <div class="setting-info">
+            <h3 class="setting-name">生成 opensteamtool.toml</h3>
+            <p class="setting-desc">在Steam根目录生成OpenSteamTool默认配置文件，使用wudrm作为国内友好的manifest源</p>
+          </div>
+          <div class="setting-control">
+            <Button
+              variant="secondary"
+              size="sm"
+              :disabled="!settings.steamPath"
+              @click="generateOpenSteamToolConfig"
+            >
+              生成配置
+            </Button>
+          </div>
+        </div>
+
+        <div class="setting-item">
+          <div class="setting-info">
+            <h3 class="setting-name">清理SteamTools残留</h3>
+            <p class="setting-desc">清理旧版SteamTools可能残留的DLL、stplug-in目录和注册表项</p>
+          </div>
+          <div class="setting-control">
+            <Button
+              variant="danger"
+              size="sm"
+              :disabled="!settings.steamPath"
+              @click="cleanSteamToolsResiduals"
+            >
+              清理残留
+            </Button>
           </div>
         </div>
       </section>
@@ -205,7 +261,8 @@ const settings = ref({
   defaultDownloadPath: '',
   startMinimizedToTray: false,
   hideToTrayOnClose: true,
-  openSteamToolAdvancedMode: false
+  openSteamToolAdvancedMode: false,
+  openSteamToolHotReload: true
 })
 
 // OpenSteamTool内核状态
@@ -215,15 +272,22 @@ const kernelStatus = ref({
   operating: false
 })
 
+// Steam运行状态
+const steamRunningStatus = ref({
+  running: false,
+  checking: false
+})
+
 // 缓存清除状态
 const cacheClearStatus = ref({
   loading: false
 })
 
-// 监听Steam路径变化，重新检测内核状态
+// 监听Steam路径变化，重新检测内核状态和Steam运行状态
 watch(() => settings.value.steamPath, async (newPath, oldPath) => {
   if (newPath && newPath !== oldPath) {
     await checkKernelStatus()
+    await checkSteamRunning()
   }
 })
 
@@ -237,6 +301,7 @@ onMounted(async () => {
   nextTick(async () => {
     loadSettings()
     await checkKernelStatus()
+    await checkSteamRunning()
   })
 })
 
@@ -249,6 +314,7 @@ function loadSettings() {
     settings.value.startMinimizedToTray = config.launch.startMinimizedToTray ?? false
     settings.value.hideToTrayOnClose = config.launch.hideToTrayOnClose ?? true
     settings.value.openSteamToolAdvancedMode = config.opensteamtool?.advancedMode ?? false
+    settings.value.openSteamToolHotReload = config.opensteamtool?.hotReload ?? true
   }
 }
 
@@ -269,6 +335,19 @@ async function checkKernelStatus() {
     kernelStatus.value.installed = false
   } finally {
     kernelStatus.value.checking = false
+  }
+}
+
+// 检查Steam是否正在运行
+async function checkSteamRunning() {
+  steamRunningStatus.value.checking = true
+  try {
+    const result = await invoke<{ running: boolean }>('check_steam_running')
+    steamRunningStatus.value.running = result.running
+  } catch {
+    steamRunningStatus.value.running = false
+  } finally {
+    steamRunningStatus.value.checking = false
   }
 }
 
@@ -324,6 +403,68 @@ async function uninstallKernel() {
     alert(`卸载内核失败: ${error}`)
   } finally {
     kernelStatus.value.operating = false
+  }
+}
+
+// 生成 opensteamtool.toml 配置文件
+async function generateOpenSteamToolConfig() {
+  if (!settings.value.steamPath) {
+    alert('请先配置Steam路径')
+    return
+  }
+
+  try {
+    const result = await invoke<{ success: boolean; path: string; message: string }>('generate_opensteamtool_config', {
+      steamPath: settings.value.steamPath
+    })
+    if (result.success) {
+      alert(`${result.message}\n路径: ${result.path}`)
+    } else {
+      alert(result.message)
+    }
+  } catch (error) {
+    alert(`生成配置失败: ${error}`)
+  }
+}
+
+// 清理 SteamTools 残留
+async function cleanSteamToolsResiduals() {
+  if (!settings.value.steamPath) {
+    alert('请先配置Steam路径')
+    return
+  }
+
+  const confirmClean = confirm('确定要清理SteamTools残留吗？\n\n这将清理Steam目录中可能残留的SteamTools DLL、stplug-in目录和相关注册表项。')
+  if (!confirmClean) {
+    return
+  }
+
+  try {
+    const result = await invoke<{
+      success: boolean
+      removedFiles: string[]
+      removedDirs: string[]
+      removedRegistryKeys: string[]
+      message: string
+    }>('clean_steamtools_residuals_command', {
+      steamPath: settings.value.steamPath
+    })
+
+    const details = []
+    if (result.removedFiles.length > 0) {
+      details.push(`文件: ${result.removedFiles.length} 个`)
+    }
+    if (result.removedDirs.length > 0) {
+      details.push(`目录: ${result.removedDirs.length} 个`)
+    }
+    if (result.removedRegistryKeys.length > 0) {
+      details.push(`注册表项: ${result.removedRegistryKeys.length} 个`)
+    }
+
+    const detailText = details.length > 0 ? `\n\n清理内容:\n${details.join('\n')}` : ''
+    alert(`${result.message}${detailText}`)
+  } catch (error) {
+    alert(`清理失败: ${error}`)
   }
 }
 
@@ -388,7 +529,8 @@ async function saveSettings() {
       },
       opensteamtool: {
         kernelInstalled: currentConfig.opensteamtool?.kernelInstalled || kernelStatus.value.installed,
-        advancedMode: settings.value.openSteamToolAdvancedMode
+        advancedMode: settings.value.openSteamToolAdvancedMode,
+        hotReload: settings.value.openSteamToolHotReload
       }
     }
 
