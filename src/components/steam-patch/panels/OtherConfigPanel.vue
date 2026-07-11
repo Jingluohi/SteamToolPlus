@@ -110,7 +110,7 @@
 /**
  * OtherConfigPanel.vue - 其他配置统一 Panel
  * 处理 installed_app_ids.txt / subscribed_groups.txt / purchased_keys.txt / supported_languages.txt
- * 供 AdvancedConfig.vue 和 CompleteConfigManager.vue 复用
+ * 供 CompleteConfigManager.vue 复用
  */
 
 import { ref, shallowReactive, onMounted, onUnmounted } from 'vue'

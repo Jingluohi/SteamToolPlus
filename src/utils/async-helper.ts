@@ -4,18 +4,14 @@
  */
 
 /**
- * 安全地执行异步操作，自动捕获并记录错误
+ * 安全地执行异步操作，自动捕获错误并返回 null
  * @param fn - 要执行的异步函数
- * @param errorMessage - 错误时的日志消息
  * @returns 操作结果，失败时返回 null
  */
-export async function safeAsync<T>(
-  fn: () => Promise<T>,
-  _errorMessage: string
-): Promise<T | null> {
+export async function safeAsync<T>(fn: () => Promise<T>): Promise<T | null> {
   try {
     return await fn()
-  } catch (error) {
+  } catch {
     return null
   }
 }

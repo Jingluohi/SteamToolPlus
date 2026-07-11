@@ -434,7 +434,7 @@ async function cleanSteamToolsResiduals() {
     return
   }
 
-  const confirmClean = confirm('确定要清理SteamTools残留吗？\n\n这将清理Steam目录中可能残留的SteamTools DLL、stplug-in目录和相关注册表项。')
+  const confirmClean = confirm('确定要清理SteamTools残留吗？\n\n这将自动清理Steam目录中可能残留的SteamTools DLL、stplug-in目录和相关注册表项。')
   if (!confirmClean) {
     return
   }

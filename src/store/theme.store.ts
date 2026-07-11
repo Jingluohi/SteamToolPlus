@@ -37,6 +37,8 @@ export const useThemeStore = defineStore('theme', () => {
   const followSystem = ref(true)
   /** 系统主题是否为深色 - 初始化时立即检测 */
   const systemIsDark = ref(detectSystemTheme())
+  /** 用户自定义主题 CSS 变量 */
+  const customVars = ref<Record<string, string>>({})
 
   // ==================== Getters ====================
   /** 当前是否为深色主题（dark / black / auto / auto-solid 在系统深色时） */
@@ -117,6 +119,11 @@ export const useThemeStore = defineStore('theme', () => {
       // 图片模式下使用主题主背景色兜底
       html.style.setProperty('--app-bg-color', isDark.value ? '#363636' : '#f8f9fa')
     }
+
+    // 应用用户自定义主题变量
+    Object.entries(customVars.value).forEach(([key, value]) => {
+      html.style.setProperty(key, value)
+    })
   }
 
   /**
@@ -163,6 +170,7 @@ export const useThemeStore = defineStore('theme', () => {
     const mode = config.mode as ThemeMode
     themeMode.value = validModes.includes(mode) ? mode : 'auto'
     followSystem.value = themeMode.value === 'auto' || themeMode.value === 'auto-solid'
+    customVars.value = config.customVars || {}
     applyTheme()
   }
 
@@ -173,7 +181,7 @@ export const useThemeStore = defineStore('theme', () => {
     return {
       mode: themeMode.value,
       followSystem: followSystem.value,
-      customVars: {}
+      customVars: { ...customVars.value }
     }
   }
 
@@ -188,6 +196,7 @@ export const useThemeStore = defineStore('theme', () => {
     themeMode,
     followSystem,
     systemIsDark,
+    customVars,
     // Getters
     isDark,
     isSolid,

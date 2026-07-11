@@ -292,8 +292,11 @@ pub async fn launch_game_with_tracking(
     let _exe_path_str = game.exe_path.clone();
     
     // 在后台线程中监控游戏进程
+    // 使用 std::thread 承载长时间阻塞的轮询，避免占用 tokio worker 线程
     let app_handle = app.clone();
     let game_id_clone = game_id.clone();
+    // 获取当前异步运行时句柄，供后台线程复用，避免创建新的 Runtime
+    let rt_handle = tokio::runtime::Handle::current();
 
     thread::spawn(move || {
         // 等待初始进程结束（很多游戏启动器会立即退出）
@@ -356,9 +359,8 @@ pub async fn launch_game_with_tracking(
 
         // 记录游玩时长（即使不到1分钟也记录，但只记录大于0的）
         if elapsed.as_secs() > 0 {
-            // 使用 tokio runtime 执行异步操作
-            let rt = tokio::runtime::Runtime::new().unwrap();
-            rt.block_on(async {
+            // 复用当前 tokio runtime 句柄执行异步保存，避免创建新 Runtime 带来的开销
+            rt_handle.block_on(async {
                 // 更新总游玩时长
                 let _ = game_data_service::update_play_time(
                     app_handle.clone(),

@@ -359,8 +359,6 @@
 
           <!-- 补丁操作详细说明（仅当存在下载链接时显示） -->
           <div v-if="tab.downloadUrls && tab.downloadUrls.length > 0" class="patch-guide-box">
-            <h4 class="guide-title">补丁是什么？为什么需要补丁？</h4>
-            <p class="guide-text">通过清单下载的是Steam正版分流文件，没有经过正版验证无法直接运行。补丁文件（通常为7z压缩包）包含了破解/模拟所需的DLL、配置文件等，将其应用到游戏目录后即可正常运行游戏。</p>
             <h4 class="guide-title">操作步骤：</h4>
             <ol class="guide-steps">
               <li><strong>第一步：</strong>先在页面顶部选择"游戏路径"，定位到游戏主程序（exe文件）所在的文件夹</li>
@@ -1612,18 +1610,12 @@ const loadTrainerContent = async () => {
 onMounted(async () => {
   // 加载游戏配置
   if (gamesConfig.value.length === 0) {
-    const config = await safeAsync(
-      () => loadGamesConfigFromFile(),
-      '加载游戏配置失败'
-    )
+    const config = await safeAsync(() => loadGamesConfigFromFile())
     if (config) gamesConfig.value = config
   }
 
   // 加载已存在的游戏数据
-  const gameData = await safeAsync(
-    () => getGameData(gameId.value),
-    '加载游戏数据失败'
-  )
+  const gameData = await safeAsync(() => getGameData(gameId.value))
   if (gameData) {
     // 检查游戏目录是否实际存在（防止用户手动删除游戏文件）
     let isGameDirExists = false
@@ -1639,14 +1631,10 @@ onMounted(async () => {
 
     // 如果记录为已下载但实际目录不存在，重置状态
     if (gameData.download_status === 'completed' && !isGameDirExists) {
-      console.log('游戏目录不存在，重置下载状态:', gameData.install_path)
       gameData.download_status = ''
       gameData.is_installed = false
       // 更新到 game.json
-      await safeAsync(
-        () => upsertGameData(gameData),
-        '重置游戏状态失败'
-      )
+      await safeAsync(() => upsertGameData(gameData))
     }
 
     existingGameData.value = gameData
@@ -2077,8 +2065,8 @@ const selectDownloadManifestArchive = async () => {
         await invoke('add_imported_manifest_game_id', {
           gameId: gameId.value
         })
-      } catch (cacheError) {
-        console.warn('记录清单导入缓存失败:', cacheError)
+      } catch {
+        // 清单导入缓存失败不影响主流程
       }
 
       // 重新检测清单文件夹状态

@@ -8,11 +8,11 @@
  * patch_type 对应的名称和颜色
  */
 export const PATCH_CATEGORIES = {
-  0: { name: '免Steam补丁', color: '#1b9fff' },
-  1: { name: '局域网联机', color: '#4caf50' },
-  2: { name: 'Steam联机', color: '#ff9800' },
-  3: { name: 'D加密虚拟机', color: '#9c27b0' },
-  4: { name: 'Epic联机', color: '#e91e63' }
+  0: { name: '免Steam补丁', description: '无需Steam即可运行游戏', color: '#1b9fff' },
+  1: { name: '局域网联机补丁', description: '支持局域网联机游玩', color: '#4caf50' },
+  2: { name: 'Steam联机补丁', description: '支持Steam平台联机', color: '#ff9800' },
+  3: { name: 'D加密虚拟机补丁', description: '用于D加密游戏的虚拟机补丁', color: '#9c27b0' },
+  4: { name: 'Epic联机补丁', description: '支持Epic平台联机', color: '#e91e63' }
 } as const
 
 /**

@@ -3,13 +3,13 @@
  */
 
 import { invoke } from '@tauri-apps/api/core'
-import type { Game, GameConfigData } from '../types/game.types'
+import type { GameConfigData, GameListResponse } from '../types/game.types'
 
 /**
  * 获取游戏列表
  */
-export async function getGames(): Promise<Game[]> {
-  return invoke<Game[]>('get_games')
+export async function getGames(): Promise<GameListResponse> {
+  return invoke<GameListResponse>('get_games')
 }
 
 /**

@@ -38,8 +38,8 @@ onMounted(async () => {
     // 调用后端命令获取嵌入到 exe 中的图片 Base64 数据
     const base64Data = await invoke<string>('get_sponsor_image_base64')
     weixinImgUrl.value = base64Data
-  } catch (e) {
-    console.error('加载赞助图片失败:', e)
+  } catch {
+    // 赞助图片加载失败时静默处理
   }
 })
 </script>

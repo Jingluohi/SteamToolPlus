@@ -11,7 +11,7 @@ mod utils;
 
 use commands::{background_commands, cache_commands, config_commands, denuvo_commands, download_commands, game_commands, game_data_commands, help_commands, log_commands, manifest_commands, opensteamtool_commands, patch_commands, window_commands};
 use once_cell::sync::Lazy;
-use services::{CacheService, CacheServiceTrait, ConfigService, ConfigServiceTrait, GameService, GameServiceTrait};
+use services::{CacheService, CacheServiceTrait, ConfigService, ConfigServiceTrait, GameService, GameServiceTrait, opensteamtool_service};
 use std::collections::HashSet;
 use std::sync::{Arc, Mutex};
 use tauri::{Manager, Emitter};
@@ -312,17 +312,20 @@ fn main() {
 
                             std::thread::sleep(std::time::Duration::from_secs(2));
 
-                            // 启动Steam
-                            let steam_paths = [
-                                "C:\\Program Files (x86)\\Steam\\steam.exe",
-                                "C:\\Program Files\\Steam\\steam.exe",
-                            ];
-                            for path in &steam_paths {
-                                if std::path::Path::new(path).exists() {
-                                    let _ = Command::new(path)
-                                        .creation_flags(CREATE_NO_WINDOW)
-                                        .spawn();
-                                    break;
+                            // 启动Steam：优先使用配置/注册表检测到的路径，不再硬编码
+                            match opensteamtool_service::detect_steam_path(None) {
+                                Ok(steam_path) => {
+                                    let steam_exe = std::path::Path::new(&steam_path).join("steam.exe");
+                                    if steam_exe.exists() {
+                                        let _ = Command::new(&steam_exe)
+                                            .creation_flags(CREATE_NO_WINDOW)
+                                            .spawn();
+                                    } else {
+                                        log::warn!("检测到 Steam 目录但找不到 steam.exe: {}", steam_exe.display());
+                                    }
+                                }
+                                Err(e) => {
+                                    log::warn!("托盘重启 Steam 失败，无法检测到 Steam 路径: {}", e);
                                 }
                             }
                         }

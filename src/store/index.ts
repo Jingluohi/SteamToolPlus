@@ -3,7 +3,6 @@
  * 统一导出所有Pinia store
  */
 
-export { useGameStore } from './game.store'
 export { useConfigStore } from './config.store'
 export { useWindowStore } from './window.store'
 export { useThemeStore } from './theme.store'

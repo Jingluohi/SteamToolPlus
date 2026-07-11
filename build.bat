@@ -67,8 +67,23 @@ if errorlevel 1 (
 
 REM Create necessary directories
 if not exist "PublicOut\config" mkdir "PublicOut\config"
+if not exist "PublicOut\resources" mkdir "PublicOut\resources"
 
 echo Created: config directory
+echo Created: resources directory
+
+REM Copy resources directory
+if exist "resources" (
+    xcopy "resources\*" "PublicOut\resources\" /E /I /Y >nul 2>&1
+    if errorlevel 1 (
+        echo Warning: Could not copy resources directory
+    ) else (
+        echo Copied: resources directory
+    )
+) else (
+    echo Warning: resources directory not found
+)
+
 echo.
 echo ==========================================
 echo Build completed successfully!
@@ -76,6 +91,7 @@ echo ==========================================
 echo Output location: PublicOut\
 echo   - SteamToolPlus.exe
 echo   - config\
+echo   - resources\
 echo ==========================================
 echo.
 echo Note: weixin.jpg is embedded in the executable.

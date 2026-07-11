@@ -16,65 +16,50 @@ const MAX_CACHE_SIZE = 100
 /** 刷新信号 - 当窗口从隐藏恢复时触发所有图片组件重新加载 */
 export const imageRefreshSignal = ref(0)
 
-/** 缓存条目结构 */
-interface CacheEntry {
-  url: string
-  lastAccessed: number
-}
-
-// 图片缓存映射表：key = gameId, value = 缓存条目
-const coverImageCache = new Map<string, CacheEntry>()
-const libraryImageCache = new Map<string, CacheEntry>()
+// 图片缓存映射表：key = gameId, value = asset URL
+// 利用 JavaScript Map 的插入顺序实现 O(1) 的 LRU：
+// - 访问命中时先 delete 再 set，将条目移到最新位置
+// - 超出容量时删除 Map 的第一个 key（最久未访问）
+const coverImageCache = new Map<string, string>()
+const libraryImageCache = new Map<string, string>()
 
 /**
- * LRU 淘汰：当缓存超过最大限制时，移除最久未访问的条目
+ * 获取缓存条目（LRU：命中后移动到最新位置）
+ * 时间复杂度 O(1)
  */
-function evictLRU(cache: Map<string, CacheEntry>): void {
-  if (cache.size <= MAX_CACHE_SIZE) return
+function getCachedEntry(cache: Map<string, string>, key: string): string | null {
+  const url = cache.get(key)
+  if (url === undefined) return null
 
-  let oldestKey: string | null = null
-  let oldestTime = Infinity
+  // 重新设置以更新其在 Map 中的顺序（最新使用）
+  cache.delete(key)
+  cache.set(key, url)
+  return url
+}
 
-  for (const [key, entry] of cache.entries()) {
-    if (entry.lastAccessed < oldestTime) {
-      oldestTime = entry.lastAccessed
-      oldestKey = key
+/**
+ * 设置缓存条目（带 O(1) LRU 淘汰）
+ */
+function setCacheEntry(cache: Map<string, string>, key: string, url: string): void {
+  // 如果已存在，先删除以更新顺序
+  if (cache.has(key)) {
+    cache.delete(key)
+  } else if (cache.size >= MAX_CACHE_SIZE) {
+    // 淘汰最久未访问的条目（Map 的第一个 key）
+    const oldestKey = cache.keys().next().value
+    if (oldestKey !== undefined) {
+      cache.delete(oldestKey)
     }
   }
 
-  if (oldestKey) {
-    cache.delete(oldestKey)
-  }
-}
-
-/**
- * 获取缓存条目（自动更新访问时间）
- */
-function getCachedEntry(cache: Map<string, CacheEntry>, key: string): string | null {
-  const entry = cache.get(key)
-  if (!entry) return null
-
-  // 更新访问时间
-  entry.lastAccessed = Date.now()
-  return entry.url
-}
-
-/**
- * 设置缓存条目（带 LRU 淘汰）
- */
-function setCacheEntry(cache: Map<string, CacheEntry>, key: string, url: string): void {
-  evictLRU(cache)
-  cache.set(key, {
-    url,
-    lastAccessed: Date.now()
-  })
+  cache.set(key, url)
 }
 
 /**
  * 通用图片缓存获取函数
  */
 async function getCachedImage(
-  cache: Map<string, CacheEntry>,
+  cache: Map<string, string>,
   fetchPath: (id: string) => Promise<string>,
   gameId: string
 ): Promise<string> {
@@ -87,13 +72,16 @@ async function getCachedImage(
   // 缓存未命中，调用后端获取文件路径
   const filePath = await fetchPath(gameId)
 
+  // 图片不存在时直接返回空字符串，不入缓存，避免后续补图后仍显示占位
   if (!filePath) {
     return ''
   }
 
   // 转换为 asset URL 并缓存
   const assetUrl = convertFileSrc(filePath)
-  setCacheEntry(cache, gameId, assetUrl)
+  if (assetUrl) {
+    setCacheEntry(cache, gameId, assetUrl)
+  }
 
   return assetUrl
 }

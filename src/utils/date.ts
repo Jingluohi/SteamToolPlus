@@ -10,14 +10,19 @@
  */
 export function formatDate(date: Date | string, format: string = 'YYYY-MM-DD'): string {
   const d = typeof date === 'string' ? new Date(date) : date
-  
+
+  // 防御无效日期，避免显示 NaN
+  if (isNaN(d.getTime())) {
+    return ''
+  }
+
   const year = d.getFullYear()
   const month = String(d.getMonth() + 1).padStart(2, '0')
   const day = String(d.getDate()).padStart(2, '0')
   const hours = String(d.getHours()).padStart(2, '0')
   const minutes = String(d.getMinutes()).padStart(2, '0')
   const seconds = String(d.getSeconds()).padStart(2, '0')
-  
+
   return format
     .replace('YYYY', String(year))
     .replace('MM', month)
@@ -33,10 +38,15 @@ export function formatDate(date: Date | string, format: string = 'YYYY-MM-DD'): 
  * @returns 中文时长字符串（如：1小时30分）
  */
 export function formatDurationCN(seconds: number): string {
-  if (seconds < 60) return `${seconds}秒`
-  const hours = Math.floor(seconds / 3600)
-  const mins = Math.floor((seconds % 3600) / 60)
-  const secs = seconds % 60
+  // 防御非法输入
+  if (!isFinite(seconds) || seconds <= 0) return '0秒'
+
+  const totalSeconds = Math.floor(seconds)
+  if (totalSeconds < 60) return `${totalSeconds}秒`
+
+  const hours = Math.floor(totalSeconds / 3600)
+  const mins = Math.floor((totalSeconds % 3600) / 60)
+  const secs = totalSeconds % 60
 
   if (hours > 0) {
     return mins > 0 ? `${hours}小时${mins}分` : `${hours}小时`

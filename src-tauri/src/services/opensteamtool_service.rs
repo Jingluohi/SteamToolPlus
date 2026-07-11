@@ -25,6 +25,12 @@ const STEAM_REGISTRY_PATH: &str = r"Software\Valve\Steam";
 #[cfg(target_os = "windows")]
 const STEAM_PATH_VALUE: &str = "SteamPath";
 
+/// 常见 Steam 默认安装路径（作为最后兜底）
+const DEFAULT_STEAM_PATHS: &[&str] = &[
+    r"C:\Program Files (x86)\Steam",
+    r"C:\Program Files\Steam",
+];
+
 /// OpenSteamTool通用导入选项
 #[derive(Debug, Clone)]
 pub struct OpenSteamToolImportOptions {
@@ -72,14 +78,14 @@ pub fn detect_steam_path(config_steam_path: Option<&str>) -> Result<String, Stri
         }
     }
 
-    // 2. 从注册表读取
+    // 2. 从注册表读取（只读，符合绿色便携规则）
     #[cfg(target_os = "windows")]
     {
         match read_steam_path_from_registry() {
             Ok(path) => {
                 if Path::new(&path).exists() {
                     log::info!("从注册表读取到Steam路径: {}", path);
-                    return Ok(path);
+                    return Ok(path.to_string());
                 }
             }
             Err(e) => {
@@ -89,11 +95,7 @@ pub fn detect_steam_path(config_steam_path: Option<&str>) -> Result<String, Stri
     }
 
     // 3. 尝试常见默认路径
-    let default_paths = [
-        r"C:\Program Files (x86)\Steam",
-        r"C:\Program Files\Steam",
-    ];
-    for path in &default_paths {
+    for path in DEFAULT_STEAM_PATHS {
         if Path::new(path).exists() {
             log::info!("使用默认Steam路径: {}", path);
             return Ok(path.to_string());
@@ -406,9 +408,21 @@ pub struct SteamToolsCleanResult {
     pub success: bool,
     pub removed_files: Vec<String>,
     pub removed_dirs: Vec<String>,
+    /// 已自动删除的 SteamTools 相关注册表项
     pub removed_registry_keys: Vec<String>,
     pub message: String,
 }
+
+/// 已知 SteamTools 相关文件名
+const KNOWN_STEAMTOOLS_FILES: &[&str] = &[
+    "steamtools.dll",
+    "SteamTools.dll",
+    "stplug-in.dll",
+    "stplugin.dll",
+    "SteamToolsLoader.dll",
+    "steamclient64.dll.backup.steamtools",
+    "steamclient.dll.backup.steamtools",
+];
 
 /// 清理 SteamTools 残留文件和注册表项
 /// 包括：Steam/config/stplug-in/ 目录、已知的 SteamTools DLL、相关注册表项
@@ -432,16 +446,7 @@ pub fn clean_steamtools_residuals(steam_path: &str) -> Result<SteamToolsCleanRes
     }
 
     // 2. 清理已知的 SteamTools DLL 文件（在 Steam 根目录）
-    let known_steamtools_files = [
-        "steamtools.dll",
-        "SteamTools.dll",
-        "stplug-in.dll",
-        "stplugin.dll",
-        "SteamToolsLoader.dll",
-        "steamclient64.dll.backup.steamtools",
-        "steamclient.dll.backup.steamtools",
-    ];
-    for file_name in &known_steamtools_files {
+    for file_name in KNOWN_STEAMTOOLS_FILES {
         let file_path = steam_path.join(file_name);
         if file_path.exists() {
             match fs::remove_file(&file_path) {
@@ -456,7 +461,6 @@ pub fn clean_steamtools_residuals(steam_path: &str) -> Result<SteamToolsCleanRes
     {
         use winreg::enums::{HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE};
         use winreg::RegKey;
-
 
         let steamtools_registry_paths = [
             (HKEY_CURRENT_USER, r"Software\Valve\Steam\SteamTools"),
@@ -547,13 +551,10 @@ pub fn import_with_opensteamtool(
     // 4. 复制manifest文件（如果有）
     let manifest_copied = copy_manifests(&steam_path, &options.manifest_files)?;
 
-    // 5. 高级模式：写注册表（Denuvo ticket等）
-    let mut advanced_enabled = false;
-    if options.advanced_mode {
-        advanced_enabled = true;
-        log::info!("高级模式已启用，将写入注册表（功能占位）");
-        // TODO: 根据需求实现具体的ticket/token写入逻辑
-        // 当前版本仅做占位，避免误操作
+    // 5. 高级模式：不再自动写注册表，仅做占位记录
+    let advanced_enabled = options.advanced_mode;
+    if advanced_enabled {
+        log::info!("高级模式已启用，但不会自动写入系统注册表");
     }
 
     // 6. 重启Steam（如果需要）

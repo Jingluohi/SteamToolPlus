@@ -138,6 +138,9 @@ onMounted(async () => {
     themeStore.setThemeMode('dark')
   }
 
+  // 初始化主题监听（跟随系统主题变化）
+  themeStore.initTheme()
+
   // 初始化窗口状态
   await windowStore.initWindow()
 

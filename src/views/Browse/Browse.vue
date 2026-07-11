@@ -286,26 +286,52 @@ const visiblePageNumbers = computed(() => {
 })
 
 // 生命周期
-onMounted(() => {
-  loadGames()
-  
+onMounted(async () => {
+  await loadGames()
+
   // 恢复页码
   const savedPage = sessionStorage.getItem('browse_current_page')
   if (savedPage) {
-    currentPage.value = parseInt(savedPage, 10)
+    const parsedPage = parseInt(savedPage, 10)
+    if (!isNaN(parsedPage) && parsedPage >= 1) {
+      currentPage.value = parsedPage
+    }
   }
-  
+
   // 恢复搜索关键词
   const savedKeyword = sessionStorage.getItem('browse_search_keyword')
   if (savedKeyword) {
     searchKeyword.value = savedKeyword
   }
+
+  // 恢复完页码和关键词后，确保当前页不超过总页数，防止出现空白网格
+  clampCurrentPage()
 })
 
 // 监听搜索变化，重置到第一页
 watch(searchKeyword, () => {
   currentPage.value = 1
 })
+
+// 总页数变化时（例如搜索过滤后），自动钳制当前页码到有效范围
+watch(totalPages, () => {
+  clampCurrentPage()
+})
+
+/**
+ * 钳制当前页码到有效范围
+ * 防止 sessionStorage 中保存的页码大于当前总页数，导致分页网格空白
+ */
+function clampCurrentPage() {
+  const total = totalPages.value
+  if (total <= 0) {
+    currentPage.value = 1
+  } else if (currentPage.value > total) {
+    currentPage.value = total
+  } else if (currentPage.value < 1) {
+    currentPage.value = 1
+  }
+}
 
 // 在离开路由前保存页码和搜索关键词
 onBeforeRouteLeave((_to, _from, next) => {

@@ -6,7 +6,9 @@ use uuid::Uuid;
 
 /// 游戏数据结构
 /// 存储单个游戏的完整信息
+/// 序列化时使用 camelCase 以匹配前端类型约定
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Game {
     /// 唯一ID，UUID生成
     pub id: String,
@@ -59,7 +61,9 @@ impl Game {
 }
 
 /// 游戏筛选条件
+/// 序列化时使用 camelCase 以匹配前端类型约定
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct GameFilter {
     /// 搜索关键词
     pub search: Option<String>,
@@ -74,7 +78,9 @@ pub struct GameFilter {
 }
 
 /// 游戏排序方式
+/// 序列化时使用 camelCase 以匹配前端类型约定
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub enum GameSortBy {
     /// 按名称
     Name,
@@ -89,7 +95,9 @@ pub enum GameSortBy {
 }
 
 /// 游戏列表响应
+/// 序列化时使用 camelCase 以匹配前端类型约定
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct GameListResponse {
     /// 游戏列表
     pub games: Vec<Game>,
@@ -98,7 +106,9 @@ pub struct GameListResponse {
 }
 
 /// 添加游戏请求
+/// 序列化时使用 camelCase 以匹配前端类型约定
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct AddGameRequest {
     /// 游戏名称
     pub name: String,
@@ -117,7 +127,9 @@ pub struct AddGameRequest {
 }
 
 /// 更新游戏请求
+/// 序列化时使用 camelCase 以匹配前端类型约定
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct UpdateGameRequest {
     /// 游戏ID
     pub id: String,
@@ -138,7 +150,9 @@ pub struct UpdateGameRequest {
 }
 
 /// 扫描游戏目录请求
+/// 序列化时使用 camelCase 以匹配前端类型约定
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ScanGamesRequest {
     /// 要扫描的目录路径
     pub directory: String,
@@ -147,7 +161,9 @@ pub struct ScanGamesRequest {
 }
 
 /// 游戏启动结果
+/// 序列化时使用 camelCase 以匹配前端类型约定
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct LaunchGameResult {
     /// 是否成功
     pub success: bool,

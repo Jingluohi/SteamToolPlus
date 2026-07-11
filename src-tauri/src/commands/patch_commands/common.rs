@@ -300,53 +300,12 @@ pub async fn apply_patch(
     };
 
     let patch_file_path = Path::new(&resource_dir).join(&patch_file_name);
-    let target_path = Path::new(&game_path);
 
     if !patch_file_path.exists() {
         return Err(format!("补丁源路径不存在: {}", patch_file_path.display()));
     }
 
-    if !target_path.exists() {
-        return Err(format!("游戏目标路径不存在: {}", game_path));
-    }
-
-    let temp_dir = std::env::temp_dir().join(format!("steam_tool_patch_{}", std::process::id()));
-    let temp_path = temp_dir.clone();
-
-    if temp_path.exists() {
-        let _ = tokio::fs::remove_dir_all(&temp_path).await;
-    }
-    tokio::fs::create_dir_all(&temp_path)
-        .await
-        .map_err(|e| format!("创建临时目录失败: {}", e))?;
-
-    match extract_7z(&patch_file_path, &temp_path).await {
-        Ok(_) => {}
-        Err(e) => {
-            let _ = tokio::fs::remove_dir_all(&temp_path).await;
-            return Err(format!("解压补丁失败: {}", e));
-        }
-    }
-
-    let mut backed_up_files: Vec<String> = Vec::new();
-    let mut copied_files: Vec<String> = Vec::new();
-    let mut errors: Vec<String> = Vec::new();
-
-    match copy_dir_with_backup(&temp_path, target_path, &mut backed_up_files, &mut copied_files, &mut errors).await {
-        Ok(_) => {}
-        Err(e) => {
-            errors.push(e);
-        }
-    }
-
-    let _ = tokio::fs::remove_dir_all(&temp_path).await;
-
-    Ok(ApplyPatchResult {
-        success: errors.is_empty(),
-        backed_up_files,
-        copied_files,
-        errors,
-    })
+    apply_patch_internal(&patch_file_path, &game_path).await
 }
 
 /// 从用户选择的压缩包文件应用补丁
@@ -356,11 +315,21 @@ pub async fn apply_patch_from_file(
     game_path: String,
 ) -> Result<ApplyPatchResult, String> {
     let archive_path = Path::new(&archive_path);
-    let target_path = Path::new(&game_path);
 
     if !archive_path.exists() {
         return Err(format!("补丁文件不存在: {}", archive_path.display()));
     }
+
+    apply_patch_internal(archive_path, &game_path).await
+}
+
+/// 应用补丁的内部通用实现
+/// 解压 7z 压缩包到临时目录，再递归复制到游戏目录，并备份已存在的文件
+async fn apply_patch_internal(
+    archive_path: &Path,
+    game_path: &str,
+) -> Result<ApplyPatchResult, String> {
+    let target_path = Path::new(game_path);
 
     if !target_path.exists() {
         return Err(format!("游戏目标路径不存在: {}", game_path));
@@ -376,7 +345,7 @@ pub async fn apply_patch_from_file(
         .await
         .map_err(|e| format!("创建临时目录失败: {}", e))?;
 
-    match extract_7z(&archive_path, &temp_path).await {
+    match extract_7z(archive_path, &temp_path).await {
         Ok(_) => {}
         Err(e) => {
             let _ = tokio::fs::remove_dir_all(&temp_path).await;
@@ -412,13 +381,18 @@ async fn extract_7z(
 ) -> Result<(), String> {
     use tokio::time::{timeout, Duration};
 
+    let archive_str = archive_path
+        .to_str()
+        .ok_or("补丁文件路径包含非法字符")?;
+    let output_str = output_dir
+        .to_str()
+        .ok_or("临时目录路径包含非法字符")?;
+
     let result = timeout(
         Duration::from_secs(300),
         async {
-            sevenz_rust::decompress_file(
-                archive_path.to_str().unwrap(),
-                output_dir.to_str().unwrap()
-            ).map_err(|e| format!("解压7z文件失败: {:?}", e))
+            sevenz_rust::decompress_file(archive_str, output_str)
+                .map_err(|e| format!("解压7z文件失败: {:?}", e))
         }
     ).await;
 

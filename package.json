@@ -1,6 +1,6 @@
 {
   "name": "steam-tool-plus",
-  "version": "1.26.2",
+  "version": "1.27.0",
   "description": "Steam Tool Plus - 本地游戏管理系统",
   "type": "module",
   "scripts": {
@@ -27,12 +27,10 @@
   "devDependencies": {
     "@tauri-apps/cli": "^2.11.3",
     "@vitejs/plugin-vue": "^6.0.7",
-    "autoprefixer": "^10.5.0",
     "esbuild": "^0.28.1",
-    "postcss": "^8.5.15",
     "tailwindcss": "^4.3.1",
     "terser": "^5.48.0",
-    "typescript": "^6.0.3",
+    "typescript": "^5.8.3",
     "vite": "^8.0.16",
     "vue-tsc": "^3.3.5"
   }

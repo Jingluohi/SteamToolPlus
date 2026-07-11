@@ -22,7 +22,6 @@
           :src="coverUrl"
           :alt="gameName"
           class="card-image"
-          loading="lazy"
           @error="handleImageError"
           @load="onImageLoad"
         />

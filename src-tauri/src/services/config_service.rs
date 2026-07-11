@@ -4,10 +4,16 @@
 use crate::models::{AppConfig, UpdateConfigRequest, WindowConfig};
 use crate::utils::config_path_utils;
 use crate::utils::file_utils;
-use std::sync::Mutex;
+use std::sync::{Mutex, MutexGuard};
 
 /// 配置文件名
 const CONFIG_FILENAME: &str = "config.json";
+
+/// 安全获取配置锁
+/// 将 poisoned mutex 转换为可处理的错误，避免 panic 导致整个程序崩溃
+fn lock_config(config: &Mutex<AppConfig>) -> Result<MutexGuard<'_, AppConfig>, String> {
+    config.lock().map_err(|e| format!("配置锁被污染: {}", e))
+}
 
 /// 配置服务接口
 pub trait ConfigServiceTrait: Send + Sync {
@@ -49,6 +55,8 @@ impl ConfigService {
     }
 
     /// 从文件加载配置
+    /// 如果配置文件损坏，会将其备份为 .corrupted.{timestamp}，再生成默认配置，
+    /// 避免直接覆盖导致用户配置完全丢失。
     fn load_config() -> AppConfig {
         // 尝试获取运行时配置路径
         let config_path = match Self::get_config_path() {
@@ -56,12 +64,32 @@ impl ConfigService {
             Err(_) => return AppConfig::default(),
         };
 
+        let path_obj = std::path::Path::new(&config_path);
+
+        // 文件不存在时直接生成默认配置
+        if !path_obj.exists() {
+            let default_config = AppConfig::default();
+            let _ = Self::save_config_internal(&default_config);
+            return default_config;
+        }
+
+        // 文件存在，尝试读取
         match file_utils::read_json_file::<AppConfig>(&config_path) {
             Ok(config) => config,
-            Err(_) => {
-                // 文件不存在或读取失败，使用默认配置
+            Err(e) => {
+                log::error!("读取配置文件失败: {}，将备份损坏文件并使用默认配置", e);
+
+                // 备份损坏的配置文件，便于用户手动恢复
+                let backup_name = format!(
+                    "{}.corrupted.{}",
+                    CONFIG_FILENAME,
+                    chrono::Local::now().format("%Y%m%d%H%M%S")
+                );
+                if let Ok(backup_path) = config_path_utils::get_runtime_config_path(&backup_name) {
+                    let _ = std::fs::rename(path_obj, &backup_path);
+                }
+
                 let default_config = AppConfig::default();
-                // 尝试保存默认配置
                 let _ = Self::save_config_internal(&default_config);
                 default_config
             }
@@ -87,14 +115,20 @@ impl ConfigService {
 
 impl ConfigServiceTrait for ConfigService {
     /// 获取当前配置
+    /// 如果锁被污染，记录错误并返回默认配置，避免 panic
     fn get_config(&self) -> AppConfig {
-        let config = self.config.lock().unwrap();
-        config.clone()
+        match lock_config(&self.config) {
+            Ok(config) => config.clone(),
+            Err(e) => {
+                log::error!("{}", e);
+                AppConfig::default()
+            }
+        }
     }
 
     /// 更新配置
     fn update_config(&self, request: UpdateConfigRequest) -> Result<AppConfig, String> {
-        let mut config = self.config.lock().unwrap();
+        let mut config = lock_config(&self.config)?;
 
         // 更新各个配置项
         if let Some(window) = request.window {
@@ -125,9 +159,14 @@ impl ConfigServiceTrait for ConfigService {
     /// 重置配置到默认值
     fn reset_config(&self) -> AppConfig {
         let default_config = AppConfig::default();
-        let mut config = self.config.lock().unwrap();
-        *config = default_config.clone();
-        drop(config);
+
+        match lock_config(&self.config) {
+            Ok(mut config) => {
+                *config = default_config.clone();
+                drop(config);
+            }
+            Err(e) => log::error!("{}", e),
+        }
 
         // 保存默认配置
         let _ = Self::save_config_internal(&default_config);
@@ -137,13 +176,13 @@ impl ConfigServiceTrait for ConfigService {
 
     /// 保存配置到文件
     fn save_config(&self) -> Result<(), String> {
-        let config = self.config.lock().unwrap();
+        let config = lock_config(&self.config)?;
         Self::save_config_internal(&config)
     }
 
     /// 更新窗口配置
     fn update_window_config(&self, window_config: WindowConfig) -> Result<(), String> {
-        let mut config = self.config.lock().unwrap();
+        let mut config = lock_config(&self.config)?;
         config.window = window_config;
         let config_clone = config.clone();
         drop(config);

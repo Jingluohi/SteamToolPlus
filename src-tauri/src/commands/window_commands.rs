@@ -77,7 +77,7 @@ pub async fn open_help_window(app: tauri::AppHandle) -> WindowOperationResult {
     .minimizable(true)
     .closable(true)
     .decorations(false)  // 无边框窗口
-    .transparent(true)
+    .transparent(false)  // 与主窗口保持一致，避免 WebView2 release 模式渲染问题
     .shadow(true)
     .visible(true)
     .focused(true)

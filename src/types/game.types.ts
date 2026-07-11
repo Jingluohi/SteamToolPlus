@@ -2,6 +2,8 @@
  * 游戏相关类型定义
  */
 
+import { PATCH_CATEGORIES } from '../constants/game'
+
 /**
  * 游戏数据结构
  */
@@ -174,7 +176,7 @@ export function getPatchSourcePath(tag: GameTagConfig, gameId: string): string {
   const patchTypeFolder: Record<number, string> = {
     0: '免_steam',
     1: '局域网联机',
-    2: 'steam_联机',
+    2: 'Steam联机',
     3: 'D_加密虚拟机',
     4: 'epic_联机'
   }
@@ -223,11 +225,12 @@ export interface GameConfigData {
 
 /**
  * 补丁类型映射
+ * 从 constants/game.ts 派生，避免重复定义名称和描述
  */
 export const PATCH_TYPE_MAP: Record<number, { name: string; description: string }> = {
-  0: { name: '免Steam补丁', description: '无需Steam即可运行游戏' },
-  1: { name: '局域网联机补丁', description: '支持局域网联机游玩' },
-  2: { name: 'Steam联机补丁', description: '支持Steam平台联机' },
-  3: { name: 'D加密虚拟机补丁', description: '用于D加密游戏的虚拟机补丁' },
-  4: { name: 'Epic联机补丁', description: '支持Epic平台联机' }
+  0: { name: PATCH_CATEGORIES[0].name, description: PATCH_CATEGORIES[0].description },
+  1: { name: PATCH_CATEGORIES[1].name, description: PATCH_CATEGORIES[1].description },
+  2: { name: PATCH_CATEGORIES[2].name, description: PATCH_CATEGORIES[2].description },
+  3: { name: PATCH_CATEGORIES[3].name, description: PATCH_CATEGORIES[3].description },
+  4: { name: PATCH_CATEGORIES[4].name, description: PATCH_CATEGORIES[4].description }
 }
