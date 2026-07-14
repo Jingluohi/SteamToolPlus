@@ -98,6 +98,18 @@
             </div>
           </div>
 
+          <Tooltip text="锁定版本适用于限定补丁版本，防止游戏更新破坏补丁兼容性；跟随更新允许Steam自动更新游戏" position="top">
+            <div class="setting-item">
+              <div class="setting-info">
+                <h4 class="setting-name">锁定版本</h4>
+                <p class="setting-desc">开启后生成 setManifestid 强制锁定 depot 版本，适用于限定版本补丁；关闭则允许 Steam 自动更新</p>
+              </div>
+              <div class="setting-control">
+                <Toggle v-model="lockVersion" />
+              </div>
+            </div>
+          </Tooltip>
+
           <div class="setting-item setting-item-vertical">
             <div class="setting-info">
               <h4 class="setting-name">访问令牌 (Access Token)</h4>
@@ -314,6 +326,7 @@ import { open } from '@tauri-apps/plugin-dialog'
 import { open as openShell } from '@tauri-apps/plugin-shell'
 import Button from '../../components/common/Button.vue'
 import Toggle from '../GlobalSettings/components/Toggle.vue'
+import Tooltip from '../../components/common/Tooltip.vue'
 import QRCodeModal from '../../components/common/QRCodeModal.vue'
 import { useConfigStore } from '../../store/config.store'
 
@@ -385,6 +398,8 @@ const hotReload = ref(true)
 const accessToken = ref('')
 // 成就数据SteamID（用于setStat）
 const statsSteamId = ref('')
+// 锁定版本开关（生成 setManifestid）
+const lockVersion = ref(false)
 
 // 计算属性
 const sourceTypeText = computed(() => {
@@ -579,7 +594,8 @@ async function startImport() {
       advancedMode: advancedMode.value,
       hotReload: hotReload.value,
       accessToken: accessToken.value || undefined,
-      statsSteamId: statsSteamId.value || undefined
+      statsSteamId: statsSteamId.value || undefined,
+      lockVersion: lockVersion.value
     })
 
     if (result.success) {

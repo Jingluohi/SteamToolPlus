@@ -7,6 +7,7 @@ use tauri::AppHandle;
 
 use crate::commands::manifest_commands::convert_vdf_to_lua_internal;
 use crate::services::config_service::{ConfigService, ConfigServiceTrait};
+use crate::services::fake_imported_service::add_fake_imported_game;
 use crate::services::opensteamtool_service::{
     clean_steamtools_residuals, detect_steam_path, generate_opensteamtool_toml,
     get_kernel_dll_info, install_kernel, is_kernel_installed, is_steam_running,
@@ -162,21 +163,23 @@ fn scan_manifest_files_recursive(
 
 /// 尝试将VDF文件转换为Lua文件
 /// 返回转换后的Lua文件路径列表
-/// 
+///
 /// # 参数
 /// - `vdf_files`: VDF文件路径列表
 /// - `access_token`: 可选的访问令牌，用于下载受保护的游戏/DLC
 /// - `stats_steam_id`: 可选的成就数据SteamID
+/// - `lock_version`: 是否锁定版本（生成 setManifestid）
 fn convert_vdf_files_to_lua(
     vdf_files: &[String],
     access_token: Option<&str>,
     stats_steam_id: Option<&str>,
+    lock_version: bool,
 ) -> Vec<String> {
     let mut converted_lua_files = Vec::new();
 
     for vdf_file in vdf_files {
         let vdf_path = PathBuf::from(vdf_file);
-        match convert_vdf_to_lua_internal(&vdf_path, access_token, stats_steam_id) {
+        match convert_vdf_to_lua_internal(&vdf_path, access_token, stats_steam_id, lock_version) {
             Ok(lua_path) => {
                 converted_lua_files.push(lua_path.to_string_lossy().to_string());
             }
@@ -202,6 +205,7 @@ pub fn import_game_with_opensteamtool(
     hot_reload: Option<bool>,
     access_token: Option<String>,
     stats_steam_id: Option<String>,
+    lock_version: Option<bool>,
 ) -> Result<OpenSteamToolImportResult, String> {
     // 获取资源目录
     let resource_dir = get_resource_dir(&app)?;
@@ -229,6 +233,7 @@ pub fn import_game_with_opensteamtool(
             &vdf_files,
             access_token.as_deref(),
             stats_steam_id.as_deref(),
+            lock_version.unwrap_or(false),
         );
         lua_files.extend(converted);
     }
@@ -252,7 +257,14 @@ pub fn import_game_with_opensteamtool(
         hot_reload: hot_reload.unwrap_or(true),
     };
 
-    import_with_opensteamtool(&app, options)
+    let result = import_with_opensteamtool(&app, options);
+
+    // 入库成功后记录到假入库游戏列表
+    if result.is_ok() {
+        let _ = add_fake_imported_game(app_id);
+    }
+
+    result
 }
 
 /// 从清单文件夹使用OpenSteamTool入库
@@ -268,6 +280,7 @@ pub fn import_manifest_with_opensteamtool(
     hot_reload: Option<bool>,
     access_token: Option<String>,
     stats_steam_id: Option<String>,
+    lock_version: Option<bool>,
 ) -> Result<OpenSteamToolImportResult, String> {
     let folder_path = Path::new(&folder_path);
 
@@ -292,6 +305,7 @@ pub fn import_manifest_with_opensteamtool(
             &vdf_files,
             access_token.as_deref(),
             stats_steam_id.as_deref(),
+            lock_version.unwrap_or(false),
         );
         lua_files.extend(converted);
     }
@@ -325,7 +339,14 @@ pub fn import_manifest_with_opensteamtool(
         hot_reload: hot_reload.unwrap_or(true),
     };
 
-    import_with_opensteamtool(&app, options)
+    let result = import_with_opensteamtool(&app, options);
+
+    // 入库成功后记录到假入库游戏列表
+    if result.is_ok() {
+        let _ = add_fake_imported_game(detected_app_id);
+    }
+
+    result
 }
 
 /// 检测Steam是否正在运行

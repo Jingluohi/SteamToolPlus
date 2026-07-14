@@ -38,6 +38,14 @@
         </h2>
         <BackgroundSettings @refresh="handleBackgroundRefresh" />
       </section>
+
+      <!-- 超级调色盘 -->
+      <section class="settings-section palette-section">
+        <h2 class="section-title">
+          超级调色盘
+        </h2>
+        <SuperPalette />
+      </section>
     </div>
   </div>
 </template>
@@ -45,7 +53,7 @@
 <script setup lang="ts">
 /**
  * Personalization.vue - 个性化设置页面
- * 用于配置应用程序的外观和背景
+ * 用于配置应用程序的外观、背景和主题颜色
  */
 
 import { ref, onMounted } from 'vue'
@@ -53,6 +61,7 @@ import { useConfigStore } from '../../store/config.store'
 import { useThemeStore } from '../../store/theme.store'
 import Dropdown from '../../components/common/Dropdown.vue'
 import BackgroundSettings from '../../components/background/BackgroundSettings.vue'
+import SuperPalette from '../../components/personalization/SuperPalette.vue'
 
 // Store
 const configStore = useConfigStore()

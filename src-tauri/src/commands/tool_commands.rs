@@ -6,6 +6,9 @@ use std::fs;
 use std::path::Path;
 use regex::Regex;
 
+/// 最大递归扫描深度限制，防止无限递归或目录层级过深
+const MAX_SCAN_DEPTH: u32 = 10;
+
 /// 读取文件内容
 #[tauri::command]
 pub fn read_file_content(path: String) -> Result<String, String> {
@@ -27,30 +30,44 @@ pub fn check_directory_exists(path: String) -> Result<bool, String> {
 }
 
 /// 获取文件夹中的所有Lua文件
+/// 递归扫描，最大深度为 MAX_SCAN_DEPTH
 #[tauri::command]
 pub fn get_lua_files_in_folder(folder: String) -> Result<Vec<String>, String> {
     let mut lua_files = Vec::new();
-    
-    fn scan_directory(dir: &Path, files: &mut Vec<String>) -> Result<(), String> {
+
+    /// 内部递归扫描函数
+    /// # 参数
+    /// - `dir`: 当前扫描目录
+    /// - `files`: 文件列表
+    /// - `current_depth`: 当前递归深度
+    fn scan_directory(dir: &Path, files: &mut Vec<String>, current_depth: u32) -> Result<(), String> {
+        // 检查是否达到最大扫描深度
+        if current_depth >= MAX_SCAN_DEPTH {
+            log::warn!("达到最大扫描深度 {}, 停止扫描: {}", MAX_SCAN_DEPTH, dir.display());
+            return Ok(());
+        }
+
         let entries = fs::read_dir(dir).map_err(|e| format!("读取目录失败: {}", e))?;
-        
+
         for entry in entries {
             let entry = entry.map_err(|e| format!("读取条目失败: {}", e))?;
             let path = entry.path();
-            
+
             if path.is_dir() {
-                scan_directory(&path, files)?;
+                // 递归调用时深度+1
+                scan_directory(&path, files, current_depth + 1)?;
             } else if let Some(ext) = path.extension() {
                 if ext == "lua" {
                     files.push(path.to_string_lossy().to_string());
                 }
             }
         }
-        
+
         Ok(())
     }
-    
-    scan_directory(Path::new(&folder), &mut lua_files)?;
+
+    // 从深度0开始扫描
+    scan_directory(Path::new(&folder), &mut lua_files, 0)?;
     Ok(lua_files)
 }
 
@@ -124,30 +141,44 @@ fn generate_vdf(depots: &[(String, String)]) -> String {
 }
 
 /// 获取文件夹中的所有VDF文件
+/// 递归扫描，最大深度为 MAX_SCAN_DEPTH
 #[tauri::command]
 pub fn get_vdf_files_in_folder(folder: String) -> Result<Vec<String>, String> {
     let mut vdf_files = Vec::new();
-    
-    fn scan_directory(dir: &Path, files: &mut Vec<String>) -> Result<(), String> {
+
+    /// 内部递归扫描函数
+    /// # 参数
+    /// - `dir`: 当前扫描目录
+    /// - `files`: 文件列表
+    /// - `current_depth`: 当前递归深度
+    fn scan_directory(dir: &Path, files: &mut Vec<String>, current_depth: u32) -> Result<(), String> {
+        // 检查是否达到最大扫描深度
+        if current_depth >= MAX_SCAN_DEPTH {
+            log::warn!("达到最大扫描深度 {}, 停止扫描: {}", MAX_SCAN_DEPTH, dir.display());
+            return Ok(());
+        }
+
         let entries = fs::read_dir(dir).map_err(|e| format!("读取目录失败: {}", e))?;
-        
+
         for entry in entries {
             let entry = entry.map_err(|e| format!("读取条目失败: {}", e))?;
             let path = entry.path();
-            
+
             if path.is_dir() {
-                scan_directory(&path, files)?;
+                // 递归调用时深度+1
+                scan_directory(&path, files, current_depth + 1)?;
             } else if let Some(ext) = path.extension() {
                 if ext == "vdf" {
                     files.push(path.to_string_lossy().to_string());
                 }
             }
         }
-        
+
         Ok(())
     }
-    
-    scan_directory(Path::new(&folder), &mut vdf_files)?;
+
+    // 从深度0开始扫描
+    scan_directory(Path::new(&folder), &mut vdf_files, 0)?;
     Ok(vdf_files)
 }
 
@@ -171,16 +202,15 @@ pub fn convert_vdf_to_lua(file_path: String) -> Result<serde_json::Value, String
     // 获取第一个depot_id作为主App ID的基础
     let first_depot_id = depots[0].0.parse::<u64>().unwrap_or(0);
     let main_app_id = if first_depot_id > 0 { first_depot_id - 1 } else { 0 };
-    
-    // 从同目录的.manifest文件提取manifest ID
+
+    // 生成输出文件路径 - 固定保存为 {main_app_id}.lua
     let path = Path::new(&file_path);
     let parent = path.parent().unwrap_or(Path::new("."));
-    let manifest_map = extract_manifest_ids(parent, &depots);
-    
+
     // 生成Lua内容
-    let lua_content = generate_lua(main_app_id, &depots, &manifest_map);
-    
-    // 生成输出文件路径 - 固定保存为 {main_app_id}.lua
+    // 不生成 setManifestid，避免锁定 depot 版本，让游戏可以正常接收 Steam 自动更新
+    let lua_content = generate_lua(main_app_id, &depots);
+
     let output_path = parent.join(format!("{}.lua", main_app_id));
     
     // 写入Lua文件
@@ -232,38 +262,13 @@ fn parse_vdf_content(content: &str) -> Vec<(String, String)> {
     depots
 }
 
-/// 从目录中的.manifest文件提取manifest ID
-fn extract_manifest_ids(dir: &Path, _depots: &[(String, String)]) -> std::collections::HashMap<String, String> {
-    let mut manifest_map = std::collections::HashMap::new();
-    
-    // 读取目录中的所有文件
-    if let Ok(entries) = fs::read_dir(dir) {
-        for entry in entries.flatten() {
-            let path = entry.path();
-            if let Some(ext) = path.extension() {
-                if ext == "manifest" {
-                    // 解析文件名: {depot_id}_{manifest_id}.manifest
-                    if let Some(filename) = path.file_stem() {
-                        let name = filename.to_string_lossy().to_string();
-                        if let Some(underscore_pos) = name.find('_') {
-                            let depot_id = &name[..underscore_pos];
-                            let manifest_id = &name[underscore_pos + 1..];
-                            manifest_map.insert(depot_id.to_string(), manifest_id.to_string());
-                        }
-                    }
-                }
-            }
-        }
-    }
-    
-    manifest_map
-}
-
 /// 生成Lua格式内容
+///
+/// # 说明
+/// 不生成 `setManifestid`，避免锁定 depot 版本，让游戏可以正常接收 Steam 自动更新。
 fn generate_lua(
     main_app_id: u64,
     depots: &[(String, String)],
-    manifest_map: &std::collections::HashMap<String, String>
 ) -> String {
     let mut lines = Vec::new();
 
@@ -273,13 +278,6 @@ fn generate_lua(
     // 添加带密钥的depot
     for (depot_id, key) in depots {
         lines.push(format!("addappid({},0,\"{}\")", depot_id, key));
-    }
-
-    // 添加setManifestid
-    for (depot_id, _) in depots {
-        if let Some(manifest_id) = manifest_map.get(depot_id) {
-            lines.push(format!("setManifestid({},\"{}\")", depot_id, manifest_id));
-        }
     }
 
     lines.join("\n")
@@ -386,7 +384,7 @@ async fn download_image(url: &str, output_file: &str) -> Result<(), String> {
 
 /// 扫描清单文件夹并自动转换格式
 /// 用于游戏本体下载：确保有 VDF 文件（如果没有但有 Lua，则自动转换）
-/// 支持递归扫描子目录
+/// 支持递归扫描子目录，最大深度为 MAX_SCAN_DEPTH
 #[tauri::command]
 pub fn scan_and_convert_manifest_for_download(folder_path: String) -> Result<serde_json::Value, String> {
     let folder = Path::new(&folder_path);
@@ -396,19 +394,28 @@ pub fn scan_and_convert_manifest_for_download(folder_path: String) -> Result<ser
         fs::create_dir_all(folder).map_err(|e| format!("创建目录失败: {}", e))?;
     }
 
-    // 递归扫描文件，支持嵌套 1-2 层子目录
+    // 递归扫描文件
     let mut lua_files = Vec::new();
     let mut vdf_files = Vec::new();
     let mut manifest_files = Vec::new();
 
+    /// 内部递归扫描函数
+    /// # 参数
+    /// - `dir`: 当前扫描目录
+    /// - `lua`: lua文件列表
+    /// - `vdf`: vdf文件列表
+    /// - `manifest`: manifest文件列表
+    /// - `current_depth`: 当前递归深度
     fn scan_directory(
         dir: &Path,
         lua: &mut Vec<String>,
         vdf: &mut Vec<String>,
         manifest: &mut Vec<String>,
-        depth: usize,
+        current_depth: u32,
     ) -> Result<(), String> {
-        if depth > 2 {
+        // 检查是否达到最大扫描深度
+        if current_depth >= MAX_SCAN_DEPTH {
+            log::warn!("达到最大扫描深度 {}, 停止扫描: {}", MAX_SCAN_DEPTH, dir.display());
             return Ok(());
         }
 
@@ -419,7 +426,8 @@ pub fn scan_and_convert_manifest_for_download(folder_path: String) -> Result<ser
             let path = entry.path();
 
             if path.is_dir() {
-                scan_directory(&path, lua, vdf, manifest, depth + 1)?;
+                // 递归调用时深度+1
+                scan_directory(&path, lua, vdf, manifest, current_depth + 1)?;
             } else if let Some(ext) = path.extension() {
                 let ext = ext.to_string_lossy().to_lowercase();
                 let path_str = path.to_string_lossy().to_string();
@@ -435,6 +443,7 @@ pub fn scan_and_convert_manifest_for_download(folder_path: String) -> Result<ser
         Ok(())
     }
 
+    // 从深度0开始扫描
     scan_directory(folder, &mut lua_files, &mut vdf_files, &mut manifest_files, 0)?;
 
     // 检查是否有 VDF 文件

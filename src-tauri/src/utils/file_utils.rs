@@ -5,6 +5,19 @@ use serde::{de::DeserializeOwned, Serialize};
 use std::fs;
 use std::path::Path;
 
+// ============================================
+// 路径安全验证
+// ============================================
+
+/// 验证游戏ID是否安全（仅允许纯数字）
+pub fn is_game_id_safe(game_id: &str) -> bool {
+    !game_id.is_empty() && game_id.chars().all(|c| c.is_ascii_digit())
+}
+
+// ============================================
+// 文件操作函数
+// ============================================
+
 /// 读取JSON文件并反序列化
 pub fn read_json_file<T: DeserializeOwned>(path: &str) -> Result<T, String> {
     let content = fs::read_to_string(path).map_err(|e| format!("读取文件失败: {}", e))?;

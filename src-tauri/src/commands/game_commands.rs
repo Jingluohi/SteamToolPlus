@@ -96,7 +96,7 @@ pub async fn load_games_config_from_file(app: tauri::AppHandle) -> Result<Vec<Ga
 #[tauri::command]
 pub async fn get_game_cover_image(app: tauri::AppHandle, game_id: String) -> Result<String, String> {
     // 验证游戏ID，防止路径遍历攻击
-    if game_id.is_empty() || !game_id.chars().all(|c| c.is_ascii_digit()) {
+    if !crate::utils::file_utils::is_game_id_safe(&game_id) {
         return Err("无效的游戏ID".to_string());
     }
 

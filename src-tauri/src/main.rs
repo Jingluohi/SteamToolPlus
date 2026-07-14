@@ -9,7 +9,7 @@ mod models;
 mod services;
 mod utils;
 
-use commands::{background_commands, cache_commands, config_commands, denuvo_commands, download_commands, game_commands, game_data_commands, help_commands, log_commands, manifest_commands, opensteamtool_commands, patch_commands, window_commands};
+use commands::{background_commands, cache_commands, config_commands, denuvo_commands, download_commands, fake_imported_commands, game_commands, game_data_commands, help_commands, log_commands, manifest_commands, opensteamtool_commands, patch_commands, window_commands};
 use once_cell::sync::Lazy;
 use services::{CacheService, CacheServiceTrait, ConfigService, ConfigServiceTrait, GameService, GameServiceTrait, opensteamtool_service};
 use std::collections::HashSet;
@@ -659,6 +659,10 @@ fn main() {
             opensteamtool_commands::check_steam_running,
             opensteamtool_commands::generate_opensteamtool_config,
             opensteamtool_commands::clean_steamtools_residuals_command,
+            // 假入库游戏管理命令
+            fake_imported_commands::get_fake_imported_games_command,
+            fake_imported_commands::add_fake_imported_game_command,
+            fake_imported_commands::remove_fake_imported_game_command,
             // Denuvo 授权管理命令
             denuvo_commands::get_active_steam_user,
             denuvo_commands::read_denuvo_auth_from_registry,

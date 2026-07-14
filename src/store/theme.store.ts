@@ -39,6 +39,8 @@ export const useThemeStore = defineStore('theme', () => {
   const systemIsDark = ref(detectSystemTheme())
   /** 用户自定义主题 CSS 变量 */
   const customVars = ref<Record<string, string>>({})
+  /** 已经应用到 DOM 的自定义变量 key，用于清理已被移除的变量 */
+  const appliedCustomKeys = new Set<string>()
 
   // ==================== Getters ====================
   /** 当前是否为深色主题（dark / black / auto / auto-solid 在系统深色时） */
@@ -120,9 +122,18 @@ export const useThemeStore = defineStore('theme', () => {
       html.style.setProperty('--app-bg-color', isDark.value ? '#363636' : '#f8f9fa')
     }
 
+    // 清理已应用但已被移除的自定义变量，避免重置后旧颜色残留
+    appliedCustomKeys.forEach((key) => {
+      if (!(key in customVars.value)) {
+        html.style.removeProperty(key)
+      }
+    })
+    appliedCustomKeys.clear()
+
     // 应用用户自定义主题变量
     Object.entries(customVars.value).forEach(([key, value]) => {
       html.style.setProperty(key, value)
+      appliedCustomKeys.add(key)
     })
   }
 
@@ -175,6 +186,42 @@ export const useThemeStore = defineStore('theme', () => {
   }
 
   /**
+   * 设置单个自定义主题变量
+   * @param key CSS 变量名
+   * @param value CSS 变量值
+   */
+  function setCustomVar(key: string, value: string) {
+    customVars.value[key] = value
+    applyTheme()
+  }
+
+  /**
+   * 批量设置自定义主题变量
+   * @param vars 自定义变量键值对
+   */
+  function setCustomVars(vars: Record<string, string>) {
+    customVars.value = { ...vars }
+    applyTheme()
+  }
+
+  /**
+   * 移除单个自定义主题变量
+   * @param key CSS 变量名
+   */
+  function removeCustomVar(key: string) {
+    delete customVars.value[key]
+    applyTheme()
+  }
+
+  /**
+   * 重置所有自定义主题变量
+   */
+  function resetCustomVars() {
+    customVars.value = {}
+    applyTheme()
+  }
+
+  /**
    * 导出主题配置
    */
   function exportConfig(): ThemeConfig {
@@ -210,6 +257,10 @@ export const useThemeStore = defineStore('theme', () => {
     toggleTheme,
     setFollowSystem,
     loadFromConfig,
-    exportConfig
+    exportConfig,
+    setCustomVar,
+    setCustomVars,
+    removeCustomVar,
+    resetCustomVars
   }
 })

@@ -23,6 +23,12 @@ const routes: RouteRecordRaw[] = [
     meta: { title: '库' }
   },
   {
+    path: '/fake-imported',
+    name: 'FakeImported',
+    component: () => import('./views/FakeImported/FakeImported.vue'),
+    meta: { title: '假入库游戏' }
+  },
+  {
     path: '/game/:id',
     name: 'GameDetail',
     component: () => import('./views/GameDetail/GameDetail.vue'),

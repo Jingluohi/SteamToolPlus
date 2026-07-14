@@ -113,7 +113,8 @@ const navMenus: { title: string; items: NavMenuItem[] }[] = [
     title: '游戏',
     items: [
       { name: '浏览', path: '/' },
-      { name: '库', path: '/library' }
+      { name: '库', path: '/library' },
+      { name: '假入库游戏', path: '/fake-imported' }
     ]
   },
   {

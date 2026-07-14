@@ -10,16 +10,34 @@ use crate::services::config_service::ConfigServiceTrait;
 use crate::utils::resource_utils::get_resource_dir;
 use tauri::AppHandle;
 
+/// 最大递归扫描深度限制，防止无限递归或目录层级过深
+const MAX_SCAN_DEPTH: u32 = 10;
+
 /// 扫描文件夹中的清单文件
-/// 递归查找.lua、.manifest、.vdf文件，支持嵌套1-2层目录
+/// 递归查找.lua、.manifest、.vdf文件，最大扫描深度为 MAX_SCAN_DEPTH
 #[tauri::command]
 pub fn scan_manifest_folder(folder_path: String) -> Result<serde_json::Value, String> {
     let mut lua_files = Vec::new();
     let mut manifest_files = Vec::new();
     let mut vdf_files = Vec::new();
 
-    fn scan_directory(dir: &Path, lua: &mut Vec<String>, manifest: &mut Vec<String>, vdf: &mut Vec<String>, depth: usize) -> Result<(), String> {
-        if depth > 2 {
+    /// 内部递归扫描函数
+    /// # 参数
+    /// - `dir`: 当前扫描目录
+    /// - `lua`: lua文件列表
+    /// - `manifest`: manifest文件列表
+    /// - `vdf`: vdf文件列表
+    /// - `current_depth`: 当前递归深度
+    fn scan_directory(
+        dir: &Path,
+        lua: &mut Vec<String>,
+        manifest: &mut Vec<String>,
+        vdf: &mut Vec<String>,
+        current_depth: u32,
+    ) -> Result<(), String> {
+        // 检查是否达到最大扫描深度
+        if current_depth >= MAX_SCAN_DEPTH {
+            log::warn!("达到最大扫描深度 {}, 停止扫描: {}", MAX_SCAN_DEPTH, dir.display());
             return Ok(());
         }
 
@@ -30,7 +48,8 @@ pub fn scan_manifest_folder(folder_path: String) -> Result<serde_json::Value, St
             let path = entry.path();
 
             if path.is_dir() {
-                scan_directory(&path, lua, manifest, vdf, depth + 1)?;
+                // 递归调用时深度+1
+                scan_directory(&path, lua, manifest, vdf, current_depth + 1)?;
             } else if let Some(ext) = path.extension() {
                 let ext = ext.to_string_lossy().to_lowercase();
                 let path_str = path.to_string_lossy().to_string();
@@ -47,6 +66,7 @@ pub fn scan_manifest_folder(folder_path: String) -> Result<serde_json::Value, St
         Ok(())
     }
 
+    // 从深度0开始扫描
     scan_directory(Path::new(&folder_path), &mut lua_files, &mut manifest_files, &mut vdf_files, 0)?;
 
     Ok(json!({
@@ -151,45 +171,26 @@ fn parse_vdf_content(content: &str) -> Vec<(String, String)> {
     depots
 }
 
-/// 从目录中的.manifest文件提取manifest ID
-fn extract_manifest_ids(dir: &Path, _depots: &[(String, String)]) -> std::collections::HashMap<String, String> {
-    let mut manifest_map = std::collections::HashMap::new();
-
-    if let Ok(entries) = fs::read_dir(dir) {
-        for entry in entries.flatten() {
-            let path = entry.path();
-            if let Some(ext) = path.extension() {
-                if ext == "manifest" {
-                    if let Some(filename) = path.file_stem() {
-                        let name = filename.to_string_lossy().to_string();
-                        if let Some(underscore_pos) = name.find('_') {
-                            let depot_id = &name[..underscore_pos];
-                            let manifest_id = &name[underscore_pos + 1..];
-                            manifest_map.insert(depot_id.to_string(), manifest_id.to_string());
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    manifest_map
-}
-
 /// 生成Lua格式内容
-/// 
+///
 /// # 参数
 /// - `main_app_id`: 主游戏AppID
 /// - `depots`: depot列表，每项为(depot_id, decryption_key)
-/// - `manifest_map`: depot_id到manifest_id的映射
+/// - `manifest_map`: depot_id到manifest_id的映射（仅在lock_version=true时使用）
 /// - `access_token`: 可选的访问令牌，用于下载受保护的游戏/DLC
 /// - `stats_steam_id`: 可选的SteamID，用于拉取该账号的成就数据
+/// - `lock_version`: 是否锁定版本（生成 setManifestid）
+///
+/// # 说明
+/// 当 `lock_version=true` 时生成 `setManifestid`，强制锁定 depot 到特定 manifest，
+/// 适用于限定版本补丁。否则允许 Steam 自动更新。
 fn generate_lua(
     main_app_id: u64,
     depots: &[(String, String)],
     manifest_map: &std::collections::HashMap<String, String>,
     access_token: Option<&str>,
     stats_steam_id: Option<&str>,
+    lock_version: bool,
 ) -> String {
     let mut lines = Vec::new();
 
@@ -209,10 +210,13 @@ fn generate_lua(
         }
     }
 
-    // 添加setManifestid
-    for (depot_id, _) in depots {
-        if let Some(manifest_id) = manifest_map.get(depot_id) {
-            lines.push(format!("setManifestid({},\"{}\")", depot_id, manifest_id));
+    // 锁定版本：生成 setManifestid 强制锁定 depot 到特定 manifest
+    // 仅在 lock_version=true 且存在 manifest_map 时生效
+    if lock_version {
+        for (depot_id, _) in depots {
+            if let Some(manifest_id) = manifest_map.get(depot_id) {
+                lines.push(format!("setManifestid({},\"{}\")", depot_id, manifest_id));
+            }
         }
     }
 
@@ -227,16 +231,51 @@ fn generate_lua(
     lines.join("\n")
 }
 
+/// 从目录中的 .manifest 文件提取 manifest ID
+///
+/// # 参数
+/// - `dir`: 包含 manifest 文件的目录
+/// - `depots`: depot列表，用于筛选相关depot的manifest
+///
+/// # 返回
+/// depot_id 到 manifest_id 的映射
+fn extract_manifest_ids(dir: &Path, _depots: &[(String, String)]) -> std::collections::HashMap<String, String> {
+    let mut manifest_map = std::collections::HashMap::new();
+
+    if let Ok(entries) = fs::read_dir(dir) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if let Some(ext) = path.extension() {
+                if ext == "manifest" {
+                    // 解析文件名: {depot_id}_{manifest_id}.manifest
+                    if let Some(filename) = path.file_stem() {
+                        let name = filename.to_string_lossy().to_string();
+                        if let Some(underscore_pos) = name.find('_') {
+                            let depot_id = &name[..underscore_pos];
+                            let manifest_id = &name[underscore_pos + 1..];
+                            manifest_map.insert(depot_id.to_string(), manifest_id.to_string());
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    manifest_map
+}
+
 /// 将VDF文件转换为Lua文件
-/// 
+///
 /// # 参数
 /// - `vdf_path`: VDF文件路径
 /// - `access_token`: 可选的访问令牌
 /// - `stats_steam_id`: 可选的成就数据SteamID
+/// - `lock_version`: 是否锁定版本（生成 setManifestid）
 pub fn convert_vdf_to_lua_internal(
     vdf_path: &Path,
     access_token: Option<&str>,
     stats_steam_id: Option<&str>,
+    lock_version: bool,
 ) -> Result<PathBuf, String> {
     // 读取VDF文件内容
     let content = fs::read_to_string(vdf_path).map_err(|e| format!("读取VDF文件失败: {}", e))?;
@@ -252,12 +291,16 @@ pub fn convert_vdf_to_lua_internal(
     let first_depot_id = depots[0].0.parse::<u64>().unwrap_or(0);
     let main_app_id = if first_depot_id > 0 { first_depot_id - 1 } else { 0 };
 
-    // 从同目录提取manifest ID
+    // 从同目录提取 manifest ID（仅当需要锁定版本时才使用）
     let parent = vdf_path.parent().unwrap_or(Path::new("."));
-    let manifest_map = extract_manifest_ids(parent, &depots);
+    let manifest_map = if lock_version {
+        extract_manifest_ids(parent, &depots)
+    } else {
+        std::collections::HashMap::new()
+    };
 
     // 生成Lua内容
-    let lua_content = generate_lua(main_app_id, &depots, &manifest_map, access_token, stats_steam_id);
+    let lua_content = generate_lua(main_app_id, &depots, &manifest_map, access_token, stats_steam_id, lock_version);
 
     // 生成输出文件路径
     let output_path = parent.join(format!("{}.lua", main_app_id));
@@ -410,9 +453,18 @@ pub fn check_game_manifest_exists(app: AppHandle, game_id: String) -> Result<ser
 
 /// 在指定深度内查找包含 .lua 或 .vdf 文件的文件夹
 /// 返回最浅层的匹配文件夹路径，优先返回同一层的结果
+/// # 参数
+/// - `dir`: 起始扫描目录
+/// - `max_depth`: 最大扫描深度（将被限制为不超过 MAX_SCAN_DEPTH）
 fn find_manifest_folder(dir: &Path, max_depth: usize) -> Option<PathBuf> {
-    fn search(current: &Path, depth: usize, max_depth: usize) -> Option<PathBuf> {
-        if depth > max_depth {
+    /// 内部递归搜索函数
+    /// # 参数
+    /// - `current`: 当前扫描目录
+    /// - `current_depth`: 当前递归深度
+    /// - `limit_depth`: 最大扫描深度限制
+    fn search(current: &Path, current_depth: u32, limit_depth: u32) -> Option<PathBuf> {
+        // 检查是否达到最大扫描深度
+        if current_depth >= limit_depth {
             return None;
         }
 
@@ -441,7 +493,8 @@ fn find_manifest_folder(dir: &Path, max_depth: usize) -> Option<PathBuf> {
             for entry in entries.flatten() {
                 let path = entry.path();
                 if path.is_dir() {
-                    if let Some(found) = search(&path, depth + 1, max_depth) {
+                    // 递归调用时深度+1
+                    if let Some(found) = search(&path, current_depth + 1, limit_depth) {
                         return Some(found);
                     }
                 }
@@ -451,7 +504,9 @@ fn find_manifest_folder(dir: &Path, max_depth: usize) -> Option<PathBuf> {
         None
     }
 
-    search(dir, 0, max_depth)
+    // 将传入的 max_depth 限制为不超过 MAX_SCAN_DEPTH
+    let limit_depth = std::cmp::min(max_depth as u32, MAX_SCAN_DEPTH);
+    search(dir, 0, limit_depth)
 }
 
 /// 将清单 7z 压缩包解压到 resources/manifest/{game_id}/ 目录
@@ -516,8 +571,8 @@ pub fn extract_manifest_archive(
         }
     };
 
-    // 将定位到的文件夹内容复制到目标目录
-    copy_dir_all(&source_dir, &target_dir)
+    // 将定位到的文件夹内容复制到目标目录（从深度0开始）
+    copy_dir_all(&source_dir, &target_dir, 0)
         .map_err(|e| format!("复制清单文件到目标目录失败: {}", e))?;
 
     // 清理临时解压目录
@@ -535,7 +590,17 @@ pub fn extract_manifest_archive(
 }
 
 /// 递归复制源目录到目标目录
-fn copy_dir_all(src: &Path, dst: &Path) -> std::io::Result<()> {
+/// # 参数
+/// - `src`: 源目录路径
+/// - `dst`: 目标目录路径
+/// - `current_depth`: 当前递归深度（内部使用）
+fn copy_dir_all(src: &Path, dst: &Path, current_depth: u32) -> std::io::Result<()> {
+    // 检查是否达到最大扫描深度
+    if current_depth >= MAX_SCAN_DEPTH {
+        log::warn!("达到最大复制深度 {}, 停止复制: {}", MAX_SCAN_DEPTH, src.display());
+        return Ok(());
+    }
+
     fs::create_dir_all(dst)?;
 
     for entry in fs::read_dir(src)? {
@@ -545,7 +610,8 @@ fn copy_dir_all(src: &Path, dst: &Path) -> std::io::Result<()> {
         let file_type = entry.file_type()?;
 
         if file_type.is_dir() {
-            copy_dir_all(&src_path, &dst_path)?;
+            // 递归调用时深度+1
+            copy_dir_all(&src_path, &dst_path, current_depth + 1)?;
         } else {
             fs::copy(&src_path, &dst_path)?;
         }
@@ -571,11 +637,11 @@ pub fn copy_folder_to_manifest(
             .map_err(|e| format!("清理旧清单目录失败: {}", e))?;
     }
 
-    // 创建目标目录并复制内容
+    // 创建目标目录并复制内容（从深度0开始）
     fs::create_dir_all(&target_dir)
         .map_err(|e| format!("创建清单目录失败: {}", e))?;
 
-    copy_dir_all(Path::new(&source_path), &target_dir)
+    copy_dir_all(Path::new(&source_path), &target_dir, 0)
         .map_err(|e| format!("复制清单文件夹失败: {}", e))?;
 
     log::info!(

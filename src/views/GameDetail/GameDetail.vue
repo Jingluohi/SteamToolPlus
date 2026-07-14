@@ -97,585 +97,69 @@
 
       <div class="tabs-content">
         <!-- 游戏下载标签页 -->
-        <div v-if="currentTab === 'download'" class="tab-panel">
-          <!-- 下载状态显示 -->
-          <div v-if="existingGameData?.download_status === 'completed'" class="download-completed-notice">
-            <div class="success-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-                <polyline points="22 4 12 14.01 9 11.01"/>
-              </svg>
-            </div>
-            <div class="success-text">
-              <h4>游戏已下载</h4>
-              <p>下载路径: {{ existingGameData.download_path }}</p>
-              <p>安装路径: {{ existingGameData.install_path }}</p>
-              <p class="patch-hint">请安装对应补丁（免steam、steam联机、局域网联机等）</p>
-            </div>
-            <!-- 验证完整性按钮 -->
-            <button
-              class="verify-integrity-btn"
-              :class="{ loading: isVerifying }"
-              :disabled="isVerifying"
-              @click="verifyIntegrity"
-            >
-              <svg v-if="isVerifying" class="loading-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/>
-              </svg>
-              <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-                <polyline points="22 4 12 14.01 9 11.01"/>
-              </svg>
-              {{ isVerifying ? '验证中...' : '验证游戏完整性' }}
-            </button>
-          </div>
+        <GameDownloadTab
+          v-if="currentTab === 'download'"
+          :game-id="gameId"
+          :game="game"
+          :existing-game-data="existingGameData"
+          :manifest-check-status="manifestCheckStatus"
+          :download-path="downloadPath"
+          :manifest-folder-path="manifestFolderPath"
+          :is-downloading="isDownloading"
+          :is-verifying="isVerifying"
+          :is-monitoring="isMonitoring"
+          :download-progress="downloadProgress"
+          :download-logs="downloadLogs"
+          :download-manifest-source-mode="downloadManifestSourceMode"
+          :selected-download-manifest-path="selectedDownloadManifestPath"
+          :is-preparing-download-manifest="isPreparingDownloadManifest"
+          @select-manifest-archive="selectDownloadManifestArchive"
+          @select-manifest-folder="selectDownloadManifestFolder"
+          @start-download="startDownload"
+          @stop-download="stopDownload"
+          @open-qingdan-qr-code="openQingdanQRCode"
+          @open-download-url="openDownloadUrl"
+          @verify-integrity="verifyIntegrity"
+        />
 
-          <div v-else class="download-info">
-            <!-- 清单文件夹检测状态，未找到时显示下载引导和文件选择 -->
-            <div
-              v-if="manifestCheckStatus === 'not_found'"
-              class="import-no-files"
-            >
-              <!-- 清单下载详细说明 -->
-              <div class="manifest-guide-box">
-                       <h4 class="guide-title">操作步骤：</h4>
-                <ol class="guide-steps">
-                  <li><strong>第一步：</strong>点击下方网盘按钮下载该游戏的清单7z压缩包（每个游戏对应一个清单7z文件，游戏ID就是7z文件名）</li>
-                  <li><strong>第二步：</strong>在下方选择"7z文件"选择7z文件，或者，在".vdf / .lua 和 .manifest所在文件夹"点击"选择"后选择7z解压后的文件夹</li>
-                  <li><strong>第三步：</strong>选择完成后点击"开始下载"按钮，程序会从Steam服务器下载游戏文件到您指定的路径</li>
-                </ol>
-              </div>
-
-              <!-- 下载引导 -->
-              <div class="download-guide">
-                <p class="download-guide-title">点击下载对应清单文件7z，id：{{ gameId }}</p>
-                <div class="download-buttons">
-                  <div class="download-btn-wrapper">
-                    <button
-                      class="download-patch-btn"
-                      @click="openQingdanQRCode"
-                    >
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                        <polyline points="7 10 12 15 17 10"/>
-                        <line x1="12" y1="15" x2="12" y2="3"/>
-                      </svg>
-                      <span>夸克网盘</span>
-                    </button>
-                  </div>
-                  <div class="backup-label">备用（容易和谐）：</div>
-                  <div class="download-btn-wrapper">
-                    <button
-                      class="download-patch-btn"
-                      @click="openDownloadUrl('https://pan.xunlei.com/s/VOw3jTAGHqYFsm49n2t_AeVGA1?pwd=3r6n')"
-                    >
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                        <polyline points="7 10 12 15 17 10"/>
-                        <line x1="12" y1="15" x2="12" y2="3"/>
-                      </svg>
-                      <span>迅雷网盘</span>
-                    </button>
-                    <p class="pwd-hint">提取码: 3r6n</p>
-                  </div>
-                  <div class="download-btn-wrapper">
-                    <button
-                      class="download-patch-btn"
-                      @click="openDownloadUrl('https://pan.baidu.com/s/1FTZyknIObyzMuLAJC-Uj9g?pwd=8uwx')"
-                    >
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                        <polyline points="7 10 12 15 17 10"/>
-                        <line x1="12" y1="15" x2="12" y2="3"/>
-                      </svg>
-                      <span>百度网盘</span>
-                    </button>
-                    <p class="pwd-hint">提取码: 8uwx</p>
-                  </div>
-                </div>
-              </div>
-
-              <!-- 清单文件选择 -->
-              <div class="import-source-select">
-                <h4 class="source-select-title">清单文件选择</h4>
-
-                <div class="radio-group">
-                  <label class="radio-label">
-                    <input
-                      type="radio"
-                      v-model="downloadManifestSourceMode"
-                      value="7z"
-                      name="download-manifest-source-mode"
-                    />
-                    <span>7z文件</span>
-                  </label>
-                  <label class="radio-label">
-                    <input
-                      type="radio"
-                      v-model="downloadManifestSourceMode"
-                      value="folder"
-                      name="download-manifest-source-mode"
-                    />
-                    <span>.vdf / .lua 和 .manifest所在文件夹</span>
-                  </label>
-                </div>
-
-                <div class="source-select-actions">
-                  <button
-                    v-if="downloadManifestSourceMode === '7z'"
-                    class="select-source-btn"
-                    :disabled="isPreparingDownloadManifest"
-                    @click="selectDownloadManifestArchive"
-                  >
-                    <svg v-if="isPreparingDownloadManifest" class="loading-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/>
-                    </svg>
-                    {{ isPreparingDownloadManifest ? '处理中...' : '选择7z文件' }}
-                  </button>
-                  <button
-                    v-else
-                    class="select-source-btn"
-                    :disabled="isPreparingDownloadManifest"
-                    @click="selectDownloadManifestFolder"
-                  >
-                    <svg v-if="isPreparingDownloadManifest" class="loading-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/>
-                    </svg>
-                    {{ isPreparingDownloadManifest ? '处理中...' : '选择文件夹' }}
-                  </button>
-                </div>
-
-                <p v-if="selectedDownloadManifestPath" class="source-select-info">
-                  已选择: {{ selectedDownloadManifestPath }}
-                </p>
-              </div>
-            </div>
-
-            <!-- 下载路径显示 -->
-            <div class="download-path-section">
-              <label class="path-label">下载路径</label>
-              <div class="path-display">{{ downloadPath || '未选择' }}</div>
-              <p v-if="downloadPath" class="path-hint">自动设置为: {{ downloadPath }}</p>
-            </div>
-          </div>
-
-          <!-- 下载说明 -->
-          <div class="download-description">
-            <div class="download-option">
-              <h4>方法一【开始下载】</h4>
-              <p>通过清单文件直连Steam官方服务器下载正版分流文件，下载完成后需要 <span class="highlight-red-bold">注入补丁</span> 才能游玩</p>
-            </div>
-          </div>
-
-          <!-- 下载按钮组 -->
-          <div v-if="existingGameData?.download_status !== 'completed'" class="download-btn-group">
-            <!-- 圆形下载进度条，仅下载中显示 -->
-            <div
-              v-if="isDownloading || existingGameData?.download_status === 'downloading'"
-              class="circular-progress"
-              :title="`总进度 ${downloadProgress.overallPercentage}%`"
-            >
-              <svg viewBox="0 0 36 36">
-                <path
-                  class="circle-bg"
-                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                />
-                <path
-                  class="circle-progress"
-                  :stroke-dasharray="`${downloadProgress.overallPercentage}, 100`"
-                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                />
-              </svg>
-              <span class="progress-text">{{ downloadProgress.overallPercentage }}%</span>
-            </div>
-
-            <!-- 开始下载按钮 -->
-            <button
-              class="start-download-btn"
-              :class="{ disabled: !canDownload, loading: isDownloading || existingGameData?.download_status === 'downloading' }"
-              :disabled="!canDownload || isDownloading || existingGameData?.download_status === 'downloading'"
-              @click="startDownload"
-              :title="!canDownload ? '未找到清单文件，无法下载' : ''"
-            >
-              <svg v-if="isDownloading || existingGameData?.download_status === 'downloading'" class="loading-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/>
-              </svg>
-              <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                <polyline points="7 10 12 15 17 10"/>
-                <line x1="12" y1="15" x2="12" y2="3"/>
-              </svg>
-              {{ getDownloadButtonText() }}
-            </button>
-
-            <!-- 暂停/停止下载按钮 -->
-            <button
-              v-if="isDownloading || existingGameData?.download_status === 'downloading'"
-              class="stop-download-btn"
-              @click="stopDownload"
-              title="停止下载"
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <rect x="6" y="4" width="4" height="16"/>
-                <rect x="14" y="4" width="4" height="16"/>
-              </svg>
-              暂停
-            </button>
-          </div>
-
-          <!-- 下载日志区域 -->
-          <div v-if="downloadLogs.length > 0" class="download-logs">
-            <h4 class="logs-title">下载日志</h4>
-            <div class="logs-content">
-              <div
-                v-for="(log, index) in downloadLogs"
-                :key="index"
-                class="log-line"
-                :class="log.type"
-              >
-                <span class="log-time">{{ log.time }}</span>
-                <span class="log-message">{{ log.message }}</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- 下载进度组件 -->
-          <DownloadProgress
-            v-if="isMonitoring || downloadProgress.depots.length > 0 || existingGameData?.download_status === 'downloading'"
-            :progress="downloadProgress"
-            :is-monitoring="isMonitoring || existingGameData?.download_status === 'downloading'"
-            class="download-progress-section"
-          />
-        </div>
-
-        <!-- 其他分类标签页 -->
-        <div
-          v-for="tab in patchTabs"
-          :key="tab.id"
-          v-show="currentTab === tab.id"
-          class="tab-panel"
-        >
-          <h3 class="panel-title">{{ tab.name }}</h3>
-
-          <!-- 补丁操作详细说明（仅当存在下载链接时显示） -->
-          <div v-if="tab.downloadUrls && tab.downloadUrls.length > 0" class="patch-guide-box">
-            <h4 class="guide-title">操作步骤：</h4>
-            <ol class="guide-steps">
-              <li><strong>第一步：</strong>先在页面顶部选择"游戏路径"，定位到游戏主程序（exe文件）所在的文件夹</li>
-              <li><strong>第二步：</strong>查看下方"本地补丁状态"，如果显示"本地补丁未下载"，请点击网盘按钮下载该补丁的7z压缩包</li>
-              <li><strong>第三步：</strong>下载完成后有两种方式应用补丁：
-                <ul class="sub-steps">
-                  <li>方式一：点击"选择补丁文件（7z）并应用"按钮，直接选择刚下载的7z文件，程序会自动解压并应用到游戏目录</li>
-                  <li>方式二：手动解压7z文件到下方显示的"补丁路径"目录，然后点击"应用补丁"按钮</li>
-                </ul>
-              </li>
-              <li><strong>第四步：</strong>等待应用完成，成功后即可运行游戏</li>
-            </ol>
-          </div>
-
-          <div class="patch-info">
-            <!-- 本地补丁状态 -->
-            <div class="patch-status" :class="{ 'local-exists': isPatchLocalExists(tab.patchType) }">
-              <span class="status-icon">
-                <svg v-if="isPatchLocalExists(tab.patchType)" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-                  <polyline points="22 4 12 14.01 9 11.01"/>
-                </svg>
-                <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <circle cx="12" cy="12" r="10"/>
-                  <line x1="12" y1="8" x2="12" y2="16"/>
-                  <line x1="8" y1="12" x2="16" y2="12"/>
-                </svg>
-              </span>
-              <span class="status-text">
-                {{ isPatchLocalExists(tab.patchType) ? '本地补丁已存在' : '本地补丁未下载' }}
-              </span>
-            </div>
-
-            <!-- 下载补丁区域（当本地不存在且有下载链接时显示） -->
-            <div v-if="!isPatchLocalExists(tab.patchType) && tab.downloadUrls && tab.downloadUrls.length > 0" class="download-section">
-              <p class="download-section-title">下载补丁：</p>
-              <div class="download-buttons">
-                <div
-                  v-for="(item, index) in tab.downloadUrls"
-                  :key="index"
-                  class="download-btn-wrapper"
-                >
-                  <button
-                    class="download-patch-btn"
-                    @click="openDownloadUrl(item.url)"
-                  >
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                      <polyline points="7 10 12 15 17 10"/>
-                      <line x1="12" y1="15" x2="12" y2="3"/>
-                    </svg>
-                    <span>{{ getDownloadSourceName(item.source) }}</span>
-                  </button>
-                  <p v-if="item.pwd || item.source === 'lanzou'" class="pwd-hint">
-                    提取码: {{ item.pwd || '1234' }}
-                  </p>
-                </div>
-              </div>
-              <p class="download-hint">
-                （请先转存至您的网盘，避免和谐，也将给作者带来无限的更新动力）
-              </p>
-            </div>
-
-            <!-- 未选择游戏路径时的提示 -->
-            <p class="game-path-display warning" v-if="!gamePath">
-              请先选择游戏路径
-            </p>
-
-            <!-- 选择补丁文件并应用按钮（当本地不存在时显示） -->
-            <button
-              v-if="!isPatchLocalExists(tab.patchType)"
-              class="select-and-apply-btn"
-              @click="selectAndApplyPatch(tab)"
-              :disabled="!gamePath || applyingPatch"
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                <polyline points="14 2 14 8 20 8"/>
-                <line x1="12" y1="18" x2="12" y2="12"/>
-                <line x1="9" y1="15" x2="15" y2="15"/>
-              </svg>
-              <span>{{ applyingPatch ? '应用中...' : '选择补丁文件（7z）并应用' }}</span>
-            </button>
-
-            <p class="patch-path">补丁路径: {{ tab.patchPath }}</p>
-            <p class="game-path-display" v-if="gamePath">
-              游戏路径: {{ gamePath }}
-            </p>
-            <p class="game-path-display warning" v-else>
-              请先选择游戏路径
-            </p>
-
-            <!-- 应用补丁按钮 -->
-            <button
-              class="apply-patch-btn"
-              @click="applyPatch(tab)"
-              :disabled="!gamePath || applyingPatch || !isPatchLocalExists(tab.patchType)"
-            >
-              <span v-if="applyingPatch">应用中...</span>
-              <span v-else>应用补丁</span>
-            </button>
-
-            <!-- D加密虚拟机类型显示虚拟化环境配置教程按钮 -->
-            <button
-              v-if="tab.patchType === 3"
-              class="tutorial-btn"
-              @click="openVirtualizationTutorial"
-            >
-              虚拟化环境配置教程
-            </button>
-
-            <!-- 补丁说明（显示在应用补丁按钮下方） -->
-            <div v-if="getPatchReadme(tab.patchType)" class="patch-readme">
-              <h4 class="readme-title">补丁说明</h4>
-              <pre class="readme-content">{{ getPatchReadme(tab.patchType) }}</pre>
-            </div>
-
-            <!-- 应用结果提示 -->
-            <div v-if="patchResult" class="patch-result" :class="{ success: patchResult.success, error: !patchResult.success }">
-              <p v-if="patchResult.success" class="result-title">补丁应用成功！</p>
-              <p v-else class="result-title">补丁应用完成，但有一些错误</p>
-
-              <div v-if="patchResult.backed_up_files.length > 0" class="result-section">
-                <p class="section-title">已备份文件 ({{ patchResult.backed_up_files.length }}个):</p>
-                <ul class="file-list">
-                  <li v-for="(file, index) in patchResult.backed_up_files.slice(0, 5)" :key="index">
-                    {{ getFileName(file) }}
-                  </li>
-                  <li v-if="patchResult.backed_up_files.length > 5">
-                    ...还有 {{ patchResult.backed_up_files.length - 5 }} 个文件
-                  </li>
-                </ul>
-              </div>
-
-              <div v-if="patchResult.copied_files.length > 0" class="result-section">
-                <p class="section-title">已复制文件 ({{ patchResult.copied_files.length }}个):</p>
-                <ul class="file-list">
-                  <li v-for="(file, index) in patchResult.copied_files.slice(0, 5)" :key="index">
-                    {{ getFileName(file) }}
-                  </li>
-                  <li v-if="patchResult.copied_files.length > 5">
-                    ...还有 {{ patchResult.copied_files.length - 5 }} 个文件
-                  </li>
-                </ul>
-              </div>
-
-              <div v-if="patchResult.errors.length > 0" class="result-section error-section">
-                <p class="section-title">错误 ({{ patchResult.errors.length }}个):</p>
-                <ul class="file-list error-list">
-                  <li v-for="(error, index) in patchResult.errors.slice(0, 3)" :key="index">
-                    {{ error }}
-                  </li>
-                  <li v-if="patchResult.errors.length > 3">
-                    ...还有 {{ patchResult.errors.length - 3 }} 个错误
-                  </li>
-                </ul>
-              </div>
-            </div>
-          </div>
-        </div>
+        <!-- 补丁配置标签页 -->
+        <PatchConfigTab
+          :currentTab="currentTab"
+          :patchTabs="patchTabs"
+          :gamePath="gamePath"
+          :applyingPatch="applyingPatch"
+          :patchResult="patchResult"
+          :patchLocalStatus="patchLocalStatus"
+          :patchReadmes="patchReadmes"
+          @openDownloadUrl="openDownloadUrl"
+          @selectAndApplyPatch="selectAndApplyPatch"
+          @applyPatch="applyPatch"
+          @openVirtualizationTutorial="openVirtualizationTutorial"
+        />
 
         <!-- 入库Steam标签页 -->
-        <div v-if="currentTab === 'import'" class="tab-panel">
-          <h3 class="panel-title">入库Steam</h3>
-          <div class="import-steam-content">
-            <div class="import-description">
-              <p>将游戏清单导入Steam客户端，导入后可在Steam库中下载和启动游戏，如果库不显示游戏，请重启steam。</p>
-              <p class="import-note">注意：部分游戏入库下载后需要配合补丁才能正常游玩。</p>
-            </div>
-
-            <!-- 入库按钮组 -->
-            <div class="import-btn-group">
-              <!-- OpenSteamTool内核入库按钮（推荐） -->
-              <button
-                class="import-opensteamtool-btn-large"
-                :class="{ disabled: !canImportToSteam, loading: isImportingWithOpenSteamTool }"
-                :disabled="!canImportToSteam || isImportingWithOpenSteamTool"
-                @click="importWithOpenSteamTool"
-              >
-                <svg v-if="isImportingWithOpenSteamTool" class="loading-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/>
-                </svg>
-                <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
-                </svg>
-                {{ isImportingWithOpenSteamTool ? '入库中...' : 'opensteamtool入库（推荐）' }}
-              </button>
-
-              <!-- 重启Steam按钮 -->
-              <button
-                class="restart-steam-btn"
-                @click="restartSteam"
-              >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M23 4v6h-6"/>
-                  <path d="M1 20v-6h6"/>
-                  <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
-                </svg>
-                重启steam
-              </button>
-            </div>
-
-            <!-- 自定义源已选择提示 -->
-            <div v-if="importSourceReady" class="import-source-info">
-              <span class="source-label">当前使用自定义清单源:</span>
-              <span class="source-path" :title="selectedImportPath">{{ selectedImportPath }}</span>
-              <button class="clear-source-btn" @click="clearImportSource">清除</button>
-            </div>
-
-            <!-- 没有vdf/lua时显示下载引导和文件选择 -->
-            <div v-if="!hasLua && !importSourceReady" class="import-no-files">
-              <!-- 下载引导 -->
-              <div class="download-guide">
-                <p class="download-guide-title">点击下载对应清单文件7z，id：{{ gameId }}</p>
-                <div class="download-buttons">
-                  <div class="download-btn-wrapper">
-                    <button
-                      class="download-patch-btn"
-                      @click="openQingdanQRCode"
-                    >
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                        <polyline points="7 10 12 15 17 10"/>
-                        <line x1="12" y1="15" x2="12" y2="3"/>
-                      </svg>
-                      <span>夸克网盘</span>
-                    </button>
-                  </div>
-                  <div class="backup-label">备用（容易和谐）：</div>
-                  <div class="download-btn-wrapper">
-                    <button
-                      class="download-patch-btn"
-                      @click="openDownloadUrl('https://pan.xunlei.com/s/VOw3jTAGHqYFsm49n2t_AeVGA1?pwd=3r6n')"
-                    >
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                        <polyline points="7 10 12 15 17 10"/>
-                        <line x1="12" y1="15" x2="12" y2="3"/>
-                      </svg>
-                      <span>迅雷网盘</span>
-                    </button>
-                    <p class="pwd-hint">提取码: 3r6n</p>
-                  </div>
-                  <div class="download-btn-wrapper">
-                    <button
-                      class="download-patch-btn"
-                      @click="openDownloadUrl('https://pan.baidu.com/s/1FTZyknIObyzMuLAJC-Uj9g?pwd=8uwx')"
-                    >
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                        <polyline points="7 10 12 15 17 10"/>
-                        <line x1="12" y1="15" x2="12" y2="3"/>
-                      </svg>
-                      <span>百度网盘</span>
-                    </button>
-                    <p class="pwd-hint">提取码: 8uwx</p>
-                  </div>
-                </div>
-              </div>
-
-              <!-- 文件选择区域 -->
-              <div class="import-source-select">
-                <h4 class="source-select-title">清单文件选择</h4>
-
-                <div class="radio-group">
-                  <label class="radio-label">
-                    <input
-                      type="radio"
-                      v-model="importSourceMode"
-                      value="7z"
-                      name="import-source-mode"
-                    />
-                    <span>7z文件</span>
-                  </label>
-                  <label class="radio-label">
-                    <input
-                      type="radio"
-                      v-model="importSourceMode"
-                      value="folder"
-                      name="import-source-mode"
-                    />
-                    <span>.vdf / .lua 和 .manifest所在文件夹</span>
-                  </label>
-                </div>
-
-                <div class="source-select-actions">
-                  <button
-                    v-if="importSourceMode === '7z'"
-                    class="select-source-btn"
-                    :disabled="isPreparingImport"
-                    @click="selectImportArchive"
-                  >
-                    <svg v-if="isPreparingImport" class="loading-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/>
-                    </svg>
-                    {{ isPreparingImport ? '处理中...' : '选择7z文件' }}
-                  </button>
-                  <button
-                    v-else
-                    class="select-source-btn"
-                    :disabled="isPreparingImport"
-                    @click="selectImportFolder"
-                  >
-                    <svg v-if="isPreparingImport" class="loading-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/>
-                    </svg>
-                    {{ isPreparingImport ? '处理中...' : '选择文件夹' }}
-                  </button>
-                </div>
-
-                <p v-if="selectedImportPath && !importSourceReady" class="source-select-error">
-                  所选位置未找到vdf或lua文件，无法入库
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
+        <GameImportTab
+          :currentTab="currentTab"
+          :gameId="gameId"
+          :game="game"
+          :hasLua="hasLua"
+          :canImportToSteam="canImportToSteam"
+          :isImporting="isImportingWithOpenSteamTool"
+          :isPreparingImport="isPreparingImport"
+          :importSourceReady="importSourceReady"
+          :lockVersion="lockVersion"
+          :importSourceMode="importSourceMode"
+          :selectedImportPath="selectedImportPath"
+          @importWithOpenSteamTool="importWithOpenSteamTool"
+          @restartSteam="restartSteam"
+          @selectImportArchive="selectImportArchive"
+          @selectImportFolder="selectImportFolder"
+          @clearImportSource="clearImportSource"
+          @update:lockVersion="lockVersion = $event"
+          @update:importSourceMode="importSourceMode = $event"
+          @openQingdanQRCode="openQingdanQRCode"
+          @openDownloadUrl="openDownloadUrl"
+        />
 
         <!-- 解压即玩标签页 -->
         <div v-if="currentTab === 'extract-play'" class="tab-panel">
@@ -769,8 +253,11 @@ import { useRoute, useRouter } from 'vue-router'
 import { invoke } from '@tauri-apps/api/core'
 import { open } from '@tauri-apps/plugin-dialog'
 import { convertFileSrc } from '@tauri-apps/api/core'
-import DownloadProgress from '../../components/download/DownloadProgress.vue'
 import QRCodeModal from '../../components/common/QRCodeModal.vue'
+import GameImportTab from './components/GameImportTab.vue'
+import GameDownloadTab from './components/GameDownloadTab.vue'
+import PatchConfigTab from './components/PatchConfigTab.vue'
+import { usePatch } from './composables/usePatch'
 import type { DownloadProgress as DownloadProgressType } from '../../types/download.types'
 import type { GameConfigData } from '../../types'
 import { getPatchSourcePath } from '../../types'
@@ -785,7 +272,7 @@ import {
 } from '../../api/gameData.api'
 import { getCategoryName, getCategoryColor } from '../../constants/game'
 import { safeAsync } from '../../utils/async-helper'
-import { getFileName, sanitizeGameFolderName } from '../../utils/file-helper'
+import { sanitizeGameFolderName } from '../../utils/file-helper'
 import { useConfigStore } from '../../store/config.store'
 
 const route = useRoute()
@@ -836,20 +323,21 @@ const setDefaultTab = () => {
   }
 }
 
-// 补丁应用状态
-const applyingPatch = ref(false)
-const patchResult = ref<{
-  success: boolean
-  backed_up_files: string[]
-  copied_files: string[]
-  errors: string[]
-} | null>(null)
+// ==================== Composables 初始化 ====================
 
-// 补丁说明缓存
-const patchReadmes = ref<Map<number, string>>(new Map())
-
-// 本地补丁文件存在状态缓存
-const patchLocalStatus = ref<Map<number, boolean>>(new Map())
+// 补丁应用相关状态和方法
+const {
+  applyingPatch,
+  patchResult,
+  patchReadmes,
+  patchLocalStatus,
+  checkPatchLocalStatus,
+  applyPatch,
+  selectAndApplyPatch,
+  loadPatchReadmes,
+  openVirtualizationTutorial,
+  openDownloadUrl
+} = usePatch(game, gamePath)
 
 // 下载状态
 const isDownloading = ref(false)
@@ -873,6 +361,9 @@ const manifestExists = ref(false)
 const hasLua = ref(false)
 const hasVdf = ref(false)
 const hasManifest = ref(false)
+
+// OpenSteamTool高级选项
+const lockVersion = ref(false)
 
 // 自定义清单源状态
 const importSourceMode = ref<'7z' | 'folder'>('7z')
@@ -1026,25 +517,6 @@ const getDownloadSourceName = (source: string): string => {
     'other': '其他网盘'
   }
   return sourceMap[source] || source || '未知网盘'
-}
-
-// 是否可以开始下载
-const canDownload = computed(() => {
-  return manifestCheckStatus.value === 'found' && downloadPath.value !== '' && !isDownloading.value
-})
-
-// 获取下载按钮文本
-const getDownloadButtonText = () => {
-  if (existingGameData.value?.download_status === 'downloading') {
-    return '下载中...'
-  }
-  if (isDownloading.value) {
-    return '下载中...'
-  }
-  if (existingGameData.value?.download_status === 'completed') {
-    return '已下载'
-  }
-  return '开始下载'
 }
 
 // 返回上一页
@@ -1410,150 +882,6 @@ const stopProgressMonitoring = () => {
 }
 
 // 应用补丁
-const applyPatch = async (tab: any) => {
-  if (!gamePath.value) {
-    alert('请先选择游戏路径')
-    return
-  }
-
-  applyingPatch.value = true
-  patchResult.value = null
-
-  try {
-    const result = await invoke<{
-      success: boolean
-      backed_up_files: string[]
-      copied_files: string[]
-      errors: string[]
-    }>('apply_patch', {
-      patchSourcePath: tab.patchPath,
-      gamePath: gamePath.value
-    })
-
-    patchResult.value = result
-    
-    if (result.success) {
-      alert('补丁应用成功！')
-    } else {
-      alert('补丁应用完成，但有一些错误，请查看详情')
-    }
-  } catch (error) {
-    alert('应用补丁失败: ' + error)
-    patchResult.value = {
-      success: false,
-      backed_up_files: [],
-      copied_files: [],
-      errors: [String(error)]
-    }
-  } finally {
-    applyingPatch.value = false
-  }
-}
-
-// 检查本地补丁文件是否存在
-const checkPatchLocalStatus = async () => {
-  if (!game.value) return
-
-  for (const tag of game.value.tags) {
-    try {
-      const patchPath = getPatchSourcePath(tag, game.value.game_id)
-      const result = await invoke<string>('check_patch_file_exists', {
-        patchSourcePath: patchPath
-      })
-      patchLocalStatus.value.set(tag.patch_type, result !== '')
-    } catch (error) {
-      patchLocalStatus.value.set(tag.patch_type, false)
-    }
-  }
-}
-
-// 获取本地补丁存在状态
-const isPatchLocalExists = (patchType: number): boolean => {
-  return patchLocalStatus.value.get(patchType) || false
-}
-
-// 打开下载链接
-const openDownloadUrl = async (url: string) => {
-  try {
-    await invoke('open_external_link', { url })
-  } catch (error) {
-    alert('打开下载链接失败: ' + error)
-  }
-}
-
-// 打开虚拟化环境配置教程视频
-const openVirtualizationTutorial = async () => {
-  try {
-    await invoke('open_virtualization_tutorial')
-  } catch (error) {
-    alert('打开视频失败: ' + error)
-  }
-}
-
-// 选择本地补丁文件并直接应用
-const selectAndApplyPatch = async (_tab: any) => {
-  if (!gamePath.value) {
-    alert('请先选择游戏路径')
-    return
-  }
-
-  try {
-    // 打开文件选择对话框
-    const selected = await open({
-      title: '选择补丁压缩包文件',
-      filters: [{
-        name: '7z压缩包',
-        extensions: ['7z']
-      }],
-      multiple: false
-    })
-
-    if (!selected) {
-      return // 用户取消了选择
-    }
-
-    const archivePath = Array.isArray(selected) ? selected[0] : selected
-
-    // 确认应用
-    const confirmApply = confirm(`确定要将补丁应用到游戏目录吗？\n\n补丁文件: ${archivePath}\n游戏路径: ${gamePath.value}\n\n应用前会自动备份原有文件。`)
-    if (!confirmApply) {
-      return
-    }
-
-    applyingPatch.value = true
-    patchResult.value = null
-
-    // 调用后端命令直接应用补丁
-    const result = await invoke<{
-      success: boolean
-      backed_up_files: string[]
-      copied_files: string[]
-      errors: string[]
-    }>('apply_patch_from_file', {
-      archivePath: archivePath,
-      gamePath: gamePath.value
-    })
-
-    patchResult.value = result
-
-    if (result.success) {
-      alert('补丁应用成功！')
-    } else {
-      alert('补丁应用完成，但有一些错误，请查看详情')
-    }
-  } catch (error) {
-    alert('应用补丁失败: ' + error)
-    patchResult.value = {
-      success: false,
-      backed_up_files: [],
-      copied_files: [],
-      errors: [String(error)]
-    }
-  } finally {
-    applyingPatch.value = false
-  }
-}
-
 // 加载封面图片 - 带重试机制确保100%加载成功
 const loadCoverImage = async (retryCount = 0): Promise<void> => {
   if (!gameId.value) return
@@ -1693,29 +1021,6 @@ onMounted(async () => {
 onUnmounted(() => {
   stopProgressMonitoring()
 })
-
-// 加载所有补丁说明
-const loadPatchReadmes = async () => {
-  if (!game.value) return
-
-  for (const tag of game.value.tags) {
-    try {
-      const readme = await invoke<string>('get_patch_readme', {
-        gameId: game.value.game_id,
-        patchType: tag.patch_type
-      })
-      if (readme) {
-        patchReadmes.value.set(tag.patch_type, readme)
-      }
-    } catch (error) {
-    }
-  }
-}
-
-// 获取补丁说明
-const getPatchReadme = (patchType: number): string => {
-  return patchReadmes.value.get(patchType) || ''
-}
 
 /**
  * 检查 manifest 文件夹是否存在
@@ -2209,7 +1514,8 @@ const importWithOpenSteamTool = async () => {
         gameName: game.value.chinese_name || game.value.game_name || gameId.value,
         appId: appId,
         advancedMode: advancedMode,
-        hotReload: hotReload
+        hotReload: hotReload,
+        lockVersion: lockVersion.value
       })
     } else {
       // 使用内置清单
@@ -2227,7 +1533,8 @@ const importWithOpenSteamTool = async () => {
         gameName: game.value.chinese_name || game.value.game_name || gameId.value,
         appId: appId,
         advancedMode: advancedMode,
-        hotReload: hotReload
+        hotReload: hotReload,
+        lockVersion: lockVersion.value
       })
     }
 
@@ -3240,202 +2547,6 @@ const restartSteam = async () => {
   color: var(--steam-text-muted);
 }
 
-/* 入库Steam标签页样式 */
-.import-steam-content {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  align-items: flex-start;
-}
-
-.import-btn-group {
-  display: flex;
-  flex-direction: row;
-  gap: 7px;
-  align-items: center;
-  flex-wrap: wrap;
-}
-
-.import-description {
-  padding: 10px;
-  background-color: var(--steam-bg-secondary);
-  border-radius: 8px;
-  border-left: 4px solid #10b981;
-}
-
-.import-description p {
-  margin: 0 0 5px 0;
-  font-size: 14px;
-  color: var(--steam-text-primary);
-  line-height: 1.5;
-}
-
-.import-description p:last-child {
-  margin-bottom: 0;
-}
-
-.import-note {
-  font-size: 13px;
-  color: var(--steam-text-secondary);
-  font-style: italic;
-}
-
-.opensteamtool-options {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  width: 100%;
-}
-
-.option-item {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.option-label {
-  font-size: 12px;
-  color: var(--steam-text-secondary);
-  font-weight: 500;
-}
-
-.option-item .form-input {
-  width: 100%;
-  padding: 8px 10px;
-  background: var(--steam-bg-tertiary);
-  border: 1px solid var(--steam-border);
-  border-radius: 4px;
-  color: var(--steam-text-primary);
-  font-size: 13px;
-}
-
-.option-item .form-input::placeholder {
-  color: var(--steam-text-muted);
-}
-
-@media (max-width: 700px) {
-  .opensteamtool-options {
-    grid-template-columns: 1fr;
-  }
-}
-
-.import-opensteamtool-btn-large {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 12px 26px;
-  border: none;
-  border-radius: 8px;
-  background-color: #10b981;
-  color: white;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background-color 0.15s ease;
-}
-
-.import-opensteamtool-btn-large:hover:not(.disabled) {
-  background-color: #059669;
-}
-
-.import-opensteamtool-btn-large.disabled {
-  background-color: var(--steam-text-secondary);
-  cursor: not-allowed;
-  opacity: 0.5;
-}
-
-.import-opensteamtool-btn-large.loading {
-  cursor: wait;
-}
-
-.import-opensteamtool-btn-large svg {
-  width: 16px;
-  height: 16px;
-}
-
-.restart-steam-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 13px 26px;
-  border: none;
-  border-radius: 8px;
-  background-color: #64748b;
-  color: white;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background-color 0.15s ease;
-}
-
-.restart-steam-btn:hover {
-  background-color: #475569;
-}
-
-.restart-steam-btn svg {
-  width: 16px;
-  height: 16px;
-}
-
-.import-error {
-  color: #ef4444;
-  font-size: 14px;
-  margin: 0;
-}
-
-/* 自定义清单源信息 */
-.import-source-info {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  padding: 10px 14px;
-  background-color: rgba(59, 130, 246, 0.1);
-  border-radius: 8px;
-  border-left: 3px solid #3b82f6;
-  font-size: 13px;
-}
-
-.import-source-info .source-label {
-  color: var(--steam-text-secondary);
-  flex-shrink: 0;
-}
-
-.import-source-info .source-path {
-  color: var(--steam-text-primary);
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-family: 'Courier New', monospace;
-}
-
-.import-source-info .clear-source-btn {
-  padding: 4px 10px;
-  border: none;
-  border-radius: 4px;
-  background-color: rgba(239, 68, 68, 0.2);
-  color: #ef4444;
-  font-size: 12px;
-  cursor: pointer;
-  transition: background-color 0.15s ease;
-  flex-shrink: 0;
-}
-
-.import-source-info .clear-source-btn:hover {
-  background-color: rgba(239, 68, 68, 0.3);
-}
-
-/* 无清单文件时的引导区域 */
-.import-no-files {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  width: 100%;
-}
-
 /* 清单下载详细说明框 */
 .manifest-guide-box {
   background: rgba(102, 192, 244, 0.08);
@@ -3544,95 +2655,5 @@ const restartSteam = async () => {
   font-weight: 500;
   color: var(--steam-text-primary);
   margin: 0;
-}
-
-/* 清单源选择区域 */
-.import-source-select {
-  padding: 10px;
-  background-color: var(--steam-bg-secondary);
-  border-radius: 8px;
-  border: 1px solid var(--steam-border);
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-}
-
-.source-select-title {
-  margin: 0;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--steam-text-primary);
-}
-
-.radio-group {
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.radio-label {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  cursor: pointer;
-  font-size: 13px;
-  color: var(--steam-text-primary);
-}
-
-.radio-label input[type="radio"] {
-  width: 16px;
-  height: 16px;
-  cursor: pointer;
-  accent-color: var(--steam-accent-blue);
-}
-
-.source-select-actions {
-  display: flex;
-  gap: 7px;
-  align-items: center;
-}
-
-.select-source-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 10px 20px;
-  border: none;
-  border-radius: 8px;
-  background-color: var(--steam-accent-blue);
-  color: white;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background-color 0.15s ease;
-}
-
-.select-source-btn:hover:not(:disabled) {
-  background-color: var(--steam-accent-hover);
-}
-
-.select-source-btn:disabled {
-  background-color: var(--steam-text-secondary);
-  cursor: not-allowed;
-  opacity: 0.5;
-}
-
-.select-source-btn svg {
-  width: 16px;
-  height: 16px;
-}
-
-.source-select-error {
-  margin: 0;
-  font-size: 13px;
-  color: #ef4444;
-}
-
-.source-select-info {
-  margin: 0;
-  font-size: 12px;
-  color: var(--steam-text-secondary);
-  word-break: break-all;
 }
 </style>

@@ -1,6 +1,6 @@
 [package]
 name = "steam-tool-plus"
-version = "1.27.0"
+version = "1.27.1"
 description = "Steam Tool Plus - 本地游戏管理系统"
 authors = ["Steam Tool Plus"]
 edition = "2021"
@@ -51,6 +51,9 @@ regex = "1.12.4"
 
 # Windows注册表操作（Steam路径检测、高级入库功能）
 winreg = "0.55.0"
+
+# 错误处理
+thiserror = "2.0"
 
 [features]
 default = ["custom-protocol"]

@@ -4,6 +4,7 @@
 pub mod cache_service;
 pub mod config_service;
 pub mod download_service;
+pub mod fake_imported_service;
 pub mod game_data_service;
 pub mod game_service;
 pub mod opensteamtool_service;
