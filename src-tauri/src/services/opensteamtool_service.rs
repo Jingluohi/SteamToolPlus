@@ -67,14 +67,56 @@ pub struct OpenSteamToolImportResult {
     pub advanced_enabled: bool,
 }
 
+/// 验证给定路径是否为有效的 Steam 安装目录
+/// 必须包含 steam.exe 文件才算有效
+pub fn validate_steam_path(steam_path: &str) -> Result<String, String> {
+    if steam_path.is_empty() {
+        return Err("Steam 路径不能为空".to_string());
+    }
+
+    let path = Path::new(steam_path);
+    if !path.exists() {
+        return Err(format!("路径不存在: {}", steam_path));
+    }
+
+    if !path.is_dir() {
+        return Err(format!("路径不是目录: {}", steam_path));
+    }
+
+    // 检查 steam.exe 是否存在（支持大小写不敏感）
+    let steam_exe = path.join("steam.exe");
+    if steam_exe.exists() {
+        return Ok(steam_path.to_string());
+    }
+
+    // 兼容 Steam 安装目录下的 steam 目录（部分用户选择上层目录）
+    let nested_steam_exe = path.join("Steam").join("steam.exe");
+    if nested_steam_exe.exists() {
+        return Ok(path.join("Steam").to_string_lossy().to_string());
+    }
+
+    Err(format!(
+        "选择失败，请选择 Steam 的安装路径（包含 steam.exe）：{}",
+        steam_path
+    ))
+}
+
 /// 获取Steam安装路径
 /// 优先级：1.用户配置 2.注册表读取 3.常见默认路径
+/// 返回前会验证路径下是否存在 steam.exe
 pub fn detect_steam_path(config_steam_path: Option<&str>) -> Result<String, String> {
     // 1. 优先使用用户配置的Steam路径
     if let Some(path) = config_steam_path {
-        if !path.is_empty() && Path::new(path).exists() {
-            log::info!("使用用户配置的Steam路径: {}", path);
-            return Ok(path.to_string());
+        if !path.is_empty() {
+            match validate_steam_path(path) {
+                Ok(valid_path) => {
+                    log::info!("使用用户配置并验证通过的Steam路径: {}", valid_path);
+                    return Ok(valid_path);
+                }
+                Err(e) => {
+                    log::warn!("用户配置的Steam路径验证失败: {}", e);
+                }
+            }
         }
     }
 
@@ -83,9 +125,14 @@ pub fn detect_steam_path(config_steam_path: Option<&str>) -> Result<String, Stri
     {
         match read_steam_path_from_registry() {
             Ok(path) => {
-                if Path::new(&path).exists() {
-                    log::info!("从注册表读取到Steam路径: {}", path);
-                    return Ok(path.to_string());
+                match validate_steam_path(&path) {
+                    Ok(valid_path) => {
+                        log::info!("从注册表读取并验证通过的Steam路径: {}", valid_path);
+                        return Ok(valid_path);
+                    }
+                    Err(e) => {
+                        log::warn!("注册表读取的Steam路径验证失败: {}", e);
+                    }
                 }
             }
             Err(e) => {
@@ -96,13 +143,13 @@ pub fn detect_steam_path(config_steam_path: Option<&str>) -> Result<String, Stri
 
     // 3. 尝试常见默认路径
     for path in DEFAULT_STEAM_PATHS {
-        if Path::new(path).exists() {
-            log::info!("使用默认Steam路径: {}", path);
-            return Ok(path.to_string());
+        if let Ok(valid_path) = validate_steam_path(path) {
+            log::info!("使用默认并验证通过的Steam路径: {}", valid_path);
+            return Ok(valid_path);
         }
     }
 
-    Err("无法找到Steam安装路径，请前往全局设置手动配置".to_string())
+    Err("无法找到有效的 Steam 安装路径（需要包含 steam.exe），请前往全局设置手动配置".to_string())
 }
 
 /// 从Windows注册表读取Steam安装路径

@@ -98,14 +98,18 @@
             </div>
           </div>
 
-          <Tooltip text="锁定版本适用于限定补丁版本，防止游戏更新破坏补丁兼容性；跟随更新允许Steam自动更新游戏" position="top">
+          <Tooltip text="滑到左侧允许Steam自动更新，滑到右侧锁定当前清单版本" position="top">
             <div class="setting-item">
               <div class="setting-info">
-                <h4 class="setting-name">锁定版本</h4>
-                <p class="setting-desc">开启后生成 setManifestid 强制锁定 depot 版本，适用于限定版本补丁；关闭则允许 Steam 自动更新</p>
+                <h4 class="setting-name">是否更新</h4>
+                <p class="setting-desc">左侧：允许 Steam 自动更新；右侧：锁定当前清单版本，防止更新破坏补丁兼容性</p>
               </div>
               <div class="setting-control">
-                <Toggle v-model="lockVersion" />
+                <SliderToggle
+                  v-model="lockVersion"
+                  left-label="跟随更新"
+                  right-label="锁定版本"
+                />
               </div>
             </div>
           </Tooltip>
@@ -327,6 +331,7 @@ import { open as openShell } from '@tauri-apps/plugin-shell'
 import Button from '../../components/common/Button.vue'
 import Toggle from '../GlobalSettings/components/Toggle.vue'
 import Tooltip from '../../components/common/Tooltip.vue'
+import SliderToggle from '../../components/common/SliderToggle.vue'
 import QRCodeModal from '../../components/common/QRCodeModal.vue'
 import { useConfigStore } from '../../store/config.store'
 
@@ -559,6 +564,26 @@ async function startImport() {
     return
   }
 
+  // 检查 Steam 是否正在运行，未运行则自动启动
+  try {
+    const steamStatus = await invoke<{ running: boolean }>('check_steam_running')
+    if (!steamStatus.running) {
+      addLog('Steam 未运行，正在自动启动...', 'info')
+      const startResult = await invoke<{ success: boolean; message: string }>('restart_steam')
+      if (startResult.success) {
+        addLog('Steam 启动成功，等待加载...', 'success')
+        // 等待 Steam 完全启动
+        await new Promise(resolve => setTimeout(resolve, 5000))
+      } else {
+        addLog(`Steam 启动失败: ${startResult.message}，继续尝试入库...`, 'error')
+      }
+    } else {
+      addLog('Steam 正在运行', 'info')
+    }
+  } catch (error) {
+    addLog(`检查 Steam 状态时出错: ${error}，继续尝试入库...`, 'error')
+  }
+
   // OpenSteamTool高级模式二次确认
   if (advancedMode.value) {
     const confirmAdvanced = confirm(
@@ -600,15 +625,9 @@ async function startImport() {
 
     if (result.success) {
       addLog('', 'info')
-      addLog('OpenSteamTool入库操作完成！', 'success')
-      addLog(`  - 内核DLL: ${result.kernelInstalled ? '已安装' : '未安装'}`, 'success')
-      addLog(`  - Lua文件: ${result.luaWritten ? '已写入' : '未写入'}`, 'success')
-      addLog(`  - Manifest文件: ${result.manifestCopied}个`, 'success')
-      addLog(`  - Steam: ${result.steamRestarted ? '已重启' : '未重启'}`, 'success')
-      if (result.advancedEnabled) {
-        addLog('  - 高级模式: 已启用（写入注册表）', 'info')
-      }
+      addLog('入库成功，请打开 Steam 的库中查看游戏！', 'success')
       addLog('', 'info')
+      alert('入库成功，请打开 Steam 的库中查看游戏！')
     } else {
       addLog(`OpenSteamTool入库失败: ${result.message}`, 'error')
     }

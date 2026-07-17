@@ -8,7 +8,7 @@
     <div class="page-header">
       <div class="header-left">
         <h1 class="page-title">假入库游戏</h1>
-        <p class="page-desc">管理通过本程序入库到 Steam 的游戏，删除后会清理 OpenSteamTool 相关文件</p>
+        <p class="page-desc">管理通过本程序入库到 Steam 的游戏</p>
       </div>
     </div>
 
@@ -47,7 +47,14 @@
             class="fake-game-card"
           >
             <div class="card-image-wrapper">
-              <div class="card-placeholder" :style="getPlaceholderStyle(game.appId)">
+              <img
+                v-if="game.coverUrl"
+                :src="game.coverUrl"
+                :alt="game.displayName"
+                class="card-cover-image"
+                @error="game.coverUrl = ''"
+              />
+              <div v-else class="card-placeholder" :style="getPlaceholderStyle(game.appId)">
                 <span class="placeholder-text">{{ game.appId.toString().slice(0, 4) }}</span>
               </div>
             </div>
@@ -111,7 +118,7 @@
  */
 
 import { ref, onMounted } from 'vue'
-import { invoke } from '@tauri-apps/api/core'
+import { invoke, convertFileSrc } from '@tauri-apps/api/core'
 import BaseModal from '../../components/common/BaseModal.vue'
 
 /**
@@ -119,8 +126,11 @@ import BaseModal from '../../components/common/BaseModal.vue'
  */
 interface FakeImportedGame {
   appId: number
+  gameId: string
   displayName: string
   inConfig: boolean
+  coverPath?: string
+  coverUrl?: string
 }
 
 // ==================== 状态 ====================
@@ -146,7 +156,11 @@ const isConfirmDeleting = ref(false)
 async function loadGames() {
   loading.value = true
   try {
-    games.value = await invoke<FakeImportedGame[]>('get_fake_imported_games_command')
+    const result = await invoke<FakeImportedGame[]>('get_fake_imported_games_command')
+    games.value = result.map(game => ({
+      ...game,
+      coverUrl: game.coverPath ? convertFileSrc(game.coverPath) : undefined
+    }))
   } catch (error) {
     alert('加载假入库游戏失败: ' + error)
   } finally {
@@ -383,6 +397,14 @@ onMounted(() => {
   width: 100%;
   aspect-ratio: 460 / 215;
   overflow: hidden;
+}
+
+.card-cover-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  display: block;
 }
 
 .card-placeholder {

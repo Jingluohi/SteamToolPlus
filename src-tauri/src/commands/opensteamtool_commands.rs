@@ -11,7 +11,7 @@ use crate::services::fake_imported_service::add_fake_imported_game;
 use crate::services::opensteamtool_service::{
     clean_steamtools_residuals, detect_steam_path, generate_opensteamtool_toml,
     get_kernel_dll_info, install_kernel, is_kernel_installed, is_steam_running,
-    uninstall_kernel, import_with_opensteamtool, OpenSteamToolImportOptions,
+    uninstall_kernel, import_with_opensteamtool, validate_steam_path, OpenSteamToolImportOptions,
     OpenSteamToolImportResult, SteamToolsCleanResult,
 };
 use crate::utils::resource_utils::get_resource_dir;
@@ -28,6 +28,22 @@ pub fn get_steam_path() -> Result<String, String> {
 #[tauri::command]
 pub fn detect_steam_path_auto() -> Result<String, String> {
     detect_steam_path(None)
+}
+
+/// 验证用户选择的 Steam 路径是否有效
+/// 必须包含 steam.exe 文件
+#[tauri::command]
+pub fn validate_steam_path_command(steam_path: String) -> Result<serde_json::Value, String> {
+    match validate_steam_path(&steam_path) {
+        Ok(valid_path) => Ok(serde_json::json!({
+            "valid": true,
+            "path": valid_path
+        })),
+        Err(e) => Ok(serde_json::json!({
+            "valid": false,
+            "message": e
+        })),
+    }
 }
 
 /// 安装OpenSteamTool内核DLL

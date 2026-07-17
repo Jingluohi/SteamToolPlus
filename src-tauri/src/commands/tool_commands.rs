@@ -112,7 +112,7 @@ fn parse_lua_content(content: &str) -> Vec<(String, String)> {
     let mut depots = Vec::new();
     
     // 正则匹配 addappid(depot_id, 1, "decryption_key") 格式
-    let re = Regex::new(r#"addappid\s*\(\s*(\d+)\s*,\s*\d+\s*,\s*"([a-f0-9]+)"\s*\)"#).unwrap();
+    let re = Regex::new(r#"addappid\s*\(\s*(\d+)\s*,\s*\d+\s*,\s*"([a-fA-F0-9]+)"\s*\)"#).unwrap();
     
     for cap in re.captures_iter(content) {
         let depot_id = cap[1].to_string();
@@ -230,7 +230,7 @@ fn parse_vdf_content(content: &str) -> Vec<(String, String)> {
     let mut depots = Vec::new();
     let mut current_depot: Option<String> = None;
     // 将正则表达式移到循环外部，避免每次迭代都重新编译
-    let re = Regex::new(r#""DecryptionKey"\s+"([a-f0-9]+)""#).unwrap();
+    let re = Regex::new(r#""DecryptionKey"\s+"([a-fA-F0-9]+)""#).unwrap();
 
     // 按行解析VDF
     for line in content.lines() {

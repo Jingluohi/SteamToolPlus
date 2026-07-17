@@ -91,16 +91,16 @@ const showMenu = ref(false)
   transform: translateY(-1px);
 }
 
-/* 浅色模式下黄一点 */
+/* 浅色模式下使用更浅的偏白背景，降低对比度 */
 [data-theme="light"] .nav-menu-btn {
-  background: rgba(251, 191, 36, 0.15);
-  border-color: rgba(251, 191, 36, 0.25);
-  color: #8b6914;
+  background: rgba(255, 255, 255, 0.45);
+  border-color: rgba(255, 255, 255, 0.55);
+  color: var(--steam-text-primary);
 }
 
 [data-theme="light"] .nav-menu-btn:hover {
-  background: rgba(251, 191, 36, 0.25);
-  border-color: rgba(251, 191, 36, 0.4);
+  background: rgba(255, 255, 255, 0.65);
+  border-color: rgba(255, 255, 255, 0.8);
 }
 
 .dropdown-icon {
@@ -114,8 +114,8 @@ const showMenu = ref(false)
   position: absolute;
   top: 100%;
   left: 0;
-  width: 140px;
-  min-width: 140px;
+  width: 135px;
+  min-width: 135px;
   background: var(--steam-bg-secondary);
   border: 1px solid var(--steam-border);
   border-radius: 8px;

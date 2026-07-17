@@ -11,19 +11,16 @@
 
       <!-- OpenSteamTool高级选项 -->
       <div class="opensteamtool-options">
-        <Tooltip text="勾选则锁定当前清单版本，不跟随Steam自动更新；不勾选则允许Steam自动更新游戏" position="top">
+        <Tooltip text="滑到左侧允许Steam自动更新，滑到右侧锁定当前清单版本" position="top">
           <div class="option-item">
             <label class="option-label">是否更新</label>
-            <div class="option-toggle">
-              <input 
-                type="checkbox" 
-                :checked="lockVersion" 
-                @change="emit('update:lockVersion', ($event.target as HTMLInputElement).checked)"
-                class="toggle-checkbox" 
-              />
-              <span class="toggle-label">{{ lockVersion ? '锁定' : '跟随更新' }}</span>
-            </div>
-            <p class="option-hint">勾选：不跟随Steam更新，固定当前版本；不勾选：允许Steam自动更新</p>
+            <SliderToggle
+              :model-value="lockVersion"
+              left-label="跟随更新"
+              right-label="锁定版本"
+              @update:model-value="emit('update:lockVersion', $event)"
+            />
+            <p class="option-hint">左侧：允许Steam自动更新；右侧：锁定当前清单版本，防止更新破坏补丁兼容性</p>
           </div>
         </Tooltip>
       </div>
@@ -186,7 +183,8 @@
  */
 
 import type { GameConfigData } from '../../../types'
-import Tooltip from '../../../components/common/Tooltip.vue'
+import Tooltip from '@/components/common/Tooltip.vue'
+import SliderToggle from '@/components/common/SliderToggle.vue'
 
 // ==================== Props ====================
 
@@ -233,7 +231,7 @@ const emit = defineEmits<{
   /** 更新导入源模式 */
   (e: 'update:importSourceMode', value: '7z' | 'folder'): void
   /** 打开清单下载二维码 */
-  (e: 'openQingdanQRCode'): void
+  (e: 'open-qingdan-qr-code'): void
   /** 打开下载链接 */
   (e: 'openDownloadUrl', url: string): void
 }>()
@@ -261,7 +259,7 @@ function handleClearImportSource() {
 }
 
 function openQingdanQRCode() {
-  emit('openQingdanQRCode')
+  emit('open-qingdan-qr-code')
 }
 
 function openDownloadUrl(url: string) {

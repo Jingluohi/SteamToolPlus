@@ -8,19 +8,17 @@
   >
     <h3 class="panel-title">{{ tab.name }}</h3>
 
-    <!-- 补丁操作详细说明（仅当存在下载链接时显示） -->
-    <div v-if="tab.downloadUrls && tab.downloadUrls.length > 0" class="patch-guide-box">
-      <h4 class="guide-title">操作步骤：</h4>
+    <!-- 补丁操作详细说明（仅当本地不存在补丁且存在下载链接时显示） -->
+    <div v-if="!isPatchLocalExists(tab.patchType) && tab.downloadUrls && tab.downloadUrls.length > 0" class="patch-guide-box">
+      <h4 class="guide-title">本地补丁不存在，请操作：</h4>
       <ol class="guide-steps">
-        <li><strong>第一步：</strong>先在页面顶部选择"游戏路径"，定位到游戏主程序（exe文件）所在的文件夹</li>
-        <li><strong>第二步：</strong>查看下方"本地补丁状态"，如果显示"本地补丁未下载"，请点击网盘按钮下载该补丁的7z压缩包</li>
-        <li><strong>第三步：</strong>下载完成后有两种方式应用补丁：
+        <li><strong>第一步：</strong>去下方的网盘下载按钮下载补丁，</li>
+        <li><strong>第二步：</strong>下载完成后有两种方式应用补丁：
           <ul class="sub-steps">
             <li>方式一：点击"选择补丁文件（7z）并应用"按钮，直接选择刚下载的7z文件，程序会自动解压并应用到游戏目录</li>
-            <li>方式二：手动解压7z文件到下方显示的"补丁路径"目录，然后点击"应用补丁"按钮</li>
+            <li>方式二：手动解压7z文件里的内容到游戏路径并替换全部文件</li>
           </ul>
         </li>
-        <li><strong>第四步：</strong>等待应用完成，成功后即可运行游戏</li>
       </ol>
     </div>
 
@@ -252,6 +250,7 @@ function getDownloadSourceName(source: string): string {
     'quark': '夸克网盘',
     'baidu': '百度网盘',
     'xunlei': '迅雷网盘',
+    'thunder': '迅雷网盘',
     '123': '123云盘'
   }
   return sourceNames[source] || source
@@ -349,48 +348,51 @@ function getFileName(path: string): string {
   margin: 0 0 7px 0;
 }
 
+/* v1.26.1 风格的下载按钮样式 */
 .download-buttons {
   display: flex;
   flex-wrap: wrap;
-  gap: 7px;
+  align-items: center;
+  gap: 10px;
   margin-bottom: 7px;
 }
 
 .download-btn-wrapper {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  align-items: center;
+  gap: 7px;
 }
 
 .download-patch-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  padding: 8px 16px;
-  background-color: var(--steam-bg-tertiary);
-  color: var(--steam-text-primary);
-  border: 1px solid var(--steam-border);
-  border-radius: 4px;
-  font-size: 12px;
+  gap: 8px;
+  padding: 10px 24px;
+  border: none;
+  border-radius: 8px;
+  background-color: #3b82f6;
+  color: white;
+  font-size: 13px;
+  font-weight: 500;
   cursor: pointer;
   transition: background-color 0.15s ease;
 }
 
 .download-patch-btn:hover {
-  background-color: var(--steam-bg-hover);
+  background-color: #2563eb;
 }
 
 .download-patch-btn svg {
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
 }
 
 .pwd-hint {
   font-size: 12px;
   color: var(--steam-text-secondary);
-  margin: 2px 0 0 0;
-  text-align: center;
+  margin: 0;
 }
 
 .download-hint {

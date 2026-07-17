@@ -56,7 +56,7 @@
             <div class="download-btn-wrapper">
               <button
                 class="download-patch-btn"
-                @click="emit('openQingdanQRCode')"
+                @click="handleOpenQingdanQRCode"
               >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -70,7 +70,7 @@
             <div class="download-btn-wrapper">
               <button
                 class="download-patch-btn"
-                @click="emit('openDownloadUrl', 'https://pan.xunlei.com/s/VOw3jTAGHqYFsm49n2t_AeVGA1?pwd=3r6n')"
+                @click="handleOpenDownloadUrl('https://pan.xunlei.com/s/VOw3jTAGHqYFsm49n2t_AeVGA1?pwd=3r6n')"
               >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -84,7 +84,7 @@
             <div class="download-btn-wrapper">
               <button
                 class="download-patch-btn"
-                @click="emit('openDownloadUrl', 'https://pan.baidu.com/s/1FTZyknIObyzMuLAJC-Uj9g?pwd=8uwx')"
+                @click="handleOpenDownloadUrl('https://pan.baidu.com/s/1FTZyknIObyzMuLAJC-Uj9g?pwd=8uwx')"
               >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -107,7 +107,7 @@
               <input
                 type="radio"
                 :checked="downloadManifestSourceMode === '7z'"
-                @change="emit('update:downloadManifestSourceMode', '7z')"
+                @change="handleUpdateManifestSourceMode('7z')"
                 value="7z"
                 name="download-manifest-source-mode"
               />
@@ -117,7 +117,7 @@
               <input
                 type="radio"
                 :checked="downloadManifestSourceMode === 'folder'"
-                @change="emit('update:downloadManifestSourceMode', 'folder')"
+                @change="handleUpdateManifestSourceMode('folder')"
                 value="folder"
                 name="download-manifest-source-mode"
               />
@@ -130,7 +130,7 @@
               v-if="downloadManifestSourceMode === '7z'"
               class="select-source-btn"
               :disabled="isPreparingDownloadManifest"
-              @click="emit('selectManifestArchive')"
+              @click="handleSelectManifestArchive"
             >
               <svg v-if="isPreparingDownloadManifest" class="loading-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/>
@@ -141,7 +141,7 @@
               v-else
               class="select-source-btn"
               :disabled="isPreparingDownloadManifest"
-              @click="emit('selectManifestFolder')"
+              @click="handleSelectManifestFolder"
             >
               <svg v-if="isPreparingDownloadManifest" class="loading-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/>
@@ -168,7 +168,11 @@
     <div class="download-description">
       <div class="download-option">
         <h4>方法一【开始下载】</h4>
-        <p>通过清单文件直连Steam官方服务器下载正版分流文件，下载完成后需要 <span class="highlight-red-bold">注入补丁</span> 才能游玩</p>
+        <p>通过清单文件直连 Steam 官方服务器下载正版分流文件，下载完成后需要 <span class="highlight-red-bold">注入补丁</span> 才能游玩</p>
+      </div>
+      <div class="download-option">
+        <h4>方法二【入库 Steam】</h4>
+        <p>将游戏清单脚本导入 Steam 客户端，导入后可在 Steam 库中下载和启动游戏（优点是可自动更新）</p>
       </div>
     </div>
 
@@ -199,7 +203,7 @@
         class="start-download-btn"
         :class="{ disabled: !canDownload, loading: isDownloading || existingGameData?.download_status === 'downloading' }"
         :disabled="!canDownload || isDownloading || existingGameData?.download_status === 'downloading'"
-        @click="emit('startDownload')"
+        @click="handleStartDownload"
         :title="!canDownload ? '未找到清单文件，无法下载' : ''"
       >
         <svg v-if="isDownloading || existingGameData?.download_status === 'downloading'" class="loading-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -217,7 +221,7 @@
       <button
         v-if="isDownloading || existingGameData?.download_status === 'downloading'"
         class="stop-download-btn"
-        @click="emit('stopDownload')"
+        @click="handleStopDownload"
         title="停止下载"
       >
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -315,7 +319,7 @@ interface Emits {
   /** 停止下载 */
   (e: 'stopDownload'): void
   /** 打开清单下载二维码弹窗 */
-  (e: 'openQingdanQRCode'): void
+  (e: 'open-qingdan-qr-code'): void
   /** 打开下载链接 */
   (e: 'openDownloadUrl', url: string): void
   /** 验证游戏完整性 */
@@ -353,6 +357,57 @@ const downloadButtonText = computed(() => {
 })
 
 // ==================== 方法 ====================
+
+/**
+ * 处理打开清单下载二维码弹窗
+ */
+function handleOpenQingdanQRCode() {
+  emit('open-qingdan-qr-code')
+}
+
+/**
+ * 处理打开下载链接
+ * @param url 下载链接地址
+ */
+function handleOpenDownloadUrl(url: string) {
+  emit('openDownloadUrl', url)
+}
+
+/**
+ * 处理选择清单7z文件
+ */
+function handleSelectManifestArchive() {
+  emit('selectManifestArchive')
+}
+
+/**
+ * 处理选择清单文件夹
+ */
+function handleSelectManifestFolder() {
+  emit('selectManifestFolder')
+}
+
+/**
+ * 处理开始下载
+ */
+function handleStartDownload() {
+  emit('startDownload')
+}
+
+/**
+ * 处理停止下载
+ */
+function handleStopDownload() {
+  emit('stopDownload')
+}
+
+/**
+ * 处理更新清单源选择模式
+ * @param mode 清单源模式
+ */
+function handleUpdateManifestSourceMode(mode: '7z' | 'folder') {
+  emit('update:downloadManifestSourceMode', mode)
+}
 
 /**
  * 处理验证完整性按钮点击

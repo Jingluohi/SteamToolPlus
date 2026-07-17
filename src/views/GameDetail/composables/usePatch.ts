@@ -240,6 +240,7 @@ export function usePatch(
       'quark': '夸克网盘',
       'baidu': '百度网盘',
       'xunlei': '迅雷网盘',
+      'thunder': '迅雷网盘',
       '123': '123云盘'
     }
     return sourceNames[source] || source

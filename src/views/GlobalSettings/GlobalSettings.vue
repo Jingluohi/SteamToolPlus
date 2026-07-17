@@ -224,6 +224,26 @@
             </Button>
           </div>
         </div>
+
+        <div class="setting-item">
+          <div class="setting-info">
+            <h3 class="setting-name">系统临时缓存</h3>
+            <p class="setting-desc">
+              清理程序在系统临时目录(%TEMP%)中生成的 steam_tool_* 临时文件，当前缓存大小：{{ formatBytes(systemCacheSize) }}
+            </p>
+          </div>
+          <div class="setting-control">
+            <Button
+              variant="danger"
+              size="sm"
+              :loading="systemCacheClearStatus.loading"
+              :disabled="systemCacheSize === 0"
+              @click="clearSystemCache"
+            >
+              清理
+            </Button>
+          </div>
+        </div>
       </section>
 
       <!-- 操作按钮 -->
@@ -245,7 +265,7 @@
  * 用于配置应用程序的各项设置
  */
 
-import { ref, onMounted, nextTick, watch } from 'vue'
+import { ref, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { open } from '@tauri-apps/plugin-dialog'
 import { invoke } from '@tauri-apps/api/core'
 import { useConfigStore } from '../../store/config.store'
@@ -283,6 +303,15 @@ const cacheClearStatus = ref({
   loading: false
 })
 
+// 系统临时缓存大小（字节）
+const systemCacheSize = ref(0)
+// 系统缓存清理状态
+const systemCacheClearStatus = ref({
+  loading: false
+})
+// 系统缓存大小定时刷新器
+let systemCacheSizeTimer: ReturnType<typeof setInterval> | null = null
+
 // 监听Steam路径变化，重新检测内核状态和Steam运行状态
 watch(() => settings.value.steamPath, async (newPath, oldPath) => {
   if (newPath && newPath !== oldPath) {
@@ -302,7 +331,18 @@ onMounted(async () => {
     loadSettings()
     await checkKernelStatus()
     await checkSteamRunning()
+    await loadSystemCacheSize()
+    // 每 5 秒刷新一次系统缓存大小，实现实时显示
+    systemCacheSizeTimer = setInterval(loadSystemCacheSize, 5000)
   })
+})
+
+// 组件卸载时停止定时刷新
+onUnmounted(() => {
+  if (systemCacheSizeTimer) {
+    clearInterval(systemCacheSizeTimer)
+    systemCacheSizeTimer = null
+  }
 })
 
 // 加载设置
@@ -477,7 +517,20 @@ async function selectSteamPath() {
     })
 
     if (selected && typeof selected === 'string') {
-      settings.value.steamPath = selected
+      // 验证所选路径是否包含 steam.exe
+      const result = await invoke<{
+        valid: boolean
+        path?: string
+        message?: string
+      }>('validate_steam_path_command', {
+        steamPath: selected
+      })
+
+      if (result.valid && result.path) {
+        settings.value.steamPath = result.path
+      } else {
+        alert(result.message || '选择失败，请选择 Steam 的安装路径（包含 steam.exe）')
+      }
     }
   } catch (err) {
     // 选择路径失败时静默处理
@@ -564,6 +617,50 @@ async function clearImportedManifestCache() {
     alert(`清除缓存失败: ${error}`)
   } finally {
     cacheClearStatus.value.loading = false
+  }
+}
+
+// 加载系统临时缓存大小
+async function loadSystemCacheSize() {
+  try {
+    systemCacheSize.value = await invoke<number>('get_system_cache_size')
+  } catch (error) {
+    console.error('获取系统缓存大小失败:', error)
+    systemCacheSize.value = 0
+  }
+}
+
+// 将字节数转换为人类可读格式
+function formatBytes(bytes: number): string {
+  if (bytes === 0) return '0 B'
+  const k = 1024
+  const sizes = ['B', 'KB', 'MB', 'GB', 'TB']
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
+}
+
+// 清理系统临时缓存
+async function clearSystemCache() {
+  if (systemCacheSize.value === 0) {
+    return
+  }
+
+  const confirmClear = confirm(
+    `确定要清理系统临时缓存吗？\n\n当前缓存大小：${formatBytes(systemCacheSize.value)}\n\n将删除 %TEMP% 下所有 steam_tool_* 临时文件。`
+  )
+  if (!confirmClear) {
+    return
+  }
+
+  systemCacheClearStatus.value.loading = true
+  try {
+    const result = await invoke<{ freed_size: number; deleted_count: number }>('clear_system_cache')
+    systemCacheSize.value = 0
+    alert(`已清理 ${result.deleted_count} 个临时文件，释放 ${formatBytes(result.freed_size)}`)
+  } catch (error) {
+    alert(`清理系统缓存失败: ${error}`)
+  } finally {
+    systemCacheClearStatus.value.loading = false
   }
 }
 

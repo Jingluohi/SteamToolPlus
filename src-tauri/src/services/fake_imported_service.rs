@@ -17,10 +17,14 @@ const FAKE_IMPORTED_GAMES_FILENAME: &str = "fake_imported_games.json";
 pub struct FakeImportedGameInfo {
     /// 游戏 AppID
     pub app_id: u32,
+    /// 游戏ID字符串（与 games_config.json 中的 game_id 一致，用于加载封面）
+    pub game_id: String,
     /// 显示名称：如果在 games_config.json 中匹配到则使用中文名，否则使用 AppID 字符串
     pub display_name: String,
     /// 是否在 games_config.json 中存在
     pub in_config: bool,
+    /// 封面图片路径（在配置中存在时提供）
+    pub cover_path: Option<String>,
 }
 
 /// 假入库游戏记录
@@ -67,9 +71,16 @@ fn save_record(record: &FakeImportedGamesRecord) -> Result<(), String> {
     Ok(())
 }
 
-/// 加载 games_config.json 中的游戏名称映射
-/// 返回 app_id 到中文名的映射
-fn load_game_names() -> HashMap<u32, String> {
+/// games_config.json 中的游戏信息
+#[derive(Debug, Clone)]
+struct GameConfigInfo {
+    chinese_name: String,
+    game_id: String,
+}
+
+/// 加载 games_config.json 中的游戏信息映射
+/// 返回 app_id 到游戏信息的映射
+fn load_game_configs() -> HashMap<u32, GameConfigInfo> {
     let mut result = HashMap::new();
 
     // 尝试从程序根目录读取 games_config.json
@@ -84,7 +95,10 @@ fn load_game_names() -> HashMap<u32, String> {
                             game.get("chinese_name").and_then(|v| v.as_str()),
                         ) {
                             if let Ok(app_id) = game_id.parse::<u32>() {
-                                result.insert(app_id, chinese_name.to_string());
+                                result.insert(app_id, GameConfigInfo {
+                                    chinese_name: chinese_name.to_string(),
+                                    game_id: game_id.to_string(),
+                                });
                             }
                         }
                     }
@@ -96,25 +110,52 @@ fn load_game_names() -> HashMap<u32, String> {
     result
 }
 
+/// 根据 game_id 构造封面图片路径
+/// 图片位于程序根目录 resources/pic/Game_Cover/{game_id}.jpg
+fn get_cover_path(game_id: &str) -> Option<String> {
+    config_path_utils::get_exe_dir()
+        .ok()
+        .map(|exe_dir| {
+            exe_dir
+                .join("resources")
+                .join("pic")
+                .join("Game_Cover")
+                .join(format!("{}.jpg", game_id))
+        })
+        .filter(|path| path.exists())
+        .map(|path| path.to_string_lossy().to_string())
+}
+
 /// 获取所有假入库游戏信息
 pub fn get_fake_imported_games() -> Result<Vec<FakeImportedGameInfo>, String> {
     let record = load_record()?;
-    let name_map = load_game_names();
+    let config_map = load_game_configs();
 
     let games: Vec<FakeImportedGameInfo> = record
         .app_ids
         .iter()
         .map(|&app_id| {
-            let in_config = name_map.contains_key(&app_id);
-            let display_name = name_map
+            let in_config = config_map.contains_key(&app_id);
+            let game_id = config_map
                 .get(&app_id)
-                .cloned()
+                .map(|info| info.game_id.clone())
                 .unwrap_or_else(|| app_id.to_string());
+            let display_name = config_map
+                .get(&app_id)
+                .map(|info| info.chinese_name.clone())
+                .unwrap_or_else(|| app_id.to_string());
+            let cover_path = if in_config {
+                get_cover_path(&game_id)
+            } else {
+                None
+            };
 
             FakeImportedGameInfo {
                 app_id,
+                game_id,
                 display_name,
                 in_config,
+                cover_path,
             }
         })
         .collect();

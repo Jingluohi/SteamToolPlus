@@ -482,6 +482,8 @@ fn main() {
             cache_commands::add_imported_manifest_game_id,
             cache_commands::get_cache,
             cache_commands::clear_imported_manifest_cache,
+            cache_commands::get_system_cache_size,
+            cache_commands::clear_system_cache,
             // 窗口命令
             window_commands::minimize_window,
             window_commands::maximize_window,
@@ -659,6 +661,7 @@ fn main() {
             opensteamtool_commands::check_steam_running,
             opensteamtool_commands::generate_opensteamtool_config,
             opensteamtool_commands::clean_steamtools_residuals_command,
+            opensteamtool_commands::validate_steam_path_command,
             // 假入库游戏管理命令
             fake_imported_commands::get_fake_imported_games_command,
             fake_imported_commands::add_fake_imported_game_command,

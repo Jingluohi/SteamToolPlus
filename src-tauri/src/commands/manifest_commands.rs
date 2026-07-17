@@ -141,7 +141,7 @@ fn parse_vdf_content(content: &str) -> Vec<(String, String)> {
     let mut depots = Vec::new();
     let mut current_depot: Option<String> = None;
     // 将正则表达式移到循环外部，避免每次迭代都重新编译
-    let re = Regex::new(r#""DecryptionKey"\s+"([a-f0-9]+)""#).unwrap();
+    let re = Regex::new(r#""DecryptionKey"\s+"([a-fA-F0-9]+)""#).unwrap();
 
     for line in content.lines() {
         let trimmed = line.trim();

@@ -157,7 +157,7 @@
           @clearImportSource="clearImportSource"
           @update:lockVersion="lockVersion = $event"
           @update:importSourceMode="importSourceMode = $event"
-          @openQingdanQRCode="openQingdanQRCode"
+          @open-qingdan-qr-code="openQingdanQRCode"
           @openDownloadUrl="openDownloadUrl"
         />
 
@@ -244,6 +244,47 @@
         </div>
       </div>
     </div>
+
+    <!-- 下载完成弹窗：提示用户前往注入补丁 -->
+    <BaseModal
+      v-model="showDownloadCompleteModal"
+      title="下载完成"
+      width="40%"
+      container-class="download-complete-modal"
+      :show-confirm="false"
+      :show-cancel="true"
+      cancel-text="稍后再说"
+      @close="showDownloadCompleteModal = false"
+    >
+      <template #body>
+        <div class="download-complete-modal-content">
+          <p class="modal-main-hint">下载完成，请前往注入补丁，补丁应用成功才能游玩</p>
+          <p class="modal-path-hint" v-if="downloadCompleteInstallPath">
+            已自动设置安装路径：<code>{{ downloadCompleteInstallPath }}</code>
+          </p>
+          <p class="modal-path-hint" v-if="downloadCompleteExePath && downloadCompleteExePath !== downloadCompleteInstallPath">
+            已自动定位游戏 exe 路径：<code>{{ downloadCompleteExePath }}</code>
+          </p>
+          <div class="patch-select-section">
+            <p class="patch-select-title">补丁选择：</p>
+            <div class="patch-select-buttons">
+              <button
+                v-for="tab in patchTabs"
+                :key="tab.id"
+                class="patch-select-btn"
+                :style="{ backgroundColor: getCategoryColor(tab.patchType) }"
+                @click="goToPatchTab(tab)"
+              >
+                {{ tab.name }}
+              </button>
+            </div>
+          </div>
+          <p v-if="patchTabs.length === 0" class="no-patch-hint">
+            该游戏暂无补丁配置，请前往游戏库查看。
+          </p>
+        </div>
+      </template>
+    </BaseModal>
   </div>
 </template>
 
@@ -254,6 +295,7 @@ import { invoke } from '@tauri-apps/api/core'
 import { open } from '@tauri-apps/plugin-dialog'
 import { convertFileSrc } from '@tauri-apps/api/core'
 import QRCodeModal from '../../components/common/QRCodeModal.vue'
+import BaseModal from '../../components/common/BaseModal.vue'
 import GameImportTab from './components/GameImportTab.vue'
 import GameDownloadTab from './components/GameDownloadTab.vue'
 import PatchConfigTab from './components/PatchConfigTab.vue'
@@ -355,6 +397,11 @@ const downloadProgress = ref<DownloadProgressType>({
 })
 let monitorInterval: number | null = null
 
+// 下载完成弹窗
+const showDownloadCompleteModal = ref(false)
+const downloadCompleteInstallPath = ref('')
+const downloadCompleteExePath = ref('')
+
 // 入库Steam状态
 const isImportingWithOpenSteamTool = ref(false)
 const manifestExists = ref(false)
@@ -448,10 +495,16 @@ const handleQRCodeClose = () => {
  * 使用程序内置的 qingdan.png 二维码图片
  */
 const openQingdanQRCode = async () => {
-  qrCodeTitle.value = '夸克网盘下载'
-  qrCodeHint.value = '请使用夸克APP扫码下载'
-  qrCodeImageUrl.value = await invoke<string>('get_qingdan_image_base64')
-  showQRCodeModal.value = true
+  console.log('openQingdanQRCode called')
+  try {
+    qrCodeTitle.value = '夸克网盘下载'
+    qrCodeHint.value = '请使用夸克APP扫码下载'
+    qrCodeImageUrl.value = await invoke<string>('get_qingdan_image_base64')
+    showQRCodeModal.value = true
+  } catch (error) {
+    console.error('打开清单二维码弹窗失败:', error)
+    alert(`打开二维码弹窗失败: ${error}`)
+  }
 }
 
 const canImportToSteam = computed(() => {
@@ -806,19 +859,39 @@ const scanProgressFiles = async () => {
       addDownloadLog('所有depot下载完成！', 'success')
       // 更新游戏数据为已完成
       await updateGameDownloadStatus(gameId.value, 'completed', 100)
+
       // 执行下载完成收尾：扫描目录、定位 exe、标记已安装
+      let finalizedGame = null
       try {
-        const finalizedGame = await finalizeGameDownload(gameId.value)
+        finalizedGame = await finalizeGameDownload(gameId.value)
         existingGameData.value = finalizedGame
         addDownloadLog('游戏已入库，可前往游戏库查看', 'success')
       } catch (finalizeError) {
         addDownloadLog(`入库处理失败: ${finalizeError}`, 'error')
         existingGameData.value = await getGameData(gameId.value)
       }
+
+      // 如果该游戏存在补丁配置，弹出补丁选择弹窗
+      if (patchTabs.value.length > 0) {
+        downloadCompleteInstallPath.value = downloadPath.value
+        downloadCompleteExePath.value = finalizedGame?.install_path || existingGameData.value?.install_path || downloadPath.value
+        showDownloadCompleteModal.value = true
+      }
     }
   } catch (error) {
     // 扫描进度文件失败时静默处理
   }
+}
+
+/**
+ * 跳转并应用指定补丁类型
+ * @param tab 补丁标签页
+ */
+const goToPatchTab = (tab: { id: string; name: string; patchType: number; patchPath: string; downloadUrls: { source: string; url: string; pwd?: string | null }[] }) => {
+  // 跳转补丁页时，优先使用 exe 路径；如果不存在，则回退到安装路径
+  gamePath.value = downloadCompleteExePath.value || downloadCompleteInstallPath.value || downloadPath.value
+  currentTab.value = tab.id
+  showDownloadCompleteModal.value = false
 }
 
 /**
@@ -1540,14 +1613,9 @@ const importWithOpenSteamTool = async () => {
 
     if (result.success) {
       const message =
-        `OpenSteamTool入库成功！\n\n` +
+        `入库成功，请打开 Steam 的库中查看游戏！\n\n` +
         `游戏: ${game.value.chinese_name || game.value.game_name}\n` +
-        `AppID: ${appId}\n` +
-        `内核DLL: ${result.kernelInstalled ? '已安装' : '未安装'}\n` +
-        `Lua文件: ${result.luaWritten ? '已写入' : '未写入'}\n` +
-        `Manifest文件: ${result.manifestCopied}个\n` +
-        `Steam: ${result.steamRestarted ? '已重启' : '未重启'}\n` +
-        `${result.advancedEnabled ? '高级模式: 已启用（写入注册表）' : ''}`
+        `AppID: ${appId}`
       alert(message)
     } else {
       alert(`OpenSteamTool入库失败: ${result.message}`)
@@ -2655,5 +2723,88 @@ const restartSteam = async () => {
   font-weight: 500;
   color: var(--steam-text-primary);
   margin: 0;
+}
+
+/* 下载完成弹窗 - 宽度40%，最大高度50%，内容紧凑 */
+:global(.download-complete-modal) {
+  width: 40% !important;
+  max-width: 40% !important;
+  height: auto !important;
+  max-height: 50vh !important;
+}
+
+.download-complete-modal-content {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  justify-content: flex-start;
+}
+
+.modal-main-hint {
+  margin: 0;
+  font-size: 15px;
+  color: var(--steam-text-primary);
+  line-height: 1.3;
+}
+
+.modal-path-hint {
+  margin: 0;
+  font-size: 13px;
+  color: var(--steam-text-secondary);
+}
+
+.modal-path-hint code {
+  padding: 2px 6px;
+  background-color: var(--steam-bg-tertiary);
+  border-radius: 4px;
+  font-family: 'Courier New', monospace;
+  word-break: break-all;
+}
+
+.patch-select-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.patch-select-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--steam-text-primary);
+}
+
+.patch-select-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  width: 100%;
+}
+
+.patch-select-btn {
+  flex: 1 1 calc(50% - 3px);
+  min-width: 100px;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 6px;
+  color: white;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.patch-select-btn:hover {
+  opacity: 0.85;
+  transform: translateY(-1px);
+}
+
+.no-patch-hint {
+  margin: 0;
+  font-size: 13px;
+  color: var(--steam-text-muted);
 }
 </style>
