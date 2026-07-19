@@ -9,7 +9,7 @@
     <div class="page-header">
       <div class="header-left">
         <h1 class="page-title">浏览</h1>
-        <p class="page-desc">这些是经过验证的游戏，更多游戏从【工具】->【本体下载】用清单文件下载本体，去【工具】->【免Steam补丁】打启动补丁或加QQ群：1095428733 反馈</p>
+        <p class="page-desc">这些是经过验证的游戏（都是豪华版），更多游戏从【工具】->【本体下载】用清单文件下载本体，去【工具】->【免Steam补丁】打启动补丁或加QQ群：1095428733 反馈</p>
       </div>
       <!-- 搜索栏移到标题右侧 -->
       <div class="search-section">
