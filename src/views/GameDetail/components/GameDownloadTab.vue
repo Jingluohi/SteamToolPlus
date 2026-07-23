@@ -1,6 +1,22 @@
 <template>
   <!-- 游戏下载标签页 -->
   <div class="tab-panel">
+    <!-- 顶部操作栏 -->
+    <div class="download-tab-header">
+      <h3 class="panel-title">游戏下载</h3>
+      <button
+        v-if="manifestCheckStatus === 'found'"
+        class="replace-manifest-btn"
+        @click="handleReplaceManifest"
+        title="删除本地清单文件夹，重新导入或下载清单"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+        </svg>
+        <span>替换清单</span>
+      </button>
+    </div>
+
     <!-- 下载状态显示 -->
     <div v-if="existingGameData?.download_status === 'completed'" class="download-completed-notice">
       <div class="success-icon">
@@ -172,7 +188,11 @@
       </div>
       <div class="download-option">
         <h4>方法二【入库 Steam】</h4>
-        <p>将游戏清单脚本导入 Steam 客户端，导入后可在 Steam 库中下载和启动游戏（优点是可自动更新）</p>
+        <p>将游戏清单脚本导入 Steam 客户端，导入后可在 Steam 库中下载和启动游戏（优点是可选择是否自动更新），想要联机或者有第三方加密的游戏需要 <span class="highlight-red-bold">注入补丁</span> 才能游玩</p>
+      </div>
+      <div class="download-option">
+        <h4>方法三【解压即玩】</h4>
+        <p>已经测试过100%可以直接下载下来 解压后就能直接玩 的游戏（大部分 单机豪华版 ，联机版会特别标注），体积超过100GB的会有多个文件以001、002等结尾，解压需要用7zip</p>
       </div>
     </div>
 
@@ -324,6 +344,8 @@ interface Emits {
   (e: 'openDownloadUrl', url: string): void
   /** 验证游戏完整性 */
   (e: 'verifyIntegrity'): void
+  /** 替换清单：删除本地清单文件夹 */
+  (e: 'replace-manifest'): void
   /** 更新清单源选择模式 */
   (e: 'update:downloadManifestSourceMode', mode: '7z' | 'folder'): void
 }
@@ -415,9 +437,59 @@ function handleUpdateManifestSourceMode(mode: '7z' | 'folder') {
 function handleVerifyIntegrity() {
   emit('verifyIntegrity')
 }
+
+/**
+ * 处理替换清单按钮点击
+ * 删除本地清单文件夹，恢复为清单未导入状态
+ */
+function handleReplaceManifest() {
+  emit('replace-manifest')
+}
 </script>
 
 <style scoped>
+/* 下载标签页顶部操作栏 */
+.download-tab-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--steam-border);
+}
+
+.download-tab-header .panel-title {
+  margin: 0;
+  font-size: 16px;
+  color: var(--steam-text-primary);
+}
+
+/* 替换清单按钮 */
+.replace-manifest-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  border-radius: 6px;
+  background-color: rgba(245, 158, 11, 0.12);
+  color: #f59e0b;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.replace-manifest-btn:hover {
+  background-color: rgba(245, 158, 11, 0.2);
+  border-color: rgba(245, 158, 11, 0.6);
+}
+
+.replace-manifest-btn svg {
+  width: 14px;
+  height: 14px;
+}
+
 /* 下载完成提示 */
 .download-completed-notice {
   display: flex;

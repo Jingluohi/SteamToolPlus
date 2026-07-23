@@ -120,6 +120,7 @@
           @open-qingdan-qr-code="openQingdanQRCode"
           @open-download-url="openDownloadUrl"
           @verify-integrity="verifyIntegrity"
+          @replace-manifest="handleReplaceManifest"
         />
 
         <!-- 补丁配置标签页 -->
@@ -785,6 +786,35 @@ const verifyIntegrity = async () => {
     addDownloadLog(`验证出错: ${error}`, 'error')
   } finally {
     isVerifying.value = false
+  }
+}
+
+/**
+ * 替换清单
+ * 删除本地清单文件夹，并重新检查清单状态，恢复为未导入状态
+ */
+const handleReplaceManifest = async () => {
+  const confirmed = confirm(
+    `确定要替换 "${game.value?.chinese_name || gameId.value}" 的清单吗？\n\n` +
+    '这将删除本地已导入的清单文件夹，之后需要重新选择或下载清单文件。'
+  )
+  if (!confirmed) return
+
+  try {
+    await invoke('delete_game_manifest_folder', { gameId: gameId.value })
+    addDownloadLog('已删除本地清单文件夹', 'success')
+
+    // 重置清单相关状态
+    manifestCheckStatus.value = 'checking'
+    manifestFolderPath.value = ''
+    selectedDownloadManifestPath.value = ''
+    downloadManifestSourceMode.value = '7z'
+
+    // 重新检查清单状态
+    await checkManifestFolder()
+  } catch (error) {
+    addDownloadLog(`替换清单失败: ${error}`, 'error')
+    alert(`替换清单失败: ${error}`)
   }
 }
 

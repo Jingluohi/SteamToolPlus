@@ -1,6 +1,7 @@
 // OpenSteamTool 内核相关命令
 // 提供前端调用的IPC命令，用于管理OpenSteamTool内核和游戏入库
 
+use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 use tauri::AppHandle;
@@ -177,6 +178,74 @@ fn scan_manifest_files_recursive(
     Ok(())
 }
 
+/// 从清单文件名构建 depot_id -> manifest_id 映射
+/// 清单文件名格式: depot_id_manifest_id.manifest
+fn build_manifest_map(manifest_files: &[String]) -> HashMap<String, String> {
+    let mut map = HashMap::new();
+    for file in manifest_files {
+        let path = Path::new(file);
+        if let Some(filename) = path.file_stem().and_then(|s| s.to_str()) {
+            let parts: Vec<&str> = filename.splitn(2, '_').collect();
+            if parts.len() == 2 {
+                map.insert(parts[0].to_string(), parts[1].to_string());
+            }
+        }
+    }
+    map
+}
+
+/// 从 addappid(depot_id,1,0) 格式的行中提取 depot_id
+/// 只有第二参数为 1 且第三参数为 0 时才认为是 depot
+fn extract_depot_id_from_addappid(line: &str) -> Option<&str> {
+    let trimmed = line.trim();
+    if !trimmed.starts_with("addappid(") {
+        return None;
+    }
+    let inner = trimmed.strip_prefix("addappid(")?.strip_suffix(")")?;
+    let parts: Vec<&str> = inner.split(',').collect();
+    if parts.len() >= 2 {
+        let second = parts[1].trim();
+        let third = parts.get(2).map(|s| s.trim()).unwrap_or("0");
+        if second == "1" && third == "0" {
+            return Some(parts[0].trim());
+        }
+    }
+    None
+}
+
+/// 根据 lock_version 调整 Lua 内容
+/// - lock_version=true: 为每个有 manifest 的 depot 添加 setManifestid
+/// - lock_version=false: 移除所有 setManifestid 行
+fn apply_lock_version_to_lua(
+    lua_content: &str,
+    lock_version: bool,
+    manifest_map: &HashMap<String, String>,
+) -> String {
+    // 先移除所有 setManifestid 行
+    let base_lines: Vec<String> = lua_content
+        .lines()
+        .filter(|line| !line.trim().starts_with("setManifestid"))
+        .map(|line| line.to_string())
+        .collect();
+
+    if !lock_version {
+        return base_lines.join("\n");
+    }
+
+    // 为每个 depot 添加 setManifestid
+    let mut result_lines = Vec::new();
+    for line in base_lines {
+        result_lines.push(line.clone());
+        if let Some(depot_id) = extract_depot_id_from_addappid(&line) {
+            if let Some(manifest_id) = manifest_map.get(depot_id) {
+                result_lines.push(format!("setManifestid({},\"{}\")", depot_id, manifest_id));
+            }
+        }
+    }
+
+    result_lines.join("\n")
+}
+
 /// 尝试将VDF文件转换为Lua文件
 /// 返回转换后的Lua文件路径列表
 ///
@@ -261,6 +330,14 @@ pub fn import_game_with_opensteamtool(
         return Err("未找到Lua文件，OpenSteamTool内核模式需要Lua文件".to_string());
     };
 
+    // 根据 lock_version 调整 Lua 内容，确保已有 Lua 文件也能响应开关
+    let manifest_map = build_manifest_map(&manifest_files);
+    let lua_content = apply_lock_version_to_lua(
+        &lua_content,
+        lock_version.unwrap_or(false),
+        &manifest_map,
+    );
+
     let options = OpenSteamToolImportOptions {
         steam_path,
         app_id,
@@ -332,6 +409,14 @@ pub fn import_manifest_with_opensteamtool(
     } else {
         return Err("未找到Lua文件，OpenSteamTool内核模式需要Lua文件".to_string());
     };
+
+    // 根据 lock_version 调整 Lua 内容，确保已有 Lua 文件也能响应开关
+    let manifest_map = build_manifest_map(&manifest_files);
+    let lua_content = apply_lock_version_to_lua(
+        &lua_content,
+        lock_version.unwrap_or(false),
+        &manifest_map,
+    );
 
     // 提取AppID
     let detected_app_id = if let Some(id) = app_id {

@@ -512,6 +512,7 @@ fn main() {
             download_commands::get_download_progress_files,
             download_commands::read_directory,
             download_commands::delete_file,
+            download_commands::delete_game_manifest_folder,
             download_commands::shutdown_system,
             download_commands::get_game_depots,
             download_commands::check_and_cleanup_completed_downloads,

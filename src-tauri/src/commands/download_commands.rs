@@ -6,6 +6,7 @@ use crate::services::{
 };
 use tauri::AppHandle;
 use crate::services::game_data_service;
+use crate::utils::resource_utils::get_resource_dir;
 use std::thread;
 use std::time::Duration;
 use std::sync::atomic::{AtomicU32, Ordering};
@@ -218,6 +219,21 @@ pub fn read_directory(path: String) -> Result<Vec<crate::services::DirEntry>, St
 pub fn delete_file(file_path: String) -> Result<(), String> {
     let service = DownloadService::new();
     service.delete_file(&file_path)
+}
+
+/// 删除游戏的清单文件夹
+/// 用于"替换清单"功能，清空 resources/manifest/{game_id} 目录
+#[tauri::command]
+pub fn delete_game_manifest_folder(app: AppHandle, game_id: String) -> Result<(), String> {
+    let resource_dir = get_resource_dir(&app)?;
+    let manifest_dir = resource_dir.join("manifest").join(&game_id);
+
+    if manifest_dir.exists() {
+        std::fs::remove_dir_all(&manifest_dir)
+            .map_err(|e| format!("删除清单文件夹失败: {}", e))?;
+    }
+
+    Ok(())
 }
 
 /// 关闭系统

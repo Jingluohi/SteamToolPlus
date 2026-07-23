@@ -564,6 +564,41 @@ onUnmounted(() => {
 const loadGames = async () => {
   try {
     games.value = await getAllGamesData()
+
+    // 检查已安装游戏的目录是否存在，不存在则重置状态
+    const gamesToReset: GameData[] = []
+    for (const game of games.value) {
+      if (game.is_installed && game.install_path) {
+        try {
+          const exists = await invoke<boolean>('check_directory_exists', {
+            path: game.install_path
+          })
+          if (!exists) {
+            gamesToReset.push(game)
+          }
+        } catch {
+          gamesToReset.push(game)
+        }
+      }
+    }
+
+    // 重置目录不存在的游戏状态
+    for (const game of gamesToReset) {
+      const resetGame: GameData = {
+        ...game,
+        is_installed: false,
+        install_path: '',
+        exe_path: '',
+        download_status: '',
+        download_progress: 0
+      }
+      await upsertGameData(resetGame)
+      const index = games.value.findIndex(g => g.game_id === game.game_id)
+      if (index !== -1) {
+        games.value[index] = resetGame
+      }
+    }
+
     await loadGameCovers()
     // 如果有选中的游戏，更新其数据
     if (selectedGame.value) {

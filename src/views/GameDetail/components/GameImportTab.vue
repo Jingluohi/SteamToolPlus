@@ -5,7 +5,7 @@
     <div class="import-steam-content">
       <!-- 入库说明 -->
       <div class="import-description">
-        <p>将游戏清单导入Steam客户端，导入后可在Steam库中下载和启动游戏，如果库不显示游戏，请重启steam。</p>
+        <p>将游戏清单导入Steam客户端，导入后可在Steam库中下载和启动游戏，初次启动steam时，需要1分钟来加载游戏，如果2分钟后库还不显示游戏，请重启steam再次尝试。</p>
         <p class="import-note">注意：部分游戏入库下载后需要配合补丁才能正常游玩。</p>
       </div>
 
@@ -314,6 +314,11 @@ function openDownloadUrl(url: string) {
   gap: 12px;
   width: 100%;
   margin-bottom: 8px;
+}
+
+/* 防止 Tooltip 被 grid item 拉伸导致提示框偏移到右上角 */
+.opensteamtool-options > .tooltip-wrapper {
+  justify-self: start;
 }
 
 .option-item {
