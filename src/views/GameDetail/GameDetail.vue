@@ -903,8 +903,9 @@ const scanProgressFiles = async () => {
 
       // 如果该游戏存在补丁配置，弹出补丁选择弹窗
       if (patchTabs.value.length > 0) {
-        downloadCompleteInstallPath.value = downloadPath.value
-        downloadCompleteExePath.value = finalizedGame?.install_path || existingGameData.value?.install_path || downloadPath.value
+        downloadCompleteInstallPath.value = finalizedGame?.install_path || existingGameData.value?.install_path || downloadPath.value
+        const exePath = finalizedGame?.exe_path || existingGameData.value?.exe_path || ''
+        downloadCompleteExePath.value = exePath ? exePath.substring(0, exePath.lastIndexOf('\\')) : ''
         showDownloadCompleteModal.value = true
       }
     }
@@ -918,8 +919,7 @@ const scanProgressFiles = async () => {
  * @param tab 补丁标签页
  */
 const goToPatchTab = (tab: { id: string; name: string; patchType: number; patchPath: string; downloadUrls: { source: string; url: string; pwd?: string | null }[] }) => {
-  // 跳转补丁页时，优先使用 exe 路径；如果不存在，则回退到安装路径
-  gamePath.value = downloadCompleteExePath.value || downloadCompleteInstallPath.value || downloadPath.value
+  // 跳转到补丁页，gamePath 保持为安装根目录；补丁应用时后端会自动定位 exe 目录
   currentTab.value = tab.id
   showDownloadCompleteModal.value = false
 }
@@ -1079,7 +1079,15 @@ onMounted(async () => {
     } else if (gameData.download_path) {
       downloadPath.value = gameData.download_path
     }
-    if (gameData.install_path) {
+    // 恢复游戏路径：下载完成后优先使用下载路径（安装根目录）
+    // 并同步修正旧版本可能把 install_path 写成 exe 目录的问题
+    if (gameData.download_status === 'completed' && gameData.download_path) {
+      gamePath.value = gameData.download_path
+      if (gameData.install_path !== gameData.download_path) {
+        gameData.install_path = gameData.download_path
+        await safeAsync(() => upsertGameData(gameData))
+      }
+    } else if (gameData.install_path) {
       gamePath.value = gameData.install_path
     }
     // 如果正在下载中，恢复监控

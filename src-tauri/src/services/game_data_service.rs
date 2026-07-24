@@ -367,14 +367,15 @@ pub async fn finalize_download(app: AppHandle, game_id: String) -> Result<GameDa
         game.download_status = "completed".to_string();
         game.download_progress = 100;
 
-        if let Some((exe_path, install_path)) = best_exe {
+        if let Some((exe_path, _exe_dir)) = best_exe {
             game.exe_path = exe_path;
-            game.install_path = install_path;
+            // install_path 保持为下载/安装根目录，与 exe 所在目录区分开
+            game.install_path = scan_root.clone();
             game.is_installed = true;
         } else {
             // 即使没有找到 exe，只要目录存在也标记为已安装
             // 用户可以后续手动编辑 exe 路径
-            game.install_path = scan_root;
+            game.install_path = scan_root.clone();
             game.is_installed = true;
         }
 
@@ -393,7 +394,7 @@ pub async fn finalize_download(app: AppHandle, game_id: String) -> Result<GameDa
 
 /// 在指定目录中查找最合适的游戏主程序
 /// 返回 (exe 完整路径, 所在目录) 或 None
-fn find_best_game_exe(root: &str, game_name: &str) -> Option<(String, String)> {
+pub fn find_best_game_exe(root: &str, game_name: &str) -> Option<(String, String)> {
     let root_path = std::path::Path::new(root);
     if !root_path.exists() || !root_path.is_dir() {
         return None;

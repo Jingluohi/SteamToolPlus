@@ -194,8 +194,8 @@ fn build_manifest_map(manifest_files: &[String]) -> HashMap<String, String> {
     map
 }
 
-/// 从 addappid(depot_id,1,0) 格式的行中提取 depot_id
-/// 只有第二参数为 1 且第三参数为 0 时才认为是 depot
+/// 从 addappid(depot_id, 1, "key") 格式的行中提取 depot_id
+/// 第二参数为 1 时认为是 depot（DLC app_id 只有单个参数，不会被误判）
 fn extract_depot_id_from_addappid(line: &str) -> Option<&str> {
     let trimmed = line.trim();
     if !trimmed.starts_with("addappid(") {
@@ -205,8 +205,7 @@ fn extract_depot_id_from_addappid(line: &str) -> Option<&str> {
     let parts: Vec<&str> = inner.split(',').collect();
     if parts.len() >= 2 {
         let second = parts[1].trim();
-        let third = parts.get(2).map(|s| s.trim()).unwrap_or("0");
-        if second == "1" && third == "0" {
+        if second == "1" {
             return Some(parts[0].trim());
         }
     }

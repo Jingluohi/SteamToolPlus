@@ -197,9 +197,9 @@ fn generate_lua(
     // 添加主App ID
     lines.push(format!("addappid({})", main_app_id));
 
-    // 添加带密钥的depot
+    // 添加带密钥的depot（第二参数为1表示depot）
     for (depot_id, key) in depots {
-        lines.push(format!("addappid({},0,\"{}\")", depot_id, key));
+        lines.push(format!("addappid({},1,\"{}\")", depot_id, key));
     }
 
     // 添加访问令牌（用于受保护的游戏/DLC）
