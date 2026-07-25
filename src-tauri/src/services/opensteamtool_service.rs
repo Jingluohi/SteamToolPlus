@@ -16,8 +16,6 @@ const OPENSTEAMTOOL_DLLS: &[&str] = &["dwmapi.dll", "xinput1_4.dll", "OpenSteamT
 
 /// Lua配置目标子目录
 const STEAM_LUA_DIR: &str = "config/lua";
-/// Manifest缓存目标子目录
-const STEAM_DEPOTCACHE_DIR: &str = "config/depotcache";
 
 /// Steam注册表路径（用于读取Steam安装路径）
 #[cfg(target_os = "windows")]
@@ -42,8 +40,6 @@ pub struct OpenSteamToolImportOptions {
     pub game_name: String,
     /// Lua脚本内容
     pub lua_content: String,
-    /// 需要复制的manifest文件路径列表（可选）
-    pub manifest_files: Vec<String>,
     /// 是否自动安装内核DLL（首次使用）
     pub install_kernel: bool,
     /// 是否重启Steam
@@ -274,44 +270,6 @@ pub fn write_lua_file(steam_path: &str, app_id: u32, lua_content: &str) -> Resul
 
     log::info!("已写入Lua文件: {}", lua_file.display());
     Ok(lua_file)
-}
-
-/// 复制manifest文件到Steam/config/depotcache/
-pub fn copy_manifests(steam_path: &str, manifest_files: &[String]) -> Result<usize, String> {
-    if manifest_files.is_empty() {
-        return Ok(0);
-    }
-
-    let steam_path = Path::new(steam_path);
-    let depotcache_dir = steam_path.join(STEAM_DEPOTCACHE_DIR);
-
-    fs::create_dir_all(&depotcache_dir).map_err(|e| {
-        format!("创建depotcache目录失败: {}", e)
-    })?;
-
-    let mut copied = 0;
-    for manifest_file in manifest_files {
-        let source = Path::new(manifest_file);
-        if !source.exists() {
-            log::warn!("manifest文件不存在，跳过: {}", source.display());
-            continue;
-        }
-
-        if let Some(filename) = source.file_name() {
-            let dest = depotcache_dir.join(filename);
-            match fs::copy(source, &dest) {
-                Ok(_) => {
-                    copied += 1;
-                    log::info!("已复制manifest: {} -> {}", source.display(), dest.display());
-                }
-                Err(e) => {
-                    log::error!("复制manifest失败 {}: {}", source.display(), e);
-                }
-            }
-        }
-    }
-
-    Ok(copied)
 }
 
 /// 重启Steam客户端
@@ -595,8 +553,9 @@ pub fn import_with_opensteamtool(
     let lua_file = write_lua_file(&steam_path, app_id, &options.lua_content)?;
     let lua_written = lua_file.exists();
 
-    // 4. 复制manifest文件（如果有）
-    let manifest_copied = copy_manifests(&steam_path, &options.manifest_files)?;
+    // 4. manifest 文件不再需要复制到 Steam/config/depotcache/
+    // OpenSteamTool 只需要 Lua 中的 addappid/setManifestid，Steam 会自己在线下载 manifest
+    let manifest_copied = 0;
 
     // 5. 高级模式：不再自动写注册表，仅做占位记录
     let advanced_enabled = options.advanced_mode;
@@ -620,10 +579,9 @@ pub fn import_with_opensteamtool(
     }
 
     let message = format!(
-        "OpenSteamTool入库完成: {} (AppID: {}), Lua已写入, manifest复制{}个, 内核{}, Steam{}",
+        "OpenSteamTool入库完成: {} (AppID: {}), Lua已写入, 内核{}, Steam{}",
         options.game_name,
         app_id,
-        manifest_copied,
         if kernel_installed { "已安装" } else { "未安装" },
         if steam_restarted { "已重启" } else if options.hot_reload { "热加载" } else { "未重启" }
     );

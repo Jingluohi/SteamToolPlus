@@ -200,7 +200,8 @@ pub fn has_real_steam_ownership(steam_path: &str, app_id: u32) -> bool {
 }
 
 /// 删除 OpenSteamTool 为该游戏写入的文件
-/// 包括：Steam/config/lua/{app_id}.lua 和相关 depotcache 文件
+/// 当前只删除 Steam/config/lua/{app_id}.lua
+/// manifest 文件不再由程序复制到 Steam/config/depotcache/，因此无需清理
 /// 返回删除的文件列表
 pub fn cleanup_fake_imported_files(
     steam_path: &str,
@@ -209,7 +210,7 @@ pub fn cleanup_fake_imported_files(
     let mut deleted_files = Vec::new();
     let steam_path = Path::new(steam_path);
 
-    // 1. 删除 Lua 文件
+    // 删除 Lua 文件
     let lua_file = steam_path.join("config").join("lua").join(format!("{}.lua", app_id));
     if lua_file.exists() {
         match fs::remove_file(&lua_file) {
@@ -219,30 +220,6 @@ pub fn cleanup_fake_imported_files(
             }
             Err(e) => {
                 log::warn!("删除 Lua 文件失败 {}: {}", lua_file.display(), e);
-            }
-        }
-    }
-
-    // 2. 删除 depotcache 中可能相关的 manifest 文件
-    // manifest 文件名通常与 app_id 相关，格式不固定，这里删除包含 app_id 的文件
-    let depotcache_dir = steam_path.join("config").join("depotcache");
-    if depotcache_dir.exists() {
-        if let Ok(entries) = fs::read_dir(&depotcache_dir) {
-            for entry in entries.flatten() {
-                if let Ok(file_name) = entry.file_name().into_string() {
-                    // 匹配文件名中包含 app_id 的 manifest 文件
-                    if file_name.contains(&app_id.to_string()) {
-                        match fs::remove_file(entry.path()) {
-                            Ok(_) => {
-                                log::info!("已删除假入库 manifest 文件: {}", entry.path().display());
-                                deleted_files.push(entry.path().to_string_lossy().to_string());
-                            }
-                            Err(e) => {
-                                log::warn!("删除 manifest 文件失败 {}: {}", entry.path().display(), e);
-                            }
-                        }
-                    }
-                }
             }
         }
     }

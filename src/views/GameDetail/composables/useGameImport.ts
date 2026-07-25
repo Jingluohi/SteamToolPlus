@@ -323,9 +323,8 @@ export function useGameImport() {
           `AppID: ${appId}\n` +
           `内核DLL: ${result.kernelInstalled ? '已安装' : '未安装'}\n` +
           `Lua文件: ${result.luaWritten ? '已写入' : '未写入'}\n` +
-          `Manifest文件: ${result.manifestCopied}个\n` +
           `Steam: ${result.steamRestarted ? '已重启' : '未重启'}\n` +
-          `${result.advancedEnabled ? '高级模式: 已启用（写入注册表）' : ''}`
+          `${result.advancedEnabled ? '高级模式: 已启用' : ''}`
         alert(message)
       } else {
         alert(`OpenSteamTool入库失败: ${result.message}`)

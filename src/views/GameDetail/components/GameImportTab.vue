@@ -66,6 +66,11 @@
 
       <!-- 没有vdf/lua时显示下载引导和文件选择 -->
       <div v-if="!hasLua && !importSourceReady" class="import-no-files">
+        <!-- 本地清单缺失提示 -->
+        <div class="manifest-missing-notice">
+          <p>当前不存在本地清单，请下载对应 id：{{ gameId }} 的清单后导入</p>
+        </div>
+
         <!-- 下载引导 -->
         <div class="download-guide">
           <p class="download-guide-title">点击下载对应清单文件7z，id：{{ gameId }}</p>
@@ -491,6 +496,20 @@ function openDownloadUrl(url: string) {
   flex-direction: column;
   gap: 10px;
   width: 100%;
+}
+
+.manifest-missing-notice {
+  padding: 10px;
+  background-color: rgba(239, 68, 68, 0.1);
+  border-radius: 8px;
+  border-left: 4px solid #ef4444;
+}
+
+.manifest-missing-notice p {
+  margin: 0;
+  font-size: 14px;
+  color: var(--steam-text-primary);
+  line-height: 1.5;
 }
 
 .download-guide {

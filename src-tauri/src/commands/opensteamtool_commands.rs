@@ -120,7 +120,6 @@ pub fn import_with_opensteamtool_command(
     app_id: u32,
     game_name: String,
     lua_content: String,
-    manifest_files: Option<Vec<String>>,
     install_kernel: Option<bool>,
     restart_steam: Option<bool>,
     advanced_mode: Option<bool>,
@@ -131,7 +130,6 @@ pub fn import_with_opensteamtool_command(
         app_id,
         game_name,
         lua_content,
-        manifest_files: manifest_files.unwrap_or_default(),
         install_kernel: install_kernel.unwrap_or(true),
         restart_steam: restart_steam.unwrap_or(true),
         advanced_mode: advanced_mode.unwrap_or(false),
@@ -194,8 +192,10 @@ fn build_manifest_map(manifest_files: &[String]) -> HashMap<String, String> {
     map
 }
 
-/// 从 addappid(depot_id, 1, "key") 格式的行中提取 depot_id
-/// 第二参数为 1 时认为是 depot（DLC app_id 只有单个参数，不会被误判）
+/// 从 addappid(depot_id, [任意整数], "key") 格式的行中提取 depot_id
+/// OpenSteamTool 源码中 addappid 的第二参数被忽略，只取 depotId 和 key
+/// 因此只要存在第二参数（任意整数）且存在第三参数 key，就认为是 depot
+/// DLC 的 app_id 只有单个参数，不会被误判
 fn extract_depot_id_from_addappid(line: &str) -> Option<&str> {
     let trimmed = line.trim();
     if !trimmed.starts_with("addappid(") {
@@ -203,10 +203,13 @@ fn extract_depot_id_from_addappid(line: &str) -> Option<&str> {
     }
     let inner = trimmed.strip_prefix("addappid(")?.strip_suffix(")")?;
     let parts: Vec<&str> = inner.split(',').collect();
-    if parts.len() >= 2 {
-        let second = parts[1].trim();
-        if second == "1" {
-            return Some(parts[0].trim());
+    // 至少需要 3 个参数：depot_id, 任意占位整数, key
+    if parts.len() >= 3 {
+        let depot_id = parts[0].trim();
+        let key = parts[2].trim();
+        // key 应该是 64 位十六进制字符串（带引号）
+        if !depot_id.is_empty() && !key.is_empty() {
+            return Some(depot_id);
         }
     }
     None
@@ -342,7 +345,6 @@ pub fn import_game_with_opensteamtool(
         app_id,
         game_name,
         lua_content,
-        manifest_files,
         install_kernel: true,
         restart_steam: true,
         advanced_mode: advanced_mode.unwrap_or(false),
@@ -432,7 +434,6 @@ pub fn import_manifest_with_opensteamtool(
         app_id: detected_app_id,
         game_name: game_name_value,
         lua_content,
-        manifest_files,
         install_kernel: true,
         restart_steam: true,
         advanced_mode: advanced_mode.unwrap_or(false),

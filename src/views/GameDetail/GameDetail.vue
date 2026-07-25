@@ -901,9 +901,15 @@ const scanProgressFiles = async () => {
         existingGameData.value = await getGameData(gameId.value)
       }
 
+      // 同步设置游戏路径为安装根目录，确保弹窗跳转补丁页时路径不为空
+      const finalInstallPath = finalizedGame?.install_path || existingGameData.value?.install_path || downloadPath.value
+      if (finalInstallPath) {
+        gamePath.value = finalInstallPath
+      }
+
       // 如果该游戏存在补丁配置，弹出补丁选择弹窗
       if (patchTabs.value.length > 0) {
-        downloadCompleteInstallPath.value = finalizedGame?.install_path || existingGameData.value?.install_path || downloadPath.value
+        downloadCompleteInstallPath.value = finalInstallPath
         const exePath = finalizedGame?.exe_path || existingGameData.value?.exe_path || ''
         downloadCompleteExePath.value = exePath ? exePath.substring(0, exePath.lastIndexOf('\\')) : ''
         showDownloadCompleteModal.value = true
@@ -1101,6 +1107,12 @@ onMounted(async () => {
       try {
         const finalizedGame = await finalizeGameDownload(gameId.value)
         existingGameData.value = finalizedGame
+        // 同步设置游戏路径为安装根目录
+        if (finalizedGame.install_path) {
+          gamePath.value = finalizedGame.install_path
+        } else if (finalizedGame.download_path) {
+          gamePath.value = finalizedGame.download_path
+        }
       } catch {
         // 补偿失败时保持原数据，不影响页面显示
       }
