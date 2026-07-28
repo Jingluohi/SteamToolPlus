@@ -671,6 +671,8 @@ fn main() {
             denuvo_commands::get_active_steam_user,
             denuvo_commands::read_denuvo_auth_from_registry,
             denuvo_commands::write_denuvo_auth_to_registry,
+            denuvo_commands::check_denuvo_auth_status,
+            denuvo_commands::get_fake_imported_games_denuvo_status,
             denuvo_commands::backup_denuvo_auth,
             denuvo_commands::list_denuvo_auth_backups,
             denuvo_commands::load_denuvo_auth_backup,

@@ -111,8 +111,9 @@ function handleClick(event: MouseEvent) {
 }
 
 .btn:disabled {
-  opacity: 0.6;
+  opacity: 0.45;
   cursor: not-allowed;
+  filter: grayscale(0.4);
 }
 
 /* 尺寸 */

@@ -6,8 +6,10 @@ use std::fs;
 use std::path::PathBuf;
 
 use crate::models::{
-    ActiveSteamUserInfo, DenuvoAuthEntry, DenuvoAuthListItem,
+    ActiveSteamUserInfo, DenuvoAuthEntry, DenuvoAuthListItem, DenuvoAuthStatus,
+    DenuvoGameAuthStatus,
 };
+use crate::services::fake_imported_service::get_fake_imported_games;
 use crate::utils::config_path_utils::get_appdata_dir;
 
 /// 注册表中 Steam 每个 App 的授权信息根路径
@@ -223,6 +225,68 @@ pub fn write_denuvo_auth_to_registry(
     {
         Err("非 Windows 系统不支持写入 Steam 注册表".to_string())
     }
+}
+
+/// 查询指定 AppID 的 D 加密授权状态
+/// 返回简化状态，不暴露完整 ticket 数据
+#[tauri::command]
+pub fn check_denuvo_auth_status(app_id: u32) -> Result<DenuvoAuthStatus, String> {
+    #[cfg(target_os = "windows")]
+    {
+        use winreg::enums::HKEY_CURRENT_USER;
+        use winreg::RegKey;
+
+        let hkcu = RegKey::predef(HKEY_CURRENT_USER);
+        let app_key_result = hkcu.open_subkey(&app_registry_path(app_id));
+
+        match app_key_result {
+            Ok(app_key) => {
+                let steam_id: Result<String, _> = app_key.get_value("SteamID");
+                match steam_id {
+                    Ok(id) if !id.is_empty() => Ok(DenuvoAuthStatus::Authorized),
+                    _ => Ok(DenuvoAuthStatus::NotAuthorized),
+                }
+            }
+            Err(_) => Ok(DenuvoAuthStatus::NeedLaunch),
+        }
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        Err("非 Windows 系统不支持读取 Steam 注册表".to_string())
+    }
+}
+
+/// 获取所有假入库游戏的 D 加密授权状态
+/// 用于在 D 加密授权页面展示哪些游戏已完成授权
+#[tauri::command]
+pub fn get_fake_imported_games_denuvo_status() -> Result<Vec<DenuvoGameAuthStatus>, String> {
+    let games = get_fake_imported_games()?;
+    let mut result = Vec::with_capacity(games.len());
+
+    for game in games {
+        let (status, authorized_steam_id) = match read_denuvo_auth_from_registry(game.app_id) {
+            Ok(entry) => {
+                let has_steam_id = entry.steam_id.as_ref().map(|s| !s.is_empty()).unwrap_or(false);
+                if has_steam_id {
+                    (DenuvoAuthStatus::Authorized, entry.steam_id)
+                } else {
+                    (DenuvoAuthStatus::NotAuthorized, None)
+                }
+            }
+            Err(_) => (DenuvoAuthStatus::NeedLaunch, None),
+        };
+
+        result.push(DenuvoGameAuthStatus {
+            app_id: game.app_id,
+            display_name: game.display_name,
+            cover_path: game.cover_path,
+            status,
+            authorized_steam_id,
+        });
+    }
+
+    Ok(result)
 }
 
 /// 备份指定 AppID 的 D 加密授权到程序数据目录

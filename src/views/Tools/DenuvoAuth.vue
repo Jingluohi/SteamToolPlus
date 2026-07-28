@@ -4,40 +4,8 @@
     <div class="page-header">
       <h1 class="page-title">D 加密授权管理</h1>
       <p class="page-subtitle">
-        将已通过正版账号完成 D 加密授权游戏的凭证迁移到另一个 Steam 账号，使目标账号无需再次购买即可运行该游戏。
+        从已购买游戏的 A 账号提取 D 加密授权凭证，保存后切换到目标 B 账号应用，实现 B 账号运行 D 加密游戏。
       </p>
-    </div>
-
-    <!-- 使用流程说明 -->
-    <div class="info-card usage-guide-card">
-      <div class="info-card-header">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="12" cy="12" r="10"/>
-          <line x1="12" y1="16" x2="12" y2="12"/>
-          <line x1="12" y1="8" x2="12.01" y2="8"/>
-        </svg>
-        <span>使用流程</span>
-      </div>
-      <ol class="usage-steps">
-        <li>
-          <strong>获取授权</strong>：在拥有该游戏的 Steam 账号 A 上启动游戏一次，确保游戏已正常进入（D 加密完成在线授权）。
-        </li>
-        <li>
-          <strong>提取凭证</strong>：保持账号 A 登录 Steam，在本页面输入 AppID 与游戏名称，点击“提取当前授权”。系统会自动读取注册表中的 SteamID、AppTicket、ETicket。
-        </li>
-        <li>
-          <strong>切换目标账号</strong>：退出账号 A，登录你想要授权的 Steam 账号 B。页面顶部会显示当前活动用户的 SteamID64。
-        </li>
-        <li>
-          <strong>填入目标账号</strong>：在下方“目标授权 SteamID64”中填入账号 B 的 SteamID64，可直接点击“填入当前活动用户”自动读取。
-        </li>
-        <li>
-          <strong>应用授权</strong>：点击“保存配置”，然后在右侧列表点击“应用授权到注册表”，程序会自动将授权写入注册表，最后用账号 B 启动游戏。
-        </li>
-      </ol>
-      <div class="usage-notice">
-        <strong>注意：</strong>AppTicket / ETicket 是 D 加密授权凭证，通常无需手动填写，点击“提取当前授权”即可自动获取。目标 SteamID64 必须与启动游戏时的当前登录账号一致。
-      </div>
     </div>
 
     <!-- 当前 Steam 活动用户 -->
@@ -68,176 +36,213 @@
       </div>
     </div>
 
-    <div class="main-content">
-      <!-- 左侧：编辑表单 -->
-      <div class="left-panel">
-        <div class="form-card">
-          <h3 class="form-title">{{ isEditing ? '编辑授权配置' : '添加授权配置' }}</h3>
+    <!-- 手动授权表单 -->
+    <div class="info-card form-card">
+      <div class="info-card-header">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+        </svg>
+        <span>授权配置</span>
+      </div>
 
-          <div class="form-group">
-            <label class="form-label">
-              AppID
-              <span class="required">*</span>
-            </label>
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label" for="denuvo-app-id">AppID <span class="required">*</span></label>
+          <input
+            id="denuvo-app-id"
+            v-model="form.appId"
+            type="text"
+            class="form-input"
+            placeholder="例如：376420"
+            :disabled="isExtracting || isSaving || isApplying"
+          />
+          <span class="form-hint">游戏的 Steam AppID，纯数字</span>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="denuvo-game-name">游戏名称 <span class="required">*</span></label>
+          <input
+            id="denuvo-game-name"
+            v-model="form.gameName"
+            type="text"
+            class="form-input"
+            placeholder="例如：生化危机8"
+            :disabled="isExtracting || isSaving || isApplying"
+          />
+          <span class="form-hint">用于备份列表展示，可自定义</span>
+        </div>
+
+        <div class="form-group form-group-wide">
+          <label class="form-label" for="denuvo-steam-id">目标 SteamID64 <span class="required">*</span></label>
+          <div class="input-with-btn">
             <input
-              v-model="form.appId"
+              id="denuvo-steam-id"
+              v-model="form.steamId"
               type="text"
               class="form-input"
-              placeholder="请输入 Steam AppID，例如 1234560"
-              :disabled="isEditing"
-              @input="onAppIdInput"
+              placeholder="例如：76561198xxxxxxxx"
+              :disabled="isExtracting || isSaving || isApplying || isExtractingSteamId"
             />
-            <p class="form-hint">Steam 游戏的 AppID，可在 Steam 商店页面 URL 或 SteamDB 中查看</p>
-          </div>
-
-          <div class="form-group">
-            <label class="form-label">
-              游戏名称
-              <span class="required">*</span>
-            </label>
-            <input
-              v-model="form.gameName"
-              type="text"
-              class="form-input"
-              placeholder="请输入游戏名称，用于识别"
-            />
-          </div>
-
-          <div class="form-group">
-            <label class="form-label">目标授权 SteamID64（切换后的账号）</label>
-            <div class="input-with-action">
-              <input
-                v-model="form.steamId"
-                type="text"
-                class="form-input"
-                placeholder="76561198xxxxxxxx"
-              />
-              <button
-                type="button"
-                class="inline-action-btn"
-                :disabled="!activeUser"
-                @click="fillTargetSteamId"
-              >
-                填入当前活动用户
-              </button>
-            </div>
-            <p class="form-hint">
-              这是你想要授权给的 Steam 账号 ID（账号 B）。请先登录目标账号，然后点击右侧按钮自动填入当前活动用户的 SteamID64。
-            </p>
-          </div>
-
-          <div class="form-group">
-            <label class="form-label">AppTicket（十六进制，可选）</label>
-            <textarea
-              v-model="form.appTicketHex"
-              class="form-textarea"
-              rows="3"
-              placeholder="通常无需手动填写，点击“提取当前授权”自动获取"
-            />
-            <p class="form-hint">来自原账号 A 的 D 加密授权凭证，首次使用建议通过“提取当前授权”自动读取。</p>
-          </div>
-
-          <div class="form-group">
-            <label class="form-label">ETicket（十六进制，可选）</label>
-            <textarea
-              v-model="form.eTicketHex"
-              class="form-textarea"
-              rows="3"
-              placeholder="通常无需手动填写，点击“提取当前授权”自动获取"
-            />
-            <p class="form-hint">来自原账号 A 的 D 加密授权凭证，首次使用建议通过“提取当前授权”自动读取。</p>
-          </div>
-
-          <div class="form-actions">
-            <Button
-              variant="primary"
-              :loading="isExtracting"
-              :disabled="!canExtract"
-              @click="extractCurrentAuth"
-            >
-              提取当前授权
-            </Button>
             <Button
               variant="secondary"
-              :loading="isSaving"
-              :disabled="!canSave"
-              @click="saveEntry"
+              size="sm"
+              :loading="isExtractingSteamId"
+              :disabled="isExtracting || isSaving || isApplying || isExtractingSteamId"
+              @click="extractCurrentSteamId"
             >
-              {{ isEditing ? '更新配置' : '保存配置' }}
-            </Button>
-            <Button
-              variant="ghost"
-              @click="resetForm"
-            >
-              清空
+              提取当前
             </Button>
           </div>
+          <span class="form-hint">需要授权的 B 账号 64 位 SteamID；点击“提取当前”可自动填入当前登录账号的 SteamID64</span>
+        </div>
+
+        <div class="form-group form-group-wide">
+          <label class="form-label" for="denuvo-app-ticket">AppTicket（十六进制）</label>
+          <textarea
+            id="denuvo-app-ticket"
+            v-model="form.appTicketHex"
+            class="form-textarea"
+            rows="3"
+            placeholder="从注册表提取后自动填充，或手动粘贴十六进制字符串"
+            :disabled="isExtracting || isSaving || isApplying"
+          />
+          <span class="form-hint">对应注册表 AppTicket 项的二进制数据</span>
+        </div>
+
+        <div class="form-group form-group-wide">
+          <label class="form-label" for="denuvo-e-ticket">ETicket（十六进制）</label>
+          <textarea
+            id="denuvo-e-ticket"
+            v-model="form.eTicketHex"
+            class="form-textarea"
+            rows="3"
+            placeholder="从注册表提取后自动填充，或手动粘贴十六进制字符串"
+            :disabled="isExtracting || isSaving || isApplying"
+          />
+          <span class="form-hint">对应注册表 ETicket 项的二进制数据</span>
         </div>
       </div>
 
-      <!-- 右侧：已保存列表 -->
-      <div class="right-panel">
-        <div class="list-card">
-          <div class="list-header">
-            <h3 class="list-title">已保存的授权配置</h3>
-            <span class="list-count">共 {{ backupList.length }} 条</span>
-          </div>
+      <!-- 表单验证错误提示 -->
+      <div v-if="formErrors.length > 0" class="form-errors">
+        <div v-for="(error, index) in formErrors" :key="index" class="form-error-item">
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+          </svg>
+          <span>{{ error }}</span>
+        </div>
+      </div>
 
-          <div v-if="backupList.length === 0" class="empty-state">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-              <polyline points="14 2 14 8 20 8"/>
-              <line x1="12" y1="18" x2="12" y2="12"/>
-              <line x1="9" y1="15" x2="15" y2="15"/>
-            </svg>
-            <p>暂无配置，请在左侧添加</p>
-          </div>
+      <!-- 操作按钮 -->
+      <div class="form-actions">
+        <Button
+          variant="primary"
+          :loading="isExtracting"
+          :disabled="isExtracting || isSaving || isApplying || !canExtract"
+          @click="extractFromRegistry"
+        >
+          提取当前授权
+        </Button>
+        <Button
+          variant="secondary"
+          :loading="isSaving"
+          :disabled="isExtracting || isSaving || isApplying"
+          @click="saveEntry"
+        >
+          {{ isEditing ? '更新配置' : '保存配置' }}
+        </Button>
+        <Button
+          variant="secondary"
+          :loading="isApplying"
+          :disabled="isExtracting || isSaving || isApplying || !canApply"
+          @click="applyToRegistry"
+        >
+          应用授权到注册表
+        </Button>
+        <Button
+          variant="ghost"
+          :disabled="isExtracting || isSaving || isApplying"
+          @click="resetForm"
+        >
+          重置
+        </Button>
+        <Button
+          v-if="isEditing"
+          variant="danger"
+          :disabled="isExtracting || isSaving || isApplying"
+          @click="deleteCurrentBackup"
+        >
+          删除配置
+        </Button>
+      </div>
 
-          <div v-else class="backup-list">
-            <div
-              v-for="item in backupList"
-              :key="item.appId"
-              class="backup-item"
-              :class="{ active: form.appId === String(item.appId) }"
-              @click="loadBackupItem(item.appId)"
+      <div class="usage-notice">
+        <strong>使用流程：</strong>
+        <ol class="usage-steps">
+          <li>在 A 账号（已购买游戏）登录 Steam，填入 AppID 与游戏名，点击“提取当前授权”。</li>
+          <li>如需把授权迁移到 B 账号，把上方“目标 SteamID64”改成 B 账号的 SteamID64，点击“保存配置”。</li>
+          <li>退出 A 账号，登录 B 账号，点击“应用授权到注册表”。</li>
+          <li>从 B 账号启动游戏，D 加密将读取注册表中的授权凭证。</li>
+        </ol>
+      </div>
+    </div>
+
+    <!-- 已保存授权列表 -->
+    <div class="info-card list-card">
+      <div class="info-card-header">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+          <line x1="16" y1="13" x2="8" y2="13"/>
+          <line x1="16" y1="17" x2="8" y2="17"/>
+          <polyline points="10 9 9 9 8 9"/>
+        </svg>
+        <span>已保存授权配置</span>
+      </div>
+
+      <div v-if="loadingBackups" class="loading-state">
+        <div class="spinner"></div>
+        <span>加载中...</span>
+      </div>
+
+      <div v-else-if="backups.length === 0" class="empty-state">
+        <p>暂无已保存的 D 加密授权配置</p>
+        <p class="empty-hint">填写上方表单并点击“保存配置”后，会在这里显示</p>
+      </div>
+
+      <div v-else class="backup-list">
+        <div
+          v-for="backup in backups"
+          :key="backup.appId"
+          class="backup-item"
+          :class="{ 'backup-active': backup.appId === Number(form.appId) }"
+          @click="loadBackup(backup.appId)"
+        >
+          <div class="backup-main">
+            <span class="backup-name" :title="backup.gameName">{{ backup.gameName }}</span>
+            <span class="backup-app-id">AppID: {{ backup.appId }}</span>
+          </div>
+          <div class="backup-tags">
+            <span v-if="backup.hasSteamId" class="backup-tag tag-steam-id">SteamID</span>
+            <span v-if="backup.hasAppTicket" class="backup-tag tag-ticket">AppTicket</span>
+            <span v-if="backup.hasETicket" class="backup-tag tag-ticket">ETicket</span>
+          </div>
+          <div class="backup-actions">
+            <button
+              class="backup-btn apply"
+              title="应用授权到注册表"
+              @click.stop="applyBackup(backup.appId)"
             >
-              <div class="backup-main">
-                <div class="backup-title">{{ item.gameName }}</div>
-                <div class="backup-meta">
-                  <span class="backup-appid">AppID: {{ item.appId }}</span>
-                  <span class="backup-badges">
-                    <span v-if="item.hasSteamId" class="badge badge-steamid">SteamID</span>
-                    <span v-if="item.hasAppTicket" class="badge badge-ticket">AppTicket</span>
-                    <span v-if="item.hasETicket" class="badge badge-ticket">ETicket</span>
-                  </span>
-                </div>
-              </div>
-              <div class="backup-actions" @click.stop>
-                <button
-                  class="icon-btn apply-btn"
-                  title="应用授权到注册表"
-                  :disabled="isApplyingId === item.appId"
-                  @click="applyBackup(item.appId)"
-                >
-                  <svg v-if="isApplyingId !== item.appId" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
-                    <polyline points="17 21 17 13 7 13 7 21"/>
-                    <polyline points="7 3 7 8 15 8"/>
-                  </svg>
-                  <span v-else class="mini-spinner"></span>
-                </button>
-                <button
-                  class="icon-btn delete-btn"
-                  title="删除配置"
-                  @click="deleteBackup(item.appId)"
-                >
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <polyline points="3 6 5 6 21 6"/>
-                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-                  </svg>
-                </button>
-              </div>
-            </div>
+              应用
+            </button>
+            <button
+              class="backup-btn delete"
+              title="删除该配置"
+              @click.stop="deleteBackup(backup.appId)"
+            >
+              删除
+            </button>
           </div>
         </div>
       </div>
@@ -247,12 +252,12 @@
 
 <script setup lang="ts">
 /**
- * DenuvoAuth.vue - D 加密授权管理页面
- * 允许用户手动配置 AppID 和游戏名称，从注册表提取授权信息并保存，
- * 切换 Steam 账号后可将保存的授权写回注册表。
+ * DenuvoAuth.vue - D 加密授权手动管理页面
+ * 支持从注册表提取授权、保存为本地 JSON 备份、切换到目标账号后写回注册表。
+ * 修复了原保存按钮 disabled 状态不明显、保存失败无提示的问题。
  */
 
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 import Button from '../../components/common/Button.vue'
 
@@ -266,19 +271,18 @@ interface ActiveSteamUserInfo {
 }
 
 /**
- * 单个 D 加密授权条目（完整数据）
+ * 表单数据
  */
-interface DenuvoAuthEntry {
-  appId: number
+interface DenuvoForm {
+  appId: string
   gameName: string
-  steamId?: string
-  appTicketHex?: string
-  eTicketHex?: string
-  backupTime?: string
+  steamId: string
+  appTicketHex: string
+  eTicketHex: string
 }
 
 /**
- * D 加密授权列表项（精简数据）
+ * 已保存的授权备份列表项
  */
 interface DenuvoAuthListItem {
   appId: number
@@ -290,74 +294,100 @@ interface DenuvoAuthListItem {
 }
 
 /**
- * 表单数据
+ * 后端返回的完整授权条目
  */
-const form = ref({
+interface DenuvoAuthEntry {
+  appId: number
+  gameName: string
+  steamId?: string
+  appTicketHex?: string
+  eTicketHex?: string
+  backupTime?: string
+}
+
+// ==================== 状态 ====================
+
+/** 当前 Steam 活动用户 */
+const activeUser = ref<ActiveSteamUserInfo | null>(null)
+/** 当前 Steam 活动用户读取错误 */
+const activeUserError = ref('')
+/** 表单数据 */
+const form = ref<DenuvoForm>({
   appId: '',
   gameName: '',
   steamId: '',
   appTicketHex: '',
-  eTicketHex: '',
+  eTicketHex: ''
 })
+/** 表单验证错误列表 */
+const formErrors = ref<string[]>([])
+/** 是否正在从注册表提取完整授权 */
+const isExtracting = ref(false)
+/** 是否正在提取当前 SteamID64 */
+const isExtractingSteamId = ref(false)
+/** 是否正在保存配置 */
+const isSaving = ref(false)
+/** 是否正在应用到注册表 */
+const isApplying = ref(false)
+/** 是否正在加载备份列表 */
+const loadingBackups = ref(false)
+/** 已保存授权备份列表 */
+const backups = ref<DenuvoAuthListItem[]>([])
+
+// ==================== 计算属性 ====================
 
 /**
- * 当前 Steam 活动用户
- */
-const activeUser = ref<ActiveSteamUserInfo | null>(null)
-const activeUserError = ref('')
-
-/**
- * 已保存的授权配置列表
- */
-const backupList = ref<DenuvoAuthListItem[]>([])
-
-/**
- * 编辑状态：当前正在编辑的 AppID
+ * 当前是否处于编辑模式：AppID 与已有备份匹配
  */
 const isEditing = computed(() => {
-  const appIdNum = Number(form.value.appId)
-  if (Number.isNaN(appIdNum) || appIdNum === 0) return false
-  return backupList.value.some(item => item.appId === appIdNum)
+  const appId = Number(form.value.appId)
+  return !Number.isNaN(appId) && appId > 0 && backups.value.some(b => b.appId === appId)
 })
 
 /**
- * 加载状态
- */
-const isExtracting = ref(false)
-const isSaving = ref(false)
-const isApplyingId = ref<number | null>(null)
-
-/**
- * 是否可以提取授权
+ * 是否满足提取条件：AppID 合法且为正整数
  */
 const canExtract = computed(() => {
   const appId = Number(form.value.appId)
-  return !Number.isNaN(appId) && appId > 0 && !isExtracting.value
+  return !Number.isNaN(appId) && appId > 0
 })
 
 /**
- * 是否可以保存配置
+ * 是否满足应用条件：存在对应 AppID 的本地备份
  */
-const canSave = computed(() => {
+const canApply = computed(() => {
   const appId = Number(form.value.appId)
-  return (
-    !Number.isNaN(appId) &&
-    appId > 0 &&
-    form.value.gameName.trim().length > 0 &&
-    !isSaving.value
-  )
+  return !Number.isNaN(appId) && appId > 0 && backups.value.some(b => b.appId === appId)
 })
 
-/**
- * 页面加载时获取当前 Steam 用户和已保存列表
- */
+// ==================== 生命周期 ====================
+
 onMounted(() => {
   loadActiveUser()
   loadBackupList()
 })
 
+// ==================== 监听 ====================
+
 /**
- * 加载当前 Steam 活动用户信息
+ * AppID 变化时清空验证错误，并尝试自动加载已有备份
+ */
+watch(() => form.value.appId, async (newVal) => {
+  formErrors.value = []
+  const appId = Number(newVal)
+  if (Number.isNaN(appId) || appId <= 0) return
+
+  // 如果本地已有该 AppID 的备份，自动填充其他字段，避免用户重复输入
+  const existing = backups.value.find(b => b.appId === appId)
+  if (existing) {
+    await loadBackup(appId)
+  }
+})
+
+// ==================== 当前 Steam 用户 ====================
+
+/**
+ * 获取当前 Steam 活动用户
  */
 async function loadActiveUser() {
   try {
@@ -365,160 +395,236 @@ async function loadActiveUser() {
     activeUserError.value = ''
   } catch (error) {
     activeUser.value = null
-    activeUserError.value = error as string
+    activeUserError.value = String(error)
   }
 }
 
 /**
- * 将目标授权 SteamID64 自动填入当前活动用户的 SteamID64
- * 用于切换到目标账号 B 后，快速把账号 B 的 ID 填入表单
+ * 提取当前登录账号的 SteamID64 并填入目标 SteamID64 字段
  */
-function fillTargetSteamId() {
-  if (activeUser.value) {
-    form.value.steamId = activeUser.value.steamId64
+async function extractCurrentSteamId() {
+  isExtractingSteamId.value = true
+  try {
+    const user = await invoke<ActiveSteamUserInfo>('get_active_steam_user')
+    form.value.steamId = user.steamId64
+    activeUser.value = user
+    activeUserError.value = ''
+  } catch (error) {
+    alert('提取当前 SteamID64 失败：' + String(error) + '\n\n请确保 Steam 客户端已登录。')
+  } finally {
+    isExtractingSteamId.value = false
   }
 }
 
+// ==================== 表单验证 ====================
+
 /**
- * 加载已保存的授权配置列表
+ * 验证保存表单，返回错误信息数组
+ */
+function validateSaveForm(): string[] {
+  const errors: string[] = []
+  const appId = Number(form.value.appId)
+
+  if (Number.isNaN(appId) || appId <= 0) {
+    errors.push('AppID 必须是大于 0 的数字')
+  }
+
+  if (!form.value.gameName.trim()) {
+    errors.push('请填写游戏名称')
+  }
+
+  if (!form.value.steamId.trim()) {
+    errors.push('请填写目标 SteamID64')
+  } else if (!/^\d{17}$/.test(form.value.steamId.trim())) {
+    errors.push('SteamID64 应为 17 位纯数字')
+  }
+
+  const hexPattern = /^[0-9a-fA-F\s]*$/
+  if (form.value.appTicketHex.trim() && !hexPattern.test(form.value.appTicketHex)) {
+    errors.push('AppTicket 必须是有效的十六进制字符串')
+  }
+  if (form.value.eTicketHex.trim() && !hexPattern.test(form.value.eTicketHex)) {
+    errors.push('ETicket 必须是有效的十六进制字符串')
+  }
+
+  return errors
+}
+
+// ==================== 备份列表 ====================
+
+/**
+ * 加载已保存授权备份列表
  */
 async function loadBackupList() {
+  loadingBackups.value = true
   try {
-    backupList.value = await invoke<DenuvoAuthListItem[]>('list_denuvo_auth_backups')
+    backups.value = await invoke<DenuvoAuthListItem[]>('list_denuvo_auth_backups')
   } catch (error) {
-    backupList.value = []
-    alert('加载配置列表失败：' + (error as string))
+    backups.value = []
+    alert('加载备份列表失败：' + String(error))
+  } finally {
+    loadingBackups.value = false
   }
 }
 
 /**
- * AppID 输入处理：仅允许数字
+ * 加载指定 AppID 的备份到表单
  */
-function onAppIdInput(event: Event) {
-  const input = event.target as HTMLInputElement
-  form.value.appId = input.value.replace(/[^0-9]/g, '')
+async function loadBackup(appId: number) {
+  try {
+    const entry = await invoke<DenuvoAuthEntry>('load_denuvo_auth_backup', { appId })
+    form.value = {
+      appId: String(entry.appId),
+      gameName: entry.gameName || '',
+      steamId: entry.steamId || '',
+      appTicketHex: entry.appTicketHex || '',
+      eTicketHex: entry.eTicketHex || ''
+    }
+    formErrors.value = []
+  } catch (error) {
+    alert('加载备份失败：' + String(error))
+  }
 }
 
 /**
- * 从注册表提取当前授权并填充到表单
+ * 从注册表提取当前账号的 D 加密授权
  */
-async function extractCurrentAuth() {
+async function extractFromRegistry() {
+  formErrors.value = []
   const appId = Number(form.value.appId)
-  if (Number.isNaN(appId) || appId <= 0) return
+
+  if (Number.isNaN(appId) || appId <= 0) {
+    formErrors.value.push('提取前请填写正确的 AppID')
+    return
+  }
 
   isExtracting.value = true
   try {
-    const entry = await invoke<DenuvoAuthEntry>('read_denuvo_auth_from_registry', {
-      appId,
-    })
+    const entry = await invoke<DenuvoAuthEntry>('read_denuvo_auth_from_registry', { appId })
 
-    form.value.steamId = entry.steamId || ''
-    form.value.appTicketHex = entry.appTicketHex || ''
-    form.value.eTicketHex = entry.eTicketHex || ''
+    // 合并已填写的游戏名，避免覆盖用户自定义名称
+    const gameName = form.value.gameName.trim() || entry.gameName || ''
 
-    // 如果当前没有填写游戏名称，使用默认占位提示
-    if (!form.value.gameName) {
-      form.value.gameName = entry.gameName || `AppID ${appId}`
+    form.value = {
+      appId: String(entry.appId),
+      gameName,
+      steamId: entry.steamId || activeUser.value?.steamId64 || '',
+      appTicketHex: entry.appTicketHex || '',
+      eTicketHex: entry.eTicketHex || ''
     }
 
-    alert('提取当前授权成功')
+    alert('已从注册表提取当前授权，请核对 SteamID64 是否正确')
   } catch (error) {
-    alert('提取当前授权失败：' + (error as string))
+    alert('提取授权失败：' + String(error) + '\n\n请确保该 AppID 已在当前账号启动过一次游戏，注册表中存在授权信息。')
   } finally {
     isExtracting.value = false
   }
 }
 
 /**
- * 保存当前表单配置到本地备份文件
+ * 保存当前表单为本地备份
  */
 async function saveEntry() {
-  const appId = Number(form.value.appId)
-  if (Number.isNaN(appId) || appId <= 0 || !form.value.gameName.trim()) return
+  formErrors.value = validateSaveForm()
+  if (formErrors.value.length > 0) {
+    // 错误已经显示在表单下方，不再弹窗打扰
+    return
+  }
 
   isSaving.value = true
   try {
     const entry: DenuvoAuthEntry = {
-      appId,
+      appId: Number(form.value.appId),
       gameName: form.value.gameName.trim(),
       steamId: form.value.steamId.trim() || undefined,
       appTicketHex: form.value.appTicketHex.trim() || undefined,
-      eTicketHex: form.value.eTicketHex.trim() || undefined,
-    }
-
-    // 如果已存在备份，保留原来的备份时间
-    if (isEditing.value) {
-      try {
-        const existing = await invoke<DenuvoAuthEntry>('load_denuvo_auth_backup', { appId })
-        entry.backupTime = existing.backupTime
-      } catch {
-        entry.backupTime = new Date().toISOString()
-      }
-    } else {
-      entry.backupTime = new Date().toISOString()
+      eTicketHex: form.value.eTicketHex.trim() || undefined
     }
 
     await invoke('save_denuvo_auth_entry', { entry })
     await loadBackupList()
+
+    // 让 isEditing 计算属性立即生效
+    form.value.appId = String(entry.appId)
+
     alert(isEditing.value ? '配置已更新' : '配置已保存')
   } catch (error) {
-    alert('保存配置失败：' + (error as string))
+    alert('保存配置失败：' + String(error))
   } finally {
     isSaving.value = false
   }
 }
 
 /**
- * 从列表加载某个配置到表单
+ * 将当前 AppID 的本地备份应用到注册表
  */
-async function loadBackupItem(appId: number) {
-  try {
-    const entry = await invoke<DenuvoAuthEntry>('load_denuvo_auth_backup', { appId })
-    form.value.appId = String(entry.appId)
-    form.value.gameName = entry.gameName
-    form.value.steamId = entry.steamId || ''
-    form.value.appTicketHex = entry.appTicketHex || ''
-    form.value.eTicketHex = entry.eTicketHex || ''
-  } catch (error) {
-    alert('加载配置失败：' + (error as string))
-  }
-}
+async function applyToRegistry() {
+  formErrors.value = []
+  const appId = Number(form.value.appId)
 
-/**
- * 将本地备份的授权写回注册表
- */
-async function applyBackup(appId: number) {
-  isApplyingId.value = appId
+  if (Number.isNaN(appId) || appId <= 0) {
+    formErrors.value.push('应用前请填写正确的 AppID')
+    return
+  }
+
+  if (!backups.value.some(b => b.appId === appId)) {
+    formErrors.value.push('未找到该 AppID 的本地备份，请先保存配置')
+    return
+  }
+
+  isApplying.value = true
   try {
     await invoke('apply_denuvo_auth_backup', { appId })
-    alert(`已将 AppID ${appId} 的授权写入注册表`)
+    alert('授权已成功应用到注册表，现在可以启动游戏')
   } catch (error) {
-    alert('应用授权失败：' + (error as string))
+    alert('应用授权失败：' + String(error))
   } finally {
-    isApplyingId.value = null
+    isApplying.value = false
   }
 }
 
 /**
- * 删除本地授权配置
+ * 应用指定 AppID 的备份到注册表（从列表操作）
+ */
+async function applyBackup(appId: number) {
+  try {
+    await invoke('apply_denuvo_auth_backup', { appId })
+    alert(`AppID ${appId} 的授权已应用到注册表`)
+  } catch (error) {
+    alert('应用授权失败：' + String(error))
+  }
+}
+
+/**
+ * 删除当前表单对应的备份
+ */
+async function deleteCurrentBackup() {
+  const appId = Number(form.value.appId)
+  if (Number.isNaN(appId) || appId <= 0) return
+  await deleteBackup(appId)
+}
+
+/**
+ * 删除指定 AppID 的备份
  */
 async function deleteBackup(appId: number) {
   if (!confirm(`确定要删除 AppID ${appId} 的授权配置吗？`)) return
 
   try {
     await invoke('delete_denuvo_auth_backup', { appId })
-    // 如果当前正在编辑该条目，清空表单
-    if (form.value.appId === String(appId)) {
+    await loadBackupList()
+
+    // 如果删除的是当前编辑项，清空表单
+    if (Number(form.value.appId) === appId) {
       resetForm()
     }
-    await loadBackupList()
   } catch (error) {
-    alert('删除配置失败：' + (error as string))
+    alert('删除配置失败：' + String(error))
   }
 }
 
 /**
- * 重置表单为初始状态
+ * 重置表单到初始状态
  */
 function resetForm() {
   form.value = {
@@ -526,438 +632,265 @@ function resetForm() {
     gameName: '',
     steamId: '',
     appTicketHex: '',
-    eTicketHex: '',
+    eTicketHex: ''
   }
+  formErrors.value = []
 }
 </script>
 
 <style scoped>
-/* 页面根容器 */
 .denuvo-auth-page {
   width: 100%;
   height: 100%;
-  padding: 20px 24px 24px;
-  box-sizing: border-box;
   overflow-y: auto;
+  padding: 24px;
+  box-sizing: border-box;
   color: var(--steam-text-primary);
-  font-size: 14px;
 }
 
-/* 页面标题区域 */
 .page-header {
   margin-bottom: 20px;
 }
 
 .page-title {
-  margin: 0 0 8px;
   font-size: 20px;
   font-weight: 600;
+  margin: 0 0 8px;
   color: var(--steam-text-primary);
 }
 
 .page-subtitle {
+  font-size: 14px;
   margin: 0;
-  font-size: 13px;
+  color: var(--steam-text-muted);
   line-height: 1.5;
-  color: var(--steam-text-secondary);
 }
 
-/* 当前用户信息卡片 */
 .info-card {
   background: var(--steam-bg-secondary);
-  border: 1px solid var(--steam-border-color);
+  border: 1px solid var(--steam-border);
   border-radius: 8px;
-  padding: 14px 16px;
+  padding: 16px;
   margin-bottom: 20px;
-}
-
-.active-user-card {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
 }
 
 .info-card-header {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 14px;
+  gap: 10px;
+  font-size: 16px;
   font-weight: 500;
+  margin-bottom: 14px;
   color: var(--steam-text-primary);
 }
 
 .info-card-header svg {
-  width: 18px;
-  height: 18px;
-  color: var(--steam-accent-blue);
-}
-
-.active-user-info {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 16px 32px;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
 }
 
 .info-item {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+  font-size: 14px;
 }
 
 .info-label {
-  font-size: 12px;
-  color: var(--steam-text-tertiary);
+  min-width: 90px;
+  color: var(--steam-text-muted);
 }
 
 .info-value {
-  font-size: 14px;
   color: var(--steam-text-primary);
-  font-family: 'Consolas', 'Monaco', monospace;
+  font-family: monospace;
   word-break: break-all;
 }
 
 .active-user-empty {
-  font-size: 13px;
-  color: var(--steam-text-tertiary);
-  font-style: italic;
+  font-size: 14px;
+  color: var(--steam-text-muted);
+  padding: 12px 0;
 }
 
-/* 使用流程说明卡片 */
-.usage-guide-card {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
 }
 
-.usage-steps {
-  margin: 0;
-  padding-left: 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.usage-steps li {
-  font-size: 13px;
-  line-height: 1.6;
-  color: var(--steam-text-secondary);
-}
-
-.usage-steps li strong {
-  color: var(--steam-text-primary);
-  font-weight: 600;
-}
-
-.usage-notice {
-  background: rgba(26, 159, 255, 0.08);
-  border: 1px solid rgba(26, 159, 255, 0.2);
-  border-radius: 6px;
-  padding: 10px 12px;
-  font-size: 13px;
-  line-height: 1.5;
-  color: var(--steam-text-secondary);
-}
-
-.usage-notice strong {
-  color: var(--steam-accent-blue);
-}
-
-/* 主内容：左右分栏 */
-.main-content {
-  display: flex;
-  gap: 20px;
-  align-items: flex-start;
-}
-
-.left-panel {
-  flex: 1;
-  min-width: 0;
-}
-
-.right-panel {
-  flex: 1;
-  min-width: 0;
-}
-
-/* 表单卡片 */
-.form-card,
-.list-card {
-  background: var(--steam-bg-secondary);
-  border: 1px solid var(--steam-border-color);
-  border-radius: 8px;
-  padding: 16px;
-}
-
-.form-title,
-.list-title {
-  margin: 0 0 16px;
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--steam-text-primary);
-}
-
-/* 表单元素 */
 .form-group {
-  margin-bottom: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-group-wide {
+  grid-column: 1 / -1;
+}
+
+.input-with-btn {
+  display: flex;
+  gap: 10px;
+  align-items: stretch;
+}
+
+.input-with-btn .form-input {
+  flex: 1;
+  min-width: 0;
 }
 
 .form-label {
-  display: block;
-  margin-bottom: 6px;
-  font-size: 13px;
-  font-weight: 500;
+  font-size: 14px;
   color: var(--steam-text-primary);
+  font-weight: 500;
 }
 
 .required {
-  color: #e81123;
+  color: var(--steam-error);
   margin-left: 2px;
 }
 
 .form-input,
 .form-textarea {
-  width: 100%;
-  padding: 8px 12px;
-  box-sizing: border-box;
-  background: var(--steam-bg-tertiary);
-  border: 1px solid var(--steam-border-color);
+  background: var(--steam-input-bg);
+  border: 1px solid var(--steam-input-border);
   border-radius: 4px;
+  padding: 10px 12px;
   color: var(--steam-text-primary);
-  font-size: 13px;
+  font-size: 14px;
   font-family: inherit;
   outline: none;
-  transition: border-color 0.15s ease;
-  resize: vertical;
+  transition: border-color 0.15s ease-out, box-shadow 0.15s ease-out;
 }
 
 .form-input::placeholder,
 .form-textarea::placeholder {
-  color: var(--steam-text-tertiary);
+  color: var(--steam-text-subtle);
 }
 
 .form-input:focus,
 .form-textarea:focus {
   border-color: var(--steam-accent-blue);
+  box-shadow: 0 0 0 2px rgba(var(--steam-accent-blue-rgb), 0.25);
 }
 
-.form-input:disabled {
-  opacity: 0.7;
+.form-input:disabled,
+.form-textarea:disabled {
+  opacity: 0.6;
   cursor: not-allowed;
+  background: var(--steam-bg-tertiary);
 }
 
-/* 带操作按钮的输入框 */
-.input-with-action {
-  display: flex;
-  gap: 8px;
-}
-
-.input-with-action .form-input {
-  flex: 1;
-  min-width: 0;
-}
-
-.inline-action-btn {
-  flex-shrink: 0;
-  padding: 8px 12px;
-  background: var(--steam-bg-secondary);
-  border: 1px solid var(--steam-border-color);
-  border-radius: 4px;
-  color: var(--steam-text-primary);
-  font-size: 12px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  white-space: nowrap;
-}
-
-.inline-action-btn:hover:not(:disabled) {
-  background: var(--steam-bg-hover);
-  border-color: var(--steam-accent-blue);
-  color: var(--steam-accent-blue);
-}
-
-.inline-action-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+.form-textarea {
+  resize: vertical;
+  min-height: 80px;
+  font-family: monospace;
+  line-height: 1.4;
 }
 
 .form-hint {
-  margin: 4px 0 0;
   font-size: 12px;
-  color: var(--steam-text-tertiary);
+  color: var(--steam-text-muted);
   line-height: 1.4;
+}
+
+.form-errors {
+  margin-top: 16px;
+  padding: 12px 14px;
+  background: rgba(var(--steam-error-rgb), 0.12);
+  border: 1px solid rgba(var(--steam-error-rgb), 0.3);
+  border-radius: 6px;
+}
+
+.form-error-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--steam-error);
+  margin-bottom: 6px;
+}
+
+.form-error-item:last-child {
+  margin-bottom: 0;
+}
+
+.form-error-item svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
 }
 
 .form-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 12px;
   margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--steam-border);
 }
 
-/* 列表卡片 */
-.list-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 14px;
+/* 修复 disabled 按钮视觉反馈不明显的问题 */
+.form-actions :deep(.btn:disabled) {
+  opacity: 0.45 !important;
+  filter: grayscale(0.4);
+  cursor: not-allowed;
 }
 
-.list-count {
-  font-size: 12px;
-  color: var(--steam-text-tertiary);
+.usage-notice {
+  margin-top: 20px;
+  padding: 14px;
+  background: var(--steam-bg-tertiary);
+  border-radius: 6px;
+  font-size: 14px;
+  color: var(--steam-text-secondary);
+  line-height: 1.6;
 }
 
+.usage-notice strong {
+  color: var(--steam-text-primary);
+}
+
+.usage-steps {
+  margin: 10px 0 0;
+  padding-left: 20px;
+}
+
+.usage-steps li {
+  margin-bottom: 6px;
+}
+
+.loading-state,
 .empty-state {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 40px 20px;
-  color: var(--steam-text-tertiary);
-  text-align: center;
-}
-
-.empty-state svg {
-  width: 48px;
-  height: 48px;
-  margin-bottom: 12px;
-  opacity: 0.5;
+  padding: 32px 0;
+  color: var(--steam-text-muted);
+  font-size: 14px;
+  gap: 10px;
 }
 
 .empty-state p {
   margin: 0;
-  font-size: 13px;
 }
 
-/* 备份列表 */
-.backup-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.backup-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 12px;
-  background: var(--steam-bg-tertiary);
-  border: 1px solid var(--steam-border-color);
-  border-radius: 6px;
-  cursor: pointer;
-  transition: background 0.15s ease, border-color 0.15s ease;
-}
-
-.backup-item:hover,
-.backup-item.active {
-  background: var(--steam-bg-hover);
-  border-color: var(--steam-accent-blue);
-}
-
-.backup-main {
-  min-width: 0;
-  flex: 1;
-}
-
-.backup-title {
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--steam-text-primary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.backup-meta {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  margin-top: 6px;
-}
-
-.backup-appid {
+.empty-hint {
   font-size: 12px;
-  color: var(--steam-text-secondary);
-  font-family: 'Consolas', 'Monaco', monospace;
+  color: var(--steam-text-subtle);
 }
 
-.backup-badges {
-  display: flex;
-  gap: 4px;
-}
-
-.badge {
-  padding: 1px 5px;
-  border-radius: 3px;
-  font-size: 12px;
-  font-weight: 500;
-}
-
-.badge-steamid {
-  background: rgba(26, 159, 255, 0.15);
-  color: var(--steam-accent-blue);
-}
-
-.badge-ticket {
-  background: rgba(76, 175, 80, 0.15);
-  color: #4caf50;
-}
-
-.backup-actions {
-  display: flex;
-  gap: 6px;
-  flex-shrink: 0;
-}
-
-.icon-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  padding: 0;
-  background: var(--steam-bg-secondary);
-  border: 1px solid var(--steam-border-color);
-  border-radius: 4px;
-  color: var(--steam-text-primary);
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.icon-btn svg {
-  width: 16px;
-  height: 16px;
-}
-
-.icon-btn:hover:not(:disabled) {
-  background: var(--steam-bg-hover);
-}
-
-.icon-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.apply-btn:hover:not(:disabled) {
-  border-color: var(--steam-accent-blue);
-  color: var(--steam-accent-blue);
-}
-
-.delete-btn:hover:not(:disabled) {
-  border-color: #e81123;
-  color: #e81123;
-}
-
-.mini-spinner {
-  width: 14px;
-  height: 14px;
-  border: 2px solid var(--steam-border-color);
+.spinner {
+  width: 24px;
+  height: 24px;
+  border: 2px solid var(--steam-border-light);
   border-top-color: var(--steam-accent-blue);
   border-radius: 50%;
-  animation: spin 1s linear infinite;
+  animation: spin 0.8s linear infinite;
 }
 
 @keyframes spin {
@@ -966,15 +899,117 @@ function resetForm() {
   }
 }
 
-/* 响应式：较窄时上下堆叠 */
-@media (max-width: 1200px) {
-  .main-content {
-    flex-direction: column;
+.backup-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.backup-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  background: var(--steam-bg-tertiary);
+  border: 1px solid transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s ease-out, border-color 0.15s ease-out;
+}
+
+.backup-item:hover {
+  background: var(--steam-bg-hover);
+}
+
+.backup-active {
+  border-color: var(--steam-accent-blue);
+  background: rgba(var(--steam-accent-blue-rgb), 0.12);
+}
+
+.backup-main {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  flex: 1;
+}
+
+.backup-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--steam-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.backup-app-id {
+  font-size: 12px;
+  color: var(--steam-text-muted);
+  font-family: monospace;
+}
+
+.backup-tags {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.backup-tag {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  color: white;
+}
+
+.tag-steam-id {
+  background: var(--steam-accent-blue);
+}
+
+.tag-ticket {
+  background: var(--steam-accent-green);
+}
+
+.backup-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.backup-btn {
+  padding: 6px 12px;
+  font-size: 12px;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+  transition: background 0.15s ease-out;
+  color: white;
+}
+
+.backup-btn.apply {
+  background: var(--steam-accent-green);
+}
+
+.backup-btn.apply:hover {
+  background: var(--steam-accent-green-hover);
+}
+
+.backup-btn.delete {
+  background: var(--steam-error);
+}
+
+.backup-btn.delete:hover {
+  background: var(--steam-error-hover);
+}
+
+@media (max-width: 900px) {
+  .form-grid {
+    grid-template-columns: 1fr;
   }
 
-  .left-panel,
-  .right-panel {
-    width: 100%;
+  .backup-item {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }
 </style>

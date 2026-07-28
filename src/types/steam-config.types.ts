@@ -857,21 +857,38 @@ export interface SteamHttpConfigItem {
 // ============================================
 
 /**
- * ColdClientLoader 配置
+ * ColdClientLoader 配置 (ColdClientLoader.ini)
+ * 字段与 gbe_fork steamclient_experimental/ColdClientLoader.ini 保持一致
  */
 export interface ColdClientLoaderConfig {
-  /** 启用ColdClientLoader */
+  /** 该配置是否生效（程序内部标识，不写入 INI） */
   enabled: boolean
-  /** 注入模式 */
-  injectionMode: 'direct' | 'loader'
-  /** 额外DLL列表 */
-  extraDlls: string[]
-  /** 启动参数 */
-  launchArgs: string
-  /** 游戏主程序路径 */
-  exePath?: string
-  /** 工作目录 */
-  workingDir?: string
+  /** 游戏可执行文件路径（Exe=） */
+  exe: string
+  /** 游戏运行目录（ExeRunDir=） */
+  exeRunDir: string
+  /** 传递给游戏的额外启动参数（ExeCommandLine=） */
+  exeCommandLine: string
+  /** Steam AppID（AppId=） */
+  appId: string
+  /** 32 位 steamclient.dll 路径（SteamClientDll=） */
+  steamClientDll: string
+  /** 64 位 steamclient64.dll 路径（SteamClient64Dll=） */
+  steamClient64Dll: string
+  /** 强制注入 steamclient(64).dll（ForceInjectSteamClient=） */
+  forceInjectSteamClient: boolean
+  /** 强制注入 GameOverlayRenderer(64).dll（ForceInjectGameOverlayRenderer=） */
+  forceInjectGameOverlayRenderer: boolean
+  /** 额外 DLL 注入文件夹路径（DllsToInjectFolder=） */
+  dllsToInjectFolder: string
+  /** DLL 注入失败时是否忽略错误（IgnoreInjectionError=） */
+  ignoreInjectionError: boolean
+  /** 忽略 loader 与目标程序架构差异（IgnoreLoaderArchDifference=） */
+  ignoreLoaderArchDifference: boolean
+  /** 持久化模式：0=关闭，1=启动 exe 并挂起，2=仅设置环境（[Persistence] Mode=） */
+  persistenceMode: number
+  /** 是否通过调试器恢复主线程（ResumeByDebugger=） */
+  resumeByDebugger: boolean
 }
 
 // ============================================
@@ -1175,9 +1192,19 @@ export const DEFAULT_FONTS_CONFIG: FontConfig = {
 
 export const DEFAULT_COLD_CLIENT_LOADER_CONFIG: ColdClientLoaderConfig = {
   enabled: false,
-  injectionMode: 'direct',
-  extraDlls: [],
-  launchArgs: ''
+  exe: '',
+  exeRunDir: '',
+  exeCommandLine: '',
+  appId: '',
+  steamClientDll: 'steamclient.dll',
+  steamClient64Dll: 'steamclient64.dll',
+  forceInjectSteamClient: true,
+  forceInjectGameOverlayRenderer: true,
+  dllsToInjectFolder: '',
+  ignoreInjectionError: true,
+  ignoreLoaderArchDifference: false,
+  persistenceMode: 0,
+  resumeByDebugger: false
 }
 
 export const DEFAULT_LOBBY_CONNECT_CONFIG: LobbyConnectConfig = {

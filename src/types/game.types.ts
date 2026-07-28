@@ -152,7 +152,7 @@ export interface DownloadUrlConfig {
  * 游戏标签配置（来自games_config.json）
  */
 export interface GameTagConfig {
-  /** 补丁类型：0=免Steam，1=局域网联机，2=Steam联机，3=D加密虚拟机，4=Epic联机 */
+  /** 补丁类型：0=免Steam，1=局域网联机，2=Steam联机，3=D加密虚拟机，4=Epic联机，5=Xbox联机 */
   patch_type: number
   /** 补丁源路径（可选，如果不提供则自动生成） */
   patch_source_path?: string
@@ -178,7 +178,8 @@ export function getPatchSourcePath(tag: GameTagConfig, gameId: string): string {
     1: '局域网联机',
     2: 'Steam联机',
     3: 'D_加密虚拟机',
-    4: 'epic_联机'
+    4: 'epic_联机',
+    5: 'xbox_联机'
   }
 
   const folder = patchTypeFolder[tag.patch_type] || '其他'
@@ -232,5 +233,6 @@ export const PATCH_TYPE_MAP: Record<number, { name: string; description: string 
   1: { name: PATCH_CATEGORIES[1].name, description: PATCH_CATEGORIES[1].description },
   2: { name: PATCH_CATEGORIES[2].name, description: PATCH_CATEGORIES[2].description },
   3: { name: PATCH_CATEGORIES[3].name, description: PATCH_CATEGORIES[3].description },
-  4: { name: PATCH_CATEGORIES[4].name, description: PATCH_CATEGORIES[4].description }
+  4: { name: PATCH_CATEGORIES[4].name, description: PATCH_CATEGORIES[4].description },
+  5: { name: PATCH_CATEGORIES[5].name, description: PATCH_CATEGORIES[5].description }
 }

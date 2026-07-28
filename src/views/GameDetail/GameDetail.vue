@@ -286,6 +286,30 @@
         </div>
       </template>
     </BaseModal>
+
+    <!-- 入库成功弹窗 -->
+    <BaseModal
+      v-model="showImportSuccessModal"
+      title="入库成功"
+      width="300px"
+      container-class="import-success-modal"
+      :show-confirm="true"
+      :show-cancel="false"
+      confirm-text="确定"
+      @confirm="showImportSuccessModal = false"
+      @close="showImportSuccessModal = false"
+    >
+      <template #body>
+        <div class="import-success-modal-content">
+          <p class="modal-main-hint">{{ importSuccessMessage }}</p>
+          <div class="import-success-details">
+            <p><span class="detail-label">游戏：</span>{{ importSuccessGameName }}</p>
+            <p><span class="detail-label">AppID：</span>{{ importSuccessAppId }}</p>
+          </div>
+          <p class="modal-sub-hint">请打开 Steam 的库中查看游戏。</p>
+        </div>
+      </template>
+    </BaseModal>
   </div>
 </template>
 
@@ -402,6 +426,12 @@ let monitorInterval: number | null = null
 const showDownloadCompleteModal = ref(false)
 const downloadCompleteInstallPath = ref('')
 const downloadCompleteExePath = ref('')
+
+// 入库成功弹窗
+const showImportSuccessModal = ref(false)
+const importSuccessMessage = ref('')
+const importSuccessGameName = ref('')
+const importSuccessAppId = ref<number | string>('')
 
 // 入库Steam状态
 const isImportingWithOpenSteamTool = ref(false)
@@ -1662,11 +1692,11 @@ const importWithOpenSteamTool = async () => {
     }
 
     if (result.success) {
-      const message =
-        `入库成功，请打开 Steam 的库中查看游戏！\n\n` +
-        `游戏: ${game.value.chinese_name || game.value.game_name}\n` +
-        `AppID: ${appId}`
-      alert(message)
+      // 使用 BaseModal 弹窗替代 alert，展示更友好的入库成功提示
+      importSuccessMessage.value = '游戏已成功入库'
+      importSuccessGameName.value = game.value.chinese_name || game.value.game_name
+      importSuccessAppId.value = appId
+      showImportSuccessModal.value = true
     } else {
       alert(`OpenSteamTool入库失败: ${result.message}`)
     }
@@ -2853,6 +2883,47 @@ const restartSteam = async () => {
 }
 
 .no-patch-hint {
+  margin: 0;
+  font-size: 13px;
+  color: var(--steam-text-muted);
+}
+
+/* 入库成功弹窗 */
+.import-success-modal-content {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.import-success-modal-content .modal-main-hint {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--steam-text-primary);
+}
+
+.import-success-details {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px;
+  border-radius: 8px;
+  background: var(--steam-bg-primary);
+}
+
+.import-success-details p {
+  margin: 0;
+  font-size: 14px;
+  color: var(--steam-text-primary);
+  word-break: break-all;
+}
+
+.import-success-details .detail-label {
+  color: var(--steam-text-secondary);
+  font-weight: 500;
+}
+
+.import-success-modal-content .modal-sub-hint {
   margin: 0;
   font-size: 13px;
   color: var(--steam-text-muted);

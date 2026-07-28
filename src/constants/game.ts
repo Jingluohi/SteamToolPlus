@@ -12,7 +12,8 @@ export const PATCH_CATEGORIES = {
   1: { name: '局域网联机补丁', description: '支持局域网联机游玩', color: '#4caf50' },
   2: { name: 'Steam联机补丁', description: '支持Steam平台联机', color: '#ff9800' },
   3: { name: 'D加密虚拟机补丁', description: '用于D加密游戏的虚拟机补丁', color: '#9c27b0' },
-  4: { name: 'Epic联机补丁', description: '支持Epic平台联机', color: '#e91e63' }
+  4: { name: 'Epic联机补丁', description: '支持Epic平台联机', color: '#e91e63' },
+  5: { name: 'Xbox联机补丁', description: '支持Xbox平台联机', color: '#107c10' }
 } as const
 
 /**

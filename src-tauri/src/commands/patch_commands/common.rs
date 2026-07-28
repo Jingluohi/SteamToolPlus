@@ -148,6 +148,7 @@ pub async fn get_patch_readme(
         2 => "Steam联机",
         3 => "D_加密虚拟机",
         4 => "epic_联机",
+        5 => "xbox_联机",
         _ => "免_steam",
     };
 

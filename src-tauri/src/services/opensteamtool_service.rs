@@ -9,6 +9,7 @@ use std::time::Duration;
 use tauri::AppHandle;
 
 use crate::services::config_service::{ConfigService, ConfigServiceTrait};
+use crate::services::fake_imported_service::cleanup_fake_imported_files;
 use crate::utils::resource_utils::get_resource_dir;
 
 /// OpenSteamTool DLL文件名列表
@@ -549,7 +550,15 @@ pub fn import_with_opensteamtool(
             .ok_or("无法从Lua内容中提取AppID，请提供有效的app_id")?
     };
 
-    // 3. 写入Lua文件
+    // 3. 清理以前假入库时可能残留的 Lua 文件（同一 AppID）
+    // 避免旧 Lua 内容干扰新的入库配置
+    if let Ok(deleted) = cleanup_fake_imported_files(&steam_path, app_id) {
+        for file in deleted {
+            log::info!("入库前已清理残留 Lua: {}", file);
+        }
+    }
+
+    // 4. 写入Lua文件
     let lua_file = write_lua_file(&steam_path, app_id, &options.lua_content)?;
     let lua_written = lua_file.exists();
 

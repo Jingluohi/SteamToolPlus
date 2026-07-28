@@ -1301,25 +1301,51 @@ impl Default for ControllerConfig {
 // 8. ColdClientLoader 配置
 // ============================================
 
-/// ColdClientLoader 配置文件 (coldclientloader.ini)
+/// ColdClientLoader 配置文件 (ColdClientLoader.ini)
+/// 字段与 gbe_fork steamclient_experimental/ColdClientLoader.ini 保持一致
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ColdClientLoaderConfig {
+    /// 该配置是否生效（仅用于程序内部标识，不写入 INI）
     pub enabled: bool,
-    /// 注入模式: "direct" (直接注入) 或 "launcher" (启动器模式)
-    #[serde(rename = "injectionMode")]
-    pub injection_mode: String,
-    /// 额外 DLL 列表
-    #[serde(rename = "extraDlls")]
-    pub extra_dlls: Vec<String>,
-    /// 游戏启动参数
-    #[serde(rename = "launchArgs")]
-    pub launch_args: String,
-    /// 游戏主程序路径
-    #[serde(rename = "exePath")]
-    pub exe_path: Option<String>,
-    /// 工作目录
-    #[serde(rename = "workingDir")]
-    pub working_dir: Option<String>,
+    /// 游戏可执行文件路径（相对或绝对）
+    #[serde(rename = "exe")]
+    pub exe: String,
+    /// 游戏运行目录（一般设为 exe 所在目录）
+    #[serde(rename = "exeRunDir")]
+    pub exe_run_dir: String,
+    /// 传递给游戏的额外启动参数
+    #[serde(rename = "exeCommandLine")]
+    pub exe_command_line: String,
+    /// Steam AppID（为空时 loader 自动读取 steam_appid.txt）
+    #[serde(rename = "appId")]
+    pub app_id: String,
+    /// 32 位 steamclient.dll 路径（相对 loader 目录）
+    #[serde(rename = "steamClientDll")]
+    pub steam_client_dll: String,
+    /// 64 位 steamclient64.dll 路径（相对 loader 目录）
+    #[serde(rename = "steamClient64Dll")]
+    pub steam_client64_dll: String,
+    /// 强制注入 steamclient(64).dll
+    #[serde(rename = "forceInjectSteamClient")]
+    pub force_inject_steam_client: bool,
+    /// 强制注入 GameOverlayRenderer(64).dll
+    #[serde(rename = "forceInjectGameOverlayRenderer")]
+    pub force_inject_game_overlay_renderer: bool,
+    /// 额外 DLL 注入文件夹路径
+    #[serde(rename = "dllsToInjectFolder")]
+    pub dlls_to_inject_folder: String,
+    /// DLL 注入失败时是否忽略错误
+    #[serde(rename = "ignoreInjectionError")]
+    pub ignore_injection_error: bool,
+    /// 忽略 loader 与目标程序架构差异
+    #[serde(rename = "ignoreLoaderArchDifference")]
+    pub ignore_loader_arch_difference: bool,
+    /// 持久化模式：0=关闭，1=启动 exe 并挂起，2=仅设置环境
+    #[serde(rename = "persistenceMode")]
+    pub persistence_mode: i32,
+    /// 是否通过调试器恢复主线程
+    #[serde(rename = "resumeByDebugger")]
+    pub resume_by_debugger: bool,
 }
 
 impl Default for ColdClientLoaderConfig {
@@ -1332,38 +1358,76 @@ impl ColdClientLoaderConfig {
     pub fn default_config() -> Self {
         Self {
             enabled: false,
-            injection_mode: "direct".to_string(),
-            extra_dlls: vec![],
-            launch_args: String::new(),
-            exe_path: None,
-            working_dir: None,
+            exe: String::new(),
+            exe_run_dir: String::new(),
+            exe_command_line: String::new(),
+            app_id: String::new(),
+            steam_client_dll: "steamclient.dll".to_string(),
+            steam_client64_dll: "steamclient64.dll".to_string(),
+            force_inject_steam_client: true,
+            force_inject_game_overlay_renderer: true,
+            dlls_to_inject_folder: String::new(),
+            ignore_injection_error: true,
+            ignore_loader_arch_difference: false,
+            persistence_mode: 0,
+            resume_by_debugger: false,
         }
     }
 
-    /// 序列化为 INI 格式
+    /// 序列化为 ColdClientLoader.ini 格式
     pub fn to_ini(&self) -> String {
-        let mut result = String::new();
-        result.push_str("[loader]\n");
-        result.push_str(&format!("enabled = {}\n", self.enabled as i32));
-        result.push_str(&format!("injection_mode = {}\n", self.injection_mode));
-        result.push_str(&format!("launch_args = {}\n", self.launch_args));
-        
-        if let Some(ref path) = self.exe_path {
-            result.push_str(&format!("exe_path = {}\n", path));
-        }
-        
-        if let Some(ref dir) = self.working_dir {
-            result.push_str(&format!("working_dir = {}\n", dir));
-        }
-        
-        if !self.extra_dlls.is_empty() {
-            result.push_str("\n[extra_dlls]\n");
-            for (i, dll) in self.extra_dlls.iter().enumerate() {
-                result.push_str(&format!("dll{} = {}\n", i + 1, dll));
-            }
-        }
-        
-        result
+        format!(
+            r#"# modified version of ColdClientLoader originally by Rat431
+[SteamClient]
+# path to game exe, absolute or relative to the loader
+Exe={}
+# empty means the folder of the exe
+ExeRunDir={}
+# any additional args to pass, ex: -dx11
+ExeCommandLine={}
+# Steam ID of the app, empty will read steam_appid.txt
+AppId={}
+
+# path to the steamclient dlls, both must be set
+SteamClientDll={}
+SteamClient64Dll={}
+
+[Injection]
+# force inject steamclient dll instead of waiting for the app to load it
+ForceInjectSteamClient={}
+# force inject GameOverlayRenderer dll instead of waiting for the app to load it
+ForceInjectGameOverlayRenderer={}
+# path to a folder containing some dlls to inject into the app upon start
+DllsToInjectFolder={}
+# don't display an error message when a dll injection fails
+IgnoreInjectionError={}
+# don't display an error message if the architecture of the loader is different from the app
+IgnoreLoaderArchDifference={}
+
+[Persistence]
+# 0 = turned off
+# 1 = loader will spawn the exe and keep hanging in the background until you press "OK"
+# 2 = loader will NOT spawn exe, it will just setup the required environment
+Mode={}
+
+[Debug]
+# don't call `ResumeThread()` on the main thread after spawning the .exe
+ResumeByDebugger={}
+"#,
+            self.exe,
+            self.exe_run_dir,
+            self.exe_command_line,
+            self.app_id,
+            self.steam_client_dll,
+            self.steam_client64_dll,
+            self.force_inject_steam_client as i32,
+            self.force_inject_game_overlay_renderer as i32,
+            self.dlls_to_inject_folder,
+            self.ignore_injection_error as i32,
+            self.ignore_loader_arch_difference as i32,
+            self.persistence_mode,
+            self.resume_by_debugger as i32
+        )
     }
 }
 

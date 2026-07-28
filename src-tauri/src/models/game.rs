@@ -187,7 +187,7 @@ pub struct DownloadUrlConfig {
 /// 游戏标签配置（来自games_config.json）
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GameTagConfig {
-    /// 补丁类型：0=免Steam，1=局域网联机，2=Steam联机，3=D加密虚拟机，4=Epic联机
+    /// 补丁类型：0=免Steam，1=局域网联机，2=Steam联机，3=D加密虚拟机，4=Epic联机，5=Xbox联机
     pub patch_type: u8,
     /// 补丁源路径（可选，如果不提供则自动生成）
     #[serde(default)]

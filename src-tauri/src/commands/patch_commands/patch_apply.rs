@@ -65,7 +65,26 @@ fn game_overlay_renderer_x32_dll() -> String {
     format!("{}/{}/GameOverlayRenderer.dll", GBE_FORK_DIR, STEAMCLIENT_EXPERIMENTAL_DIR)
 }
 
-/// 根据架构和模式获取标准模式 steam_api DLL 资源路径
+/// 高级模式 64 位 ColdClientLoader 启动器资源路径
+fn steamclient_loader_x64_exe() -> String {
+    format!("{}/{}/steamclient_loader_x64.exe", GBE_FORK_DIR, STEAMCLIENT_EXPERIMENTAL_DIR)
+}
+
+/// 高级模式 32 位 ColdClientLoader 启动器资源路径
+fn steamclient_loader_x32_exe() -> String {
+    format!("{}/{}/steamclient_loader_x32.exe", GBE_FORK_DIR, STEAMCLIENT_EXPERIMENTAL_DIR)
+}
+
+/// 根据架构获取 ColdClientLoader 启动器资源路径
+fn get_steamclient_loader_exe_path(is_64bit: bool) -> String {
+    if is_64bit {
+        steamclient_loader_x64_exe()
+    } else {
+        steamclient_loader_x32_exe()
+    }
+}
+
+/// 根据架构获取标准模式 steam_api DLL 资源路径
 fn get_standard_mode_api_dll_path(is_64bit: bool, use_experimental: bool) -> String {
     if is_64bit {
         if use_experimental {
@@ -80,25 +99,7 @@ fn get_standard_mode_api_dll_path(is_64bit: bool, use_experimental: bool) -> Str
     }
 }
 
-/// 根据架构获取高级模式 steamclient DLL 资源路径
-fn get_advanced_mode_client_dll_path(is_64bit: bool) -> String {
-    if is_64bit {
-        steamclient_experimental_x64_dll()
-    } else {
-        steamclient_experimental_x32_dll()
-    }
-}
 
-/// 根据架构获取高级模式 GameOverlayRenderer DLL 资源路径
-fn get_game_overlay_renderer_dll_path(is_64bit: bool) -> String {
-    if is_64bit {
-        game_overlay_renderer_x64_dll()
-    } else {
-        game_overlay_renderer_x32_dll()
-    }
-}
-
-/// 默认局域网广播地址列表
 /// 应用基础配置时写入 custom_broadcasts.txt
 const DEFAULT_CUSTOM_BROADCASTS: &str = "192.168.1.0/24\n192.168.0.0/24\n10.0.0.0/24\n";
 
@@ -159,12 +160,14 @@ impl serde::Serialize for CheckDllResult {
 /// 这是补丁注入的核心函数，执行以下操作：
 /// 1. 复制 steam_settings.EXAMPLE 文件夹并重命名示例文件
 /// 2. 判断游戏架构（32位/64位）
-/// 3. 根据模式（标准/高级）替换对应的 DLL 文件
-/// 4. 生成 steam_interfaces.txt（如可能）
+/// 3. 根据模式（标准/高级）处理 DLL 文件
+///    - 标准模式：替换 steam_api.dll
+///    - 高级模式：保留原 steam_api.dll，通过 ColdClientLoader 注入 steamclient.dll
+/// 4. 生成 steam_interfaces.txt（标准模式下）
 /// 5. 写入 steam_appid.txt 到双路径
 /// 6. 写入基础配置文件（main、user、app、overlay）
 /// 7. 写入 custom_broadcasts.txt
-/// 8. 高级模式额外复制 GameOverlayRenderer DLL
+/// 8. 高级模式复制 ColdClientLoader 相关文件并生成 ColdClientLoader.ini
 #[tauri::command]
 pub async fn apply_steam_patch_basic(
     app: AppHandle,
@@ -173,6 +176,7 @@ pub async fn apply_steam_patch_basic(
     steam_app_id: String,
     use_experimental: bool,
     emulator_mode: Option<i32>,
+    game_exe_path: Option<String>,
 ) -> Result<super::common::BasicConfigResult, String> {
     use super::common::{get_resource_dir, BasicConfigResult};
     use super::file_ops::{copy_dir_recursive, rename_example_files};
@@ -268,61 +272,12 @@ pub async fn apply_steam_patch_basic(
             return Err(format!("源 DLL 文件不存在: {}", source_path.display()));
         }
     } else {
-        // 高级模式: 替换 steamclient.dll + steam_api.dll
+        // 高级模式: 保留原 steam_api.dll，通过 ColdClientLoader 注入 steamclient.dll
+        let exe_path = game_exe_path.ok_or(
+            "高级模式需要指定游戏主程序路径（.exe），请在选择游戏文件夹后，再选择游戏主程序。".to_string(),
+        )?;
 
-        let client_dll_name = if is_64bit { "steamclient64.dll" } else { "steamclient.dll" };
-        let original_client_path = game_dir.join(client_dll_name);
-
-        if !original_client_path.exists() {
-            return Err(format!(
-                "未找到 {}！\n\n可能原因：\n1. 选择的游戏目录不正确\n2. 该游戏不支持高级模式\n3. 请尝试「标准模式】",
-                client_dll_name
-            ));
-        }
-
-        let backup_path = game_dir.join(format!("{}.bak", client_dll_name));
-        if !backup_path.exists() {
-            fs::copy(&original_client_path, &backup_path)
-                .await
-                .map_err(|e| format!("备份 steamclient 失败: {}", e))?;
-        }
-
-        let client_source = get_advanced_mode_client_dll_path(is_64bit);
-        let client_source_path = Path::new(&resource_dir).join(&client_source);
-        if client_source_path.exists() {
-            fs::copy(&client_source_path, &original_client_path)
-                .await
-                .map_err(|e| format!("复制 steamclient 失败: {}", e))?;
-        } else {
-            return Err(format!("源 steamclient 文件不存在: {}", client_source_path.display()));
-        }
-
-        // 同步替换 steam_api.dll（实验版）
-        let api_dll_name = if is_64bit { "steam_api64.dll" } else { "steam_api.dll" };
-        let api_source = if is_64bit {
-            experimental_x64_steam_api_dll()
-        } else {
-            experimental_x32_steam_api_dll()
-        };
-        let api_source_path = Path::new(&resource_dir).join(&api_source);
-        let api_target_path = game_dir.join(api_dll_name);
-
-        if api_source_path.exists() {
-            if api_target_path.exists() {
-                let api_backup_path = game_dir.join(format!("{}.bak", api_dll_name));
-                if !api_backup_path.exists() {
-                    fs::copy(&api_target_path, &api_backup_path)
-                        .await
-                        .map_err(|e| format!("备份 steam_api 失败: {}", e))?;
-                }
-            }
-
-            fs::copy(&api_source_path, &api_target_path)
-                .await
-                .map_err(|e| format!("复制 steam_api 失败: {}", e))?;
-        } else {
-            return Err(format!("源 steam_api 文件不存在: {}", api_source_path.display()));
-        }
+        setup_coldclient_loader(&resource_dir, game_dir, &steam_app_id, &exe_path, is_64bit).await?;
     }
 
     // 第4步: 双路径写入 steam_appid.txt
@@ -386,8 +341,12 @@ pub async fn apply_steam_patch_basic(
 
     // 写入 configs.overlay.ini
     // 基础配置应用时使用程序默认值，避免示例目录中的示例值被保留
+    // 高级模式（ColdClientLoader）已复制并注入 GameOverlayRenderer，默认启用 Overlay
     let overlay_config_path = steam_settings_dir.join("configs.overlay.ini");
-    let overlay_config = OverlayConfig::default_config();
+    let mut overlay_config = OverlayConfig::default_config();
+    if mode == 1 {
+        overlay_config.enable_experimental_overlay = true;
+    }
     let overlay_config_content = overlay_config.to_ini();
 
     let mut overlay_file = fs::File::create(&overlay_config_path)
@@ -406,33 +365,142 @@ pub async fn apply_steam_patch_basic(
         .await
         .map_err(|e| format!("写入 custom_broadcasts.txt 失败: {}", e))?;
 
-    // 第6步: 高级模式额外复制 GameOverlayRenderer DLL
-    if mode == 1 {
-        let overlay_dll_name = if is_64bit { "GameOverlayRenderer64.dll" } else { "GameOverlayRenderer.dll" };
-        let overlay_source = get_game_overlay_renderer_dll_path(is_64bit);
-        let overlay_source_path = Path::new(&resource_dir).join(&overlay_source);
-        let overlay_target_path = game_dir.join(overlay_dll_name);
-
-        if overlay_source_path.exists() {
-            if overlay_target_path.exists() {
-                let overlay_backup_path = game_dir.join(format!("{}.bak", overlay_dll_name));
-                if !overlay_backup_path.exists() {
-                    fs::copy(&overlay_target_path, &overlay_backup_path)
-                        .await
-                        .map_err(|e| format!("备份 {} 失败: {}", overlay_dll_name, e))?;
-                }
-            }
-
-            fs::copy(&overlay_source_path, &overlay_target_path)
-                .await
-                .map_err(|e| format!("复制 {} 失败: {}", overlay_dll_name, e))?;
-        }
-    }
-
     Ok(BasicConfigResult {
         success: true,
         message: "基础配置已应用".to_string(),
     })
+}
+
+// ============================================
+// ColdClientLoader 高级模式 setup
+// 保留原 steam_api.dll，复制 steamclient/overlay/loader 并生成 ColdClientLoader.ini
+// ============================================
+
+/// 高级模式：设置 ColdClientLoader
+/// 1. 校验原 steam_api.dll 存在（这是该模式的前提）
+/// 2. 复制 steamclient.dll / steamclient64.dll（推荐同时保留两种架构）
+/// 3. 复制 GameOverlayRenderer.dll / GameOverlayRenderer64.dll
+/// 4. 复制对应架构的 steamclient_loader.exe
+/// 5. 生成 ColdClientLoader.ini
+async fn setup_coldclient_loader(
+    resource_dir: &str,
+    game_dir: &Path,
+    steam_app_id: &str,
+    game_exe_path: &str,
+    is_64bit: bool,
+) -> Result<(), String> {
+    use tokio::fs;
+    use tokio::io::AsyncWriteExt;
+
+    let api_dll_name = if is_64bit { "steam_api64.dll" } else { "steam_api.dll" };
+    let original_api_path = game_dir.join(api_dll_name);
+
+    if !original_api_path.exists() {
+        return Err(format!(
+            "未找到 {}！\n\n高级模式（ColdClientLoader）需要游戏原本就包含 steam_api(64).dll，\n请确认选择的游戏目录正确，或尝试「标准模式」。",
+            api_dll_name
+        ));
+    }
+
+    // 需要复制到游戏目录的文件列表（源相对路径 -> 目标文件名）
+    let files_to_copy: Vec<(String, String)> = vec![
+        (steamclient_experimental_x32_dll(), "steamclient.dll".to_string()),
+        (steamclient_experimental_x64_dll(), "steamclient64.dll".to_string()),
+        (game_overlay_renderer_x32_dll(), "GameOverlayRenderer.dll".to_string()),
+        (game_overlay_renderer_x64_dll(), "GameOverlayRenderer64.dll".to_string()),
+    ];
+
+    for (source_relative, target_name) in files_to_copy {
+        let source_path = Path::new(resource_dir).join(&source_relative);
+        let target_path = game_dir.join(&target_name);
+
+        if !source_path.exists() {
+            return Err(format!("源文件不存在: {}", source_path.display()));
+        }
+
+        // 若目标已存在则先备份（如游戏自带 steamclient）
+        if target_path.exists() {
+            let backup_path = game_dir.join(format!("{}.bak", target_name));
+            if !backup_path.exists() {
+                fs::copy(&target_path, &backup_path)
+                    .await
+                    .map_err(|e| format!("备份 {} 失败: {}", target_name, e))?;
+            }
+        }
+
+        fs::copy(&source_path, &target_path)
+            .await
+            .map_err(|e| format!("复制 {} 失败: {}", target_name, e))?;
+    }
+
+    // 复制对应架构的 loader，统一重命名为 steamclient_loader.exe
+    let loader_source_relative = get_steamclient_loader_exe_path(is_64bit);
+    let loader_source_path = Path::new(resource_dir).join(&loader_source_relative);
+    let loader_target_path = game_dir.join("steamclient_loader.exe");
+
+    if !loader_source_path.exists() {
+        return Err(format!("源文件不存在: {}", loader_source_path.display()));
+    }
+
+    if loader_target_path.exists() {
+        let loader_backup_path = game_dir.join("steamclient_loader.exe.bak");
+        if !loader_backup_path.exists() {
+            fs::copy(&loader_target_path, &loader_backup_path)
+                .await
+                .map_err(|e| format!("备份 steamclient_loader.exe 失败: {}", e))?;
+        }
+    }
+
+    fs::copy(&loader_source_path, &loader_target_path)
+        .await
+        .map_err(|e| format!("复制 steamclient_loader.exe 失败: {}", e))?;
+
+    // 生成 ColdClientLoader.ini
+    let exe_relative = compute_relative_path(game_dir, Path::new(game_exe_path));
+    let coldclient_config = ColdClientLoaderConfig {
+        enabled: true,
+        exe: exe_relative.unwrap_or_else(|_| game_exe_path.to_string()),
+        exe_run_dir: String::new(),
+        exe_command_line: String::new(),
+        app_id: steam_app_id.to_string(),
+        steam_client_dll: "steamclient.dll".to_string(),
+        steam_client64_dll: "steamclient64.dll".to_string(),
+        force_inject_steam_client: true,
+        force_inject_game_overlay_renderer: true,
+        dlls_to_inject_folder: String::new(),
+        ignore_injection_error: true,
+        ignore_loader_arch_difference: false,
+        persistence_mode: 0,
+        resume_by_debugger: false,
+    };
+
+    let config_path = game_dir.join("ColdClientLoader.ini");
+    let config_content = coldclient_config.to_ini();
+
+    let mut file = fs::File::create(&config_path)
+        .await
+        .map_err(|e| format!("创建 ColdClientLoader.ini 失败: {}", e))?;
+    file.write_all(config_content.as_bytes())
+        .await
+        .map_err(|e| format!("写入 ColdClientLoader.ini 失败: {}", e))?;
+
+    Ok(())
+}
+
+/// 计算 target 相对于 base 的相对路径
+/// 若无法计算（例如不在同一盘符）则返回错误，调用方应回退到绝对路径
+fn compute_relative_path(base: &Path, target: &Path) -> Result<String, String> {
+    let base = base
+        .canonicalize()
+        .map_err(|e| format!("canonicalize base 失败: {}", e))?;
+    let target = target
+        .canonicalize()
+        .map_err(|e| format!("canonicalize target 失败: {}", e))?;
+
+    target
+        .strip_prefix(&base)
+        .map(|p| p.to_string_lossy().to_string().replace('\\', "/"))
+        .map_err(|_| "target 不在 base 目录下".to_string())
 }
 
 // ============================================
@@ -449,6 +517,10 @@ const PATCH_GENERATED_FILES: &[&str] = &[
     "steamclient64.dll",
     "GameOverlayRenderer.dll",
     "GameOverlayRenderer64.dll",
+    "steamclient_loader.exe",
+    "steamclient_loader_x32.exe",
+    "steamclient_loader_x64.exe",
+    "ColdClientLoader.ini",
     "steam_appid.txt",
 ];
 

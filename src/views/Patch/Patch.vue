@@ -64,13 +64,14 @@
                   <!-- 悬浮提示 -->
                   <div class="mode-tooltip">
                     <div class="tooltip-content">
-                      替换 steamclient.dll 或 steamclient64.dll<br>
-                      同时同步替换 steam_api.dll<br>
+                      保留原 steam_api(64).dll 不变<br>
+                      通过 ColdClientLoader 注入 steamclient(64).dll<br>
+                      默认自动启用游戏内 Overlay（Shift+Tab）<br>
                       <strong>使用场景：</strong><br>
-                      • 游戏目录中找不到 steam_api.dll<br>
-                      • 只有 steamclient.dll 的游戏<br>
-                      • 常规模式配置后仍无法启动<br>
-                      • 已打 CPY 等破解补丁的游戏
+                      • 存在 steam_api64.dll，但需要注入 steamclient64.dll<br>
+                      • 游戏绕过 Steam 客户端验证才能启动<br>
+                      • 已打 CPY 等破解补丁、普通模式无法启动的游戏<br>
+                      <strong>注意：</strong>必须选择游戏主程序 .exe
                     </div>
                   </div>
                 </label>
@@ -163,25 +164,27 @@
               type="text" 
               v-model="gamePath" 
               class="path-input" 
-              :placeholder="emulatorMode === 0 ? '请选择包含 steam_api.dll 的文件夹...' : '请选择包含 steamclient.dll 的文件夹...'" 
+              :placeholder="emulatorMode === 0 ? '请选择包含 steam_api.dll 或 steam_api64.dll 的文件夹...' : '请选择包含 steam_api.dll 或 steam_api64.dll 的文件夹（高级模式保留原 DLL）...'" 
               readonly 
             />
             <button class="browse-btn" @click="selectGameFolder">浏览</button>
           </div>
           <p class="config-hint">
-            {{ emulatorMode === 0 ? '选择包含 steam_api.dll 或 steam_api64.dll 的游戏文件夹' : '选择包含 steamclient.dll 或 steamclient64.dll 的游戏文件夹' }}
+            {{ emulatorMode === 0 ? '选择包含 steam_api.dll 或 steam_api64.dll 的游戏文件夹' : '选择包含 steam_api.dll 或 steam_api64.dll 的游戏文件夹；高级模式保留原 DLL，并通过 ColdClientLoader 注入 steamclient(64).dll' }}
           </p>
         </div>
 
         <!-- 游戏主程序路径配置 -->
         <div class="config-group">
-          <label class="config-label">游戏主程序 <span class="optional">(可选)</span></label>
+          <label class="config-label">游戏主程序 <span :class="emulatorMode === 0 ? 'optional' : 'required'">{{ emulatorMode === 0 ? '(可选)' : '*' }}</span></label>
           <div class="path-input-group">
             <input type="text" v-model="gameExePath" class="path-input" placeholder="请选择游戏主程序 .exe 文件..." readonly />
             <button class="browse-btn" @click="selectGameExe">浏览</button>
             <button v-if="gameExePath" class="clear-btn" @click="gameExePath = ''">清除</button>
           </div>
-          <p class="config-hint">选择游戏主程序 exe 文件，用于 Steam 脱壳（某些游戏需要先脱壳）</p>
+          <p class="config-hint">
+            {{ emulatorMode === 0 ? '选择游戏主程序 exe 文件，用于 Steam 脱壳（某些游戏需要先脱壳）' : '选择游戏主程序 exe 文件，高级模式必需，ColdClientLoader 将据此启动并注入 steamclient(64).dll' }}
+          </p>
         </div>
 
         <!-- 脱壳功能 -->
@@ -665,9 +668,9 @@ import CompleteConfigManager from '../../components/steam-patch/CompleteConfigMa
 // 状态
 // ============================================
 
-/** 模拟器模式：0=常规模式(steam_api.dll), 1=高级模式(steamclient.dll) */
+/** 模拟器模式：0=标准模式(替换 steam_api.dll), 1=高级模式(ColdClientLoader 注入 steamclient.dll) */
 const emulatorMode = ref(0)
-/** 是否使用功能版DLL（仅在常规模式下有效） */
+/** 是否使用功能版DLL（仅在标准模式下有效） */
 const useExperimental = ref(false)
 /** 是否显示功能版警告 */
 const showExperimentalWarning = ref(false)
@@ -833,31 +836,35 @@ const unpackGameExe = async () => {
 const applyBasicConfig = async () => {
   if (!canApplyBasicConfig.value) return
 
-  // 标准模式下检查 DLL 文件是否存在
-  if (emulatorMode.value === 0) {
-    try {
-      const dllCheck = await invoke<{
-        found: boolean
-        dllPath?: string
-      }>('check_steam_dll_exists', {
-        gamePath: gamePath.value
-      })
-      
-      if (!dllCheck.found) {
-        alert(
-          '您所选择的文件夹不含 steam_api.dll 或 steam_api64.dll，请你选择正确的文件夹。\n\n' +
-          '2015年之后的steam游戏100%有这个文件，请你在游戏文件夹里仔细寻找。\n\n' +
-          '（一般就在游戏的第一层目录中；如果没有，在包含 bin、win64、x86 等字眼的文件夹里存在的概率很高）'
-        )
-        return
-      }
-    } catch (error) {
+  // 两种模式都需要 steam_api(64).dll：标准模式替换它，高级模式保留它
+  try {
+    const dllCheck = await invoke<{
+      found: boolean
+      dllPath?: string
+    }>('check_steam_dll_exists', {
+      gamePath: gamePath.value
+    })
+
+    if (!dllCheck.found) {
       alert(
-        '检查DLL文件时出错，请确认选择了正确的游戏文件夹。\n\n' +
-        '错误信息: ' + error
+        '您所选择的文件夹不含 steam_api.dll 或 steam_api64.dll，请你选择正确的文件夹。\n\n' +
+        '2015年之后的steam游戏100%有这个文件，请你在游戏文件夹里仔细寻找。\n\n' +
+        '（一般就在游戏的第一层目录中；如果没有，在包含 bin、win64、x86 等字眼的文件夹里存在的概率很高）'
       )
       return
     }
+  } catch (error) {
+    alert(
+      '检查DLL文件时出错，请确认选择了正确的游戏文件夹。\n\n' +
+      '错误信息: ' + error
+    )
+    return
+  }
+
+  // 高级模式必须指定游戏主程序路径
+  if (emulatorMode.value === 1 && !gameExePath.value) {
+    alert('高级模式（ColdClientLoader）必须选择游戏主程序 .exe 文件，请填写后重试。')
+    return
   }
 
   try {
@@ -869,13 +876,18 @@ const applyBasicConfig = async () => {
       gameId: '',
       steamAppId: steamAppId.value,
       useExperimental: useExperimental.value,
-      emulatorMode: emulatorMode.value
+      emulatorMode: emulatorMode.value,
+      gameExePath: gameExePath.value || null
     })
 
     if (result.success) {
       basicConfigApplied.value = true
       // 基础配置已包含 custom_broadcasts.txt，自动标记局域网联机为已配置
       configStatus.value.lanMultiplayer = true
+      // 高级模式已生成 ColdClientLoader.ini，标记为已配置
+      if (emulatorMode.value === 1) {
+        configStatus.value.coldclient = true
+      }
       alert('基础配置已应用成功！')
     } else {
       alert(`配置失败: ${result.message}`)

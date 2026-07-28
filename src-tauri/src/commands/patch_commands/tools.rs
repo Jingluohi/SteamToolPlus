@@ -71,7 +71,11 @@ pub(crate) async fn generate_interfaces(
 // ColdClientLoader 配置
 // ============================================
 
+/// ColdClientLoader 配置文件名
+const COLDCLIENT_LOADER_INI: &str = "ColdClientLoader.ini";
+
 /// 保存 ColdClientLoader 配置
+/// ColdClientLoader.ini 必须和 steamclient(64).dll、loader 放在同一目录，因此直接写入游戏根目录
 #[tauri::command]
 pub async fn save_coldclient_config(
     game_path: String,
@@ -82,20 +86,20 @@ pub async fn save_coldclient_config(
 
     use super::common::ConfigSaveResult;
 
-    let steam_settings_dir = Path::new(&game_path).join("steam_settings");
-    fs::create_dir_all(&steam_settings_dir)
-        .await
-        .map_err(|e| format!("创建 steam_settings 目录失败: {}", e))?;
+    let game_dir = Path::new(&game_path);
+    if !game_dir.exists() {
+        return Err(format!("游戏路径不存在: {}", game_path));
+    }
 
-    let config_path = steam_settings_dir.join("coldclientloader.ini");
+    let config_path = game_dir.join(COLDCLIENT_LOADER_INI);
     let config_content = config.to_ini();
 
     let mut file = fs::File::create(&config_path)
         .await
-        .map_err(|e| format!("创建 coldclientloader.ini 失败: {}", e))?;
+        .map_err(|e| format!("创建 ColdClientLoader.ini 失败: {}", e))?;
     file.write_all(config_content.as_bytes())
         .await
-        .map_err(|e| format!("写入 coldclientloader.ini 失败: {}", e))?;
+        .map_err(|e| format!("写入 ColdClientLoader.ini 失败: {}", e))?;
 
     Ok(ConfigSaveResult {
         success: true,
@@ -112,7 +116,7 @@ pub async fn load_coldclient_config(
 
     use super::common::ConfigLoadResult;
 
-    let config_path = Path::new(&game_path).join("steam_settings").join("coldclientloader.ini");
+    let config_path = Path::new(&game_path).join(COLDCLIENT_LOADER_INI);
 
     if !config_path.exists() {
         return Ok(ConfigLoadResult {
@@ -123,7 +127,7 @@ pub async fn load_coldclient_config(
 
     let content = fs::read_to_string(&config_path)
         .await
-        .map_err(|e| format!("读取 coldclientloader.ini 失败: {}", e))?;
+        .map_err(|e| format!("读取 ColdClientLoader.ini 失败: {}", e))?;
 
     let config = parse_coldclient_ini(&content)?;
 
@@ -154,19 +158,35 @@ fn parse_coldclient_ini(content: &str) -> Result<ColdClientLoaderConfig, String>
             let value = value.trim();
 
             match current_section.as_str() {
-                "loader" => {
+                "SteamClient" => {
                     match key {
-                        "enabled" => config.enabled = value == "1",
-                        "injection_mode" => config.injection_mode = value.to_string(),
-                        "launch_args" => config.launch_args = value.to_string(),
-                        "exe_path" => config.exe_path = Some(value.to_string()),
-                        "working_dir" => config.working_dir = Some(value.to_string()),
+                        "Exe" => config.exe = value.to_string(),
+                        "ExeRunDir" => config.exe_run_dir = value.to_string(),
+                        "ExeCommandLine" => config.exe_command_line = value.to_string(),
+                        "AppId" => config.app_id = value.to_string(),
+                        "SteamClientDll" => config.steam_client_dll = value.to_string(),
+                        "SteamClient64Dll" => config.steam_client64_dll = value.to_string(),
                         _ => {}
                     }
                 }
-                "extra_dlls" => {
-                    if key.starts_with("dll") {
-                        config.extra_dlls.push(value.to_string());
+                "Injection" => {
+                    match key {
+                        "ForceInjectSteamClient" => config.force_inject_steam_client = parse_bool(value),
+                        "ForceInjectGameOverlayRenderer" => config.force_inject_game_overlay_renderer = parse_bool(value),
+                        "DllsToInjectFolder" => config.dlls_to_inject_folder = value.to_string(),
+                        "IgnoreInjectionError" => config.ignore_injection_error = parse_bool(value),
+                        "IgnoreLoaderArchDifference" => config.ignore_loader_arch_difference = parse_bool(value),
+                        _ => {}
+                    }
+                }
+                "Persistence" => {
+                    if key == "Mode" {
+                        config.persistence_mode = value.parse().unwrap_or(0);
+                    }
+                }
+                "Debug" => {
+                    if key == "ResumeByDebugger" {
+                        config.resume_by_debugger = parse_bool(value);
                     }
                 }
                 _ => {}
@@ -175,6 +195,12 @@ fn parse_coldclient_ini(content: &str) -> Result<ColdClientLoaderConfig, String>
     }
 
     Ok(config)
+}
+
+/// 解析 ColdClientLoader 中使用的布尔值格式
+/// 支持 1/y/true 为真，其他为假
+fn parse_bool(value: &str) -> bool {
+    matches!(value.to_lowercase().as_str(), "1" | "y" | "yes" | "true")
 }
 
 // ============================================

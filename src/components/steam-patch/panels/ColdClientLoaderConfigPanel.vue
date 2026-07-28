@@ -13,31 +13,33 @@
       <div class="guide-content">
         <div class="guide-item">
           <span class="guide-label">配置文件</span>
-          <span class="guide-value">steam_settings/coldclientloader.ini</span>
+          <span class="guide-value">ColdClientLoader.ini（与 steamclient_loader.exe 同目录）</span>
         </div>
         <div class="guide-item">
-          <span class="guide-label">注入模式</span>
-          <span class="guide-value">direct（直接注入）或 loader（使用加载器）</span>
+          <span class="guide-label">核心作用</span>
+          <span class="guide-value">保留原 steam_api(64).dll，注入模拟 steamclient(64).dll</span>
         </div>
         <div class="guide-item">
           <span class="guide-label">启动参数</span>
-          <span class="guide-value">游戏启动命令行参数，如 -windowed -novid</span>
+          <span class="guide-value">ExeCommandLine，如 -windowed -novid</span>
         </div>
         <div class="guide-item">
           <span class="guide-label">额外DLL</span>
-          <span class="guide-value">每行一个 DLL 文件名，如 extra.dll</span>
+          <span class="guide-value">DllsToInjectFolder 指定包含待注入 DLL 的文件夹</span>
         </div>
       </div>
       <div class="guide-example">
-        <div class="example-title">coldclientloader.ini 示例：</div>
-        <pre class="example-code">[loader]
-enabled = 1
-injection_mode = direct
-launch_args = -windowed
+        <div class="example-title">ColdClientLoader.ini 示例：</div>
+        <pre class="example-code">[SteamClient]
+Exe=game.exe
+AppId=480
+SteamClientDll=steamclient.dll
+SteamClient64Dll=steamclient64.dll
 
-[extra_dlls]
-dll0 = extra.dll
-dll1 = plugin.dll</pre>
+[Injection]
+ForceInjectSteamClient=1
+ForceInjectGameOverlayRenderer=1
+DllsToInjectFolder=extra_dlls</pre>
       </div>
       <p class="guide-tip">提示：用于绕过 Steam DRM，实现免 Steam 启动游戏</p>
     </div>
@@ -52,43 +54,103 @@ dll1 = plugin.dll</pre>
     </div>
 
     <template v-if="config.enabled">
-      <!-- 注入模式 -->
-      <div class="form-group">
-        <label>注入模式</label>
-        <select v-model="config.injectionMode">
-          <option value="direct">直接注入</option>
-          <option value="loader">使用加载器</option>
-        </select>
+      <!-- SteamClient 配置 -->
+      <div class="form-section">
+        <h4 class="section-title">SteamClient</h4>
+
+        <div class="form-group">
+          <label>游戏可执行文件路径（Exe）</label>
+          <input v-model="config.exe" type="text" placeholder="game.exe 或完整路径" />
+        </div>
+
+        <div class="form-group">
+          <label>游戏运行目录（ExeRunDir，可选）</label>
+          <input v-model="config.exeRunDir" type="text" placeholder="留空则自动设为 exe 所在目录" />
+        </div>
+
+        <div class="form-group">
+          <label>启动参数（ExeCommandLine）</label>
+          <input v-model="config.exeCommandLine" type="text" placeholder="例如：-windowed -novid" />
+        </div>
+
+        <div class="form-group">
+          <label>AppID（留空则读取 steam_appid.txt）</label>
+          <input v-model="config.appId" type="text" placeholder="例如：480" />
+        </div>
+
+        <div class="form-group">
+          <label>32 位 SteamClient DLL 路径</label>
+          <input v-model="config.steamClientDll" type="text" placeholder="steamclient.dll" />
+        </div>
+
+        <div class="form-group">
+          <label>64 位 SteamClient64 DLL 路径</label>
+          <input v-model="config.steamClient64Dll" type="text" placeholder="steamclient64.dll" />
+        </div>
       </div>
 
-      <!-- 启动参数 -->
-      <div class="form-group">
-        <label>启动参数</label>
-        <input
-          v-model="config.launchArgs"
-          type="text"
-          placeholder="例如：-windowed -novid"
-        />
+      <!-- Injection 配置 -->
+      <div class="form-section">
+        <h4 class="section-title">Injection</h4>
+
+        <div class="form-group checkbox-group">
+          <label class="checkbox-label">
+            <input v-model="config.forceInjectSteamClient" type="checkbox" />
+            <span>强制注入 steamclient(64).dll</span>
+          </label>
+        </div>
+
+        <div class="form-group checkbox-group">
+          <label class="checkbox-label">
+            <input v-model="config.forceInjectGameOverlayRenderer" type="checkbox" />
+            <span>强制注入 GameOverlayRenderer(64).dll</span>
+          </label>
+        </div>
+
+        <div class="form-group">
+          <label>额外 DLL 注入文件夹（DllsToInjectFolder）</label>
+          <input v-model="config.dllsToInjectFolder" type="text" placeholder="extra_dlls" />
+        </div>
+
+        <div class="form-group checkbox-group">
+          <label class="checkbox-label">
+            <input v-model="config.ignoreInjectionError" type="checkbox" />
+            <span>忽略 DLL 注入失败错误</span>
+          </label>
+        </div>
+
+        <div class="form-group checkbox-group">
+          <label class="checkbox-label">
+            <input v-model="config.ignoreLoaderArchDifference" type="checkbox" />
+            <span>忽略 loader 与程序架构差异</span>
+          </label>
+        </div>
       </div>
 
-      <!-- 额外DLL列表 -->
-      <div class="form-group">
-        <label>额外DLL列表（每行一个）</label>
-        <textarea
-          v-model="extraDllsText"
-          rows="4"
-          placeholder="extra.dll&#10;plugin.dll"
-        ></textarea>
+      <!-- Persistence 配置 -->
+      <div class="form-section">
+        <h4 class="section-title">Persistence</h4>
+
+        <div class="form-group">
+          <label>持久化模式（Mode）</label>
+          <select v-model.number="config.persistenceMode">
+            <option :value="0">0 - 关闭</option>
+            <option :value="1">1 - 启动 exe 并挂起等待确认</option>
+            <option :value="2">2 - 仅设置环境，需手动运行 exe</option>
+          </select>
+        </div>
       </div>
 
-      <!-- 工作目录 -->
-      <div class="form-group">
-        <label>工作目录（可选）</label>
-        <input
-          v-model="config.workingDir"
-          type="text"
-          placeholder="游戏可执行文件所在目录的相对路径"
-        />
+      <!-- Debug 配置 -->
+      <div class="form-section">
+        <h4 class="section-title">Debug</h4>
+
+        <div class="form-group checkbox-group">
+          <label class="checkbox-label">
+            <input v-model="config.resumeByDebugger" type="checkbox" />
+            <span>通过调试器恢复主线程（ResumeByDebugger）</span>
+          </label>
+        </div>
       </div>
     </template>
 
@@ -121,7 +183,7 @@ dll1 = plugin.dll</pre>
  * 供单独弹窗和完整配置管理器复用
  */
 
-import { shallowReactive, ref, onMounted, onUnmounted, watch } from 'vue'
+import { shallowReactive, ref, onMounted, onUnmounted } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 import { CONFIG_EVENTS } from '../../../constants/config-events'
 import type { ColdClientLoaderConfig } from '../../../types/steam-config.types'
@@ -138,48 +200,30 @@ const showToast = ref(false)
 
 /**
  * ColdClientLoader 配置对象
- * 与 Rust ColdClientLoaderConfig 结构体一致。
- * 使用 shallowReactive 减少深层响应式代理开销；
- * 数组/对象通过不可变更新替换引用。
+ * 与 Rust ColdClientLoaderConfig 结构体一致，字段对应 ColdClientLoader.ini。
+ * 使用 shallowReactive 减少深层响应式代理开销。
  */
 const config = shallowReactive<ColdClientLoaderConfig>({
   enabled: false,
-  injectionMode: 'direct',
-  extraDlls: [],
-  launchArgs: '',
+  exe: '',
+  exeRunDir: '',
+  exeCommandLine: '',
+  appId: '',
+  steamClientDll: 'steamclient.dll',
+  steamClient64Dll: 'steamclient64.dll',
+  forceInjectSteamClient: true,
+  forceInjectGameOverlayRenderer: true,
+  dllsToInjectFolder: '',
+  ignoreInjectionError: true,
+  ignoreLoaderArchDifference: false,
+  persistenceMode: 0,
+  resumeByDebugger: false,
 })
-
-/** 额外DLL文本（用于 textarea 编辑） */
-const extraDllsText = ref('')
-
-/**
- * 将数组格式的额外DLL转换为文本
- */
-function syncExtraDllsToText() {
-  extraDllsText.value = config.extraDlls.join('\n')
-}
-
-/**
- * 将文本格式的额外DLL转换为数组
- * 过滤空行但保留非空行的原始顺序
- */
-function syncTextToExtraDlls() {
-  config.extraDlls = extraDllsText.value
-    .split('\n')
-    .map((s) => s.trim())
-    .filter((s) => s !== '')
-}
-
-/** 监听文本变化同步到数组 */
-watch(extraDllsText, syncTextToExtraDlls)
 
 /**
  * 保存配置
  */
 async function saveConfig() {
-  // 确保文本已同步到数组
-  syncTextToExtraDlls()
-
   try {
     const result = await invoke<{ success: boolean; message: string }>('save_coldclient_config', {
       gamePath: props.gamePath,
@@ -219,11 +263,19 @@ async function loadConfig() {
     if (result.exists && result.config) {
       const cfg = result.config
       config.enabled = cfg.enabled ?? false
-      config.injectionMode = cfg.injectionMode || 'direct'
-      config.launchArgs = cfg.launchArgs || ''
-      config.extraDlls = Array.isArray(cfg.extraDlls) ? cfg.extraDlls : []
-      config.workingDir = cfg.workingDir || ''
-      syncExtraDllsToText()
+      config.exe = cfg.exe || ''
+      config.exeRunDir = cfg.exeRunDir || ''
+      config.exeCommandLine = cfg.exeCommandLine || ''
+      config.appId = cfg.appId || ''
+      config.steamClientDll = cfg.steamClientDll || 'steamclient.dll'
+      config.steamClient64Dll = cfg.steamClient64Dll || 'steamclient64.dll'
+      config.forceInjectSteamClient = cfg.forceInjectSteamClient ?? true
+      config.forceInjectGameOverlayRenderer = cfg.forceInjectGameOverlayRenderer ?? true
+      config.dllsToInjectFolder = cfg.dllsToInjectFolder || ''
+      config.ignoreInjectionError = cfg.ignoreInjectionError ?? true
+      config.ignoreLoaderArchDifference = cfg.ignoreLoaderArchDifference ?? false
+      config.persistenceMode = cfg.persistenceMode ?? 0
+      config.resumeByDebugger = cfg.resumeByDebugger ?? false
     }
   } catch (error) {
     // 加载失败时使用默认值
@@ -296,6 +348,43 @@ defineExpose({
 .form-group select:focus,
 .form-group textarea:focus {
   border-color: var(--steam-accent-blue);
+}
+
+.form-section {
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--steam-border);
+}
+
+.form-section:last-of-type {
+  border-bottom: none;
+}
+
+.section-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--steam-text-primary);
+  margin: 0 0 14px 0;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--steam-border);
+}
+
+.checkbox-group .checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--steam-text-primary);
+}
+
+.checkbox-group .checkbox-label input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: var(--steam-accent-blue);
+  flex-shrink: 0;
 }
 
 .form-group textarea {
