@@ -628,7 +628,8 @@ fn main() {
             // 帮助命令
             help_commands::read_readme_file,
             help_commands::check_readme_exists,
-            help_commands::get_sponsor_image_base64,
+            help_commands::get_weixin_image_base64,
+            help_commands::get_alipay_image_base64,
             help_commands::get_qingdan_image_base64,
             // 背景图片命令
             background_commands::get_background_config,

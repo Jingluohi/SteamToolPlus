@@ -21,17 +21,31 @@ pub fn check_readme_exists() -> bool {
     file_utils::file_exists(readme_path)
 }
 
-/// 赞助图片数据（编译时嵌入到 exe 中）
+/// 微信支付赞助图片数据（编译时嵌入到 exe 中）
 /// 使用 include_bytes! 宏将 weixin.jpg 嵌入到程序内部
-static SPONSOR_IMAGE_BYTES: &[u8] = include_bytes!("../../icons/weixin.jpg");
+static WEIXIN_IMAGE_BYTES: &[u8] = include_bytes!("../../icons/weixin.jpg");
 
-/// 获取赞助图片的 Base64 编码
+/// 支付宝赞助图片数据（编译时嵌入到 exe 中）
+/// 使用 include_bytes! 宏将 alipay.jpg 嵌入到程序内部
+static ALIPAY_IMAGE_BYTES: &[u8] = include_bytes!("../../icons/alipay.jpg");
+
+/// 获取微信支付赞助图片的 Base64 编码
 /// 将嵌入到 exe 中的图片数据转为 Base64 字符串，前端可直接使用
 #[tauri::command]
-pub fn get_sponsor_image_base64() -> Result<String, String> {
+pub fn get_weixin_image_base64() -> Result<String, String> {
     // 将嵌入的图片数据编码为 Base64
     use base64::Engine;
-    let base64_string = base64::engine::general_purpose::STANDARD.encode(SPONSOR_IMAGE_BYTES);
+    let base64_string = base64::engine::general_purpose::STANDARD.encode(WEIXIN_IMAGE_BYTES);
+    Ok(format!("data:image/jpeg;base64,{}", base64_string))
+}
+
+/// 获取支付宝赞助图片的 Base64 编码
+/// 将嵌入到 exe 中的图片数据转为 Base64 字符串，前端可直接使用
+#[tauri::command]
+pub fn get_alipay_image_base64() -> Result<String, String> {
+    // 将嵌入的图片数据编码为 Base64
+    use base64::Engine;
+    let base64_string = base64::engine::general_purpose::STANDARD.encode(ALIPAY_IMAGE_BYTES);
     Ok(format!("data:image/jpeg;base64,{}", base64_string))
 }
 

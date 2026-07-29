@@ -73,6 +73,6 @@ echo Output location: PublicOut\
 echo   - SteamToolPlus.exe
 echo ==========================================
 echo.
-echo Note: weixin.jpg is embedded in the executable.
+echo Note: weixin.jpg and alipay.jpg are embedded in the executable.
 echo.
 pause
