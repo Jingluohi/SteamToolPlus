@@ -68,6 +68,16 @@ extensions/
 # Reference projects (not for open source)
 OpenSteam-3.0.0/
 OpenSteamTool-1.4.8/
+DepotDownloaderMod-RE-Alpha_1.2/
+games-config-editor/
+successfully-tested-editor/
+
+# Local utility folders
+others/
+public/
+
+# Web archive files
+*.mhtml
 
 # IDE specific
 *.iml
