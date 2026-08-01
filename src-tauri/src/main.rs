@@ -7,6 +7,7 @@
 mod commands;
 mod models;
 mod services;
+mod update_manager;
 mod utils;
 
 use commands::{background_commands, cache_commands, config_commands, denuvo_commands, download_commands, fake_imported_commands, game_commands, game_data_commands, help_commands, log_commands, manifest_commands, opensteamtool_commands, patch_commands, window_commands};
@@ -65,6 +66,12 @@ fn show_main_window(app_handle: &tauri::AppHandle) {
 async fn restart_app(app_handle: tauri::AppHandle) -> Result<(), String> {
     // 使用 tauri-plugin-process 的 restart 功能
     app_handle.restart();
+}
+
+/// 退出应用程序
+#[tauri::command]
+async fn exit_app(app_handle: tauri::AppHandle, exit_code: i32) {
+    app_handle.exit(exit_code);
 }
 
 /// 检查 ddv20.exe 进程是否正在运行（不显示终端窗口）
@@ -181,6 +188,27 @@ fn main() {
     // 初始化日志
     env_logger::init();
 
+    // 在 Tauri 启动前处理实例冲突
+    // 如果检测到同名进程但路径不同，请求旧进程退出并等待其结束
+    update_manager::handle_instance_conflicts();
+
+    // 清理 exe 自更新遗留的 .old 备份
+    // 启动时旧进程已退出，此时可以安全删除 .old 文件
+    if let Ok(exe_dir) = utils::config_path_utils::get_exe_dir() {
+        if let Ok(entries) = std::fs::read_dir(&exe_dir) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if path.is_file() {
+                    if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
+                        if name.to_lowercase().ends_with(".exe.old") {
+                            let _ = std::fs::remove_file(&path);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     // 初始化应用程序状态
     let app_state = initialize_app_state();
 
@@ -197,6 +225,9 @@ fn main() {
         .setup(|app| {
             // 应用程序启动时的初始化逻辑
             log::info!("Steam Tool Plus 应用程序启动");
+
+            // 启动实例冲突监听器
+            update_manager::spawn_instance_control_watcher(app.handle().clone());
 
             // 获取主窗口并设置窗口属性
             let window = app.get_webview_window("main").unwrap();
@@ -643,6 +674,11 @@ fn main() {
             background_commands::reset_background_config,
             // 应用重启命令
             restart_app,
+            exit_app,
+            update_manager::check_instance_restart_request,
+            update_manager::get_app_versions,
+            update_manager::check_for_update,
+            update_manager::apply_update,
             // 清单入库命令
             manifest_commands::scan_manifest_folder,
             manifest_commands::extract_archive,

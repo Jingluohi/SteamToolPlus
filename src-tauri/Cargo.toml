@@ -1,6 +1,6 @@
 [package]
 name = "steam-tool-plus"
-version = "1.29.0"
+version = "1.30.0"
 description = "Steam Tool Plus - 本地游戏管理系统"
 authors = ["Steam Tool Plus"]
 edition = "2021"
@@ -27,8 +27,8 @@ tokio = { version = "1.52.3", features = ["rt", "rt-multi-thread", "sync", "time
 # 单例管理
 once_cell = "1.21.4"
 
-# 7z解压
-sevenz-rust = "0.6.1"
+# 7z压缩/解压（最新纯 Rust 实现）
+zesven = "2.0"
 
 # 日志
 log = "0.4.33"
@@ -44,7 +44,10 @@ chrono = { version = "0.4.45", features = ["serde"] }
 base64 = "0.22.1"
 
 # HTTP客户端（Steam封面图下载）
-reqwest = { version = "0.13.4", features = ["json"] }
+reqwest = { version = "0.13.4", features = ["json", "stream"] }
+
+# Stream 扩展（下载进度）
+futures-util = "0.3"
 
 # 正则表达式（Lua/VDF转换、清单文件解析）
 regex = "1.12.4"
@@ -54,6 +57,9 @@ winreg = "0.55.0"
 
 # 错误处理
 thiserror = "2.0"
+
+# 进程管理（实例冲突检测）
+sysinfo = "0.35"
 
 [features]
 default = ["custom-protocol"]

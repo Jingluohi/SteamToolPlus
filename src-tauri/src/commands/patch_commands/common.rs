@@ -375,30 +375,34 @@ async fn apply_patch_internal(
     })
 }
 
-/// 使用 sevenz-rust 解压7z文件
+/// 使用 zesven 解压7z文件
 async fn extract_7z(
     archive_path: &Path,
     output_dir: &Path,
 ) -> Result<(), String> {
     use tokio::time::{timeout, Duration};
 
-    let archive_str = archive_path
-        .to_str()
-        .ok_or("补丁文件路径包含非法字符")?;
-    let output_str = output_dir
-        .to_str()
-        .ok_or("临时目录路径包含非法字符")?;
+    let archive_path = archive_path.to_path_buf();
+    let output_dir = output_dir.to_path_buf();
 
     let result = timeout(
         Duration::from_secs(300),
-        async {
-            sevenz_rust::decompress_file(archive_str, output_str)
-                .map_err(|e| format!("解压7z文件失败: {:?}", e))
+        async move {
+            tokio::task::spawn_blocking(move || {
+                let mut archive = zesven::Archive::open_path(&archive_path)
+                    .map_err(|e| format!("打开7z补丁文件失败: {}", e))?;
+                archive
+                    .extract(&output_dir, (), &zesven::ExtractOptions::default())
+                    .map_err(|e| format!("解压7z补丁文件失败: {}", e))
+            })
+            .await
+            .map_err(|e| format!("解压任务异常: {}", e))?
         }
     ).await;
 
     match result {
-        Ok(inner_result) => inner_result,
+        Ok(Ok(_)) => Ok(()),
+        Ok(Err(e)) => Err(e),
         Err(_) => Err("解压操作超时（超过5分钟）".to_string()),
     }
 }

@@ -43,6 +43,57 @@
         </main>
       </div>
     </template>
+
+    <!-- 启动时自动更新提示弹窗 -->
+    <div v-if="showUpdateModal" class="update-modal-overlay" @click.self="closeUpdateModal">
+      <div class="update-modal">
+        <h2 class="update-modal-title">发现新版本</h2>
+        <div class="update-modal-body">
+          <p class="update-modal-info">
+            本地资源版本：<strong>{{ localResourceVersion }}</strong>
+          </p>
+          <p class="update-modal-info">
+            远程资源版本：<strong>{{ remoteResourceVersion }}</strong>
+          </p>
+          <p v-if="remoteHasExeUpdate" class="update-modal-type type-exe">
+            本次更新包含主程序，更新后会自动重启
+          </p>
+          <p v-else class="update-modal-type type-resource">
+            本次仅更新资源文件，无需重启
+          </p>
+          <p v-if="remoteDescription" class="update-modal-desc">
+            {{ remoteDescription }}
+          </p>
+
+          <div v-if="isUpdating" class="update-progress">
+            <div class="progress-header">
+              <span>{{ statusText }}</span>
+              <span>{{ downloadedText }} / {{ totalText }}</span>
+            </div>
+            <div class="progress-bar-bg">
+              <div class="progress-bar-fill" :style="{ width: `${downloadPercent}%` }" />
+            </div>
+            <div class="progress-percent">{{ downloadPercent }}%</div>
+          </div>
+        </div>
+        <div class="update-modal-footer">
+          <button
+            class="modal-btn secondary"
+            :disabled="isUpdating"
+            @click="closeUpdateModal"
+          >
+            稍后更新
+          </button>
+          <button
+            class="modal-btn primary"
+            :disabled="isUpdating"
+            @click="handleStartupUpdate"
+          >
+            {{ remoteHasExeUpdate ? '立即更新并重启' : '立即更新资源' }}
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -54,7 +105,8 @@
 
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { RouterView, useRoute } from 'vue-router'
-import { listen } from '@tauri-apps/api/event'
+import { listen, type UnlistenFn } from '@tauri-apps/api/event'
+import { invoke } from '@tauri-apps/api/core'
 import { useWindowStore } from './store/window.store'
 import { useThemeStore } from './store/theme.store'
 import { useConfigStore } from './store/config.store'
@@ -62,6 +114,22 @@ import { clearAllImageCaches, triggerImageRefresh } from './services/imageCache.
 import TitleBar from './components/layout/TitleBar.vue'
 import BackgroundSlideshow from './components/background/BackgroundSlideshow.vue'
 import type { PageType } from './types/background.types'
+
+interface UpdateCheckResult {
+  has_update: boolean
+  local_resource_version: string
+  remote_resource_version: string
+  remote_description: string | null
+  has_exe_update: boolean
+  patch_url: string
+}
+
+interface DownloadProgress {
+  url: string
+  downloaded: number
+  total: number
+  percent: number
+}
 
 // 获取store
 const windowStore = useWindowStore()
@@ -75,6 +143,93 @@ const backgroundRef = ref<InstanceType<typeof BackgroundSlideshow> | null>(null)
 // 事件监听器句柄，用于卸载时清理
 let unlistenFocused: (() => void) | null = null
 let unlistenBlurred: (() => void) | null = null
+let unlistenRestartRequest: (() => void) | null = null
+let unlistenResourceUpdate: (() => void) | null = null
+let unlistenDownloadProgress: UnlistenFn | null = null
+let unlistenUpdateFinished: UnlistenFn | null = null
+let unlistenUpdateError: UnlistenFn | null = null
+
+// 启动时自动更新弹窗状态
+const showUpdateModal = ref(false)
+const localResourceVersion = ref('')
+const remoteResourceVersion = ref('')
+const remoteDescription = ref('')
+const remoteHasExeUpdate = ref(false)
+const patchUrl = ref('')
+const isUpdating = ref(false)
+const statusText = ref('')
+const downloadPercent = ref(0)
+const downloadedBytes = ref(0)
+const totalBytes = ref(0)
+
+/**
+ * 格式化字节数为可读文本
+ */
+function formatBytes(bytes: number): string {
+  if (bytes === 0) return '0 B'
+  const units = ['B', 'KB', 'MB', 'GB']
+  const i = Math.floor(Math.log(bytes) / Math.log(1024))
+  return `${(bytes / Math.pow(1024, i)).toFixed(2)} ${units[i]}`
+}
+
+const downloadedText = computed(() => formatBytes(downloadedBytes.value))
+const totalText = computed(() => formatBytes(totalBytes.value))
+
+/**
+ * 关闭自动更新弹窗
+ */
+function closeUpdateModal() {
+  if (isUpdating.value) return
+  showUpdateModal.value = false
+}
+
+/**
+ * 启动时自动检查更新
+ */
+async function checkUpdateOnStartup() {
+  try {
+    const result = await invoke<UpdateCheckResult>('check_for_update')
+    if (!result.has_update) return
+
+    localResourceVersion.value = result.local_resource_version
+    remoteResourceVersion.value = result.remote_resource_version
+    remoteDescription.value = result.remote_description ?? ''
+    remoteHasExeUpdate.value = result.has_exe_update
+    patchUrl.value = result.patch_url
+    showUpdateModal.value = true
+  } catch (error) {
+    console.log('[自动更新] 检查失败:', error)
+  }
+}
+
+/**
+ * 启动时弹窗中的立即更新按钮
+ */
+async function handleStartupUpdate() {
+  if (isUpdating.value) return
+
+  isUpdating.value = true
+  downloadPercent.value = 0
+  downloadedBytes.value = 0
+  totalBytes.value = 0
+  statusText.value = '正在下载更新...'
+
+  try {
+    const willRestart = await invoke<boolean>('apply_update', {
+      patchUrl: patchUrl.value,
+      hasExeUpdate: remoteHasExeUpdate.value,
+    })
+
+    if (!willRestart) {
+      statusText.value = '资源更新完成，正在刷新...'
+      // 资源更新完成后刷新页面以重新加载配置
+      window.location.reload()
+    }
+  } catch (error) {
+    statusText.value = `更新失败: ${error}`
+    isUpdating.value = false
+  }
+}
 
 // 计算属性：是否全屏
 const isFullscreen = computed(() => windowStore.isFullscreen)
@@ -159,12 +314,71 @@ onMounted(async () => {
     // 清空游戏封面的 coverUrl，强制重新获取 asset:// URL
     triggerImageRefresh()
   })
+
+  // 监听来自新实例的重启请求
+  // 当用户从新的 exe 路径启动程序时，旧实例会收到此事件并提示用户，随后自动退出
+  const handleRestartRequest = (newPath: string) => {
+    const message = `检测到程序从新的位置启动：\n${newPath}\n\n当前实例将关闭，新实例会继续运行。`
+    window.alert(message)
+    invoke('exit_app', { exitCode: 0 })
+  }
+
+  unlistenRestartRequest = await listen<{ new_path: string }>('instance-restart-request', (event) => {
+    handleRestartRequest(event.payload.new_path)
+  })
+
+  // 启动时主动检查是否已有重启请求（避免事件在页面挂载前已发出）
+  try {
+    const pendingRestartPath = await invoke<string | null>('check_instance_restart_request')
+    if (pendingRestartPath) {
+      handleRestartRequest(pendingRestartPath)
+    }
+  } catch {
+    // 忽略检查失败
+  }
+
+  // 监听资源更新事件，仅记录日志
+  unlistenResourceUpdate = await listen('resource-update-start', (event) => {
+    console.log('[资源更新] 开始更新:', event.payload)
+  })
+
+  // 注册下载进度与更新完成/错误事件监听
+  unlistenDownloadProgress = await listen<DownloadProgress>('download-progress', (event) => {
+    downloadedBytes.value = event.payload.downloaded
+    totalBytes.value = event.payload.total
+    downloadPercent.value = event.payload.percent
+    statusText.value = '正在下载更新...'
+  })
+
+  unlistenUpdateFinished = await listen<{ version: string; has_exe_update: boolean }>('resource-update-finished', (event) => {
+    if (event.payload.has_exe_update) {
+      statusText.value = 'exe 更新完成，正在重启...'
+    } else {
+      statusText.value = '资源更新完成，正在刷新...'
+      window.location.reload()
+    }
+  })
+
+  unlistenUpdateError = await listen<{ error: string }>('resource-update-error', (event) => {
+    statusText.value = `更新失败: ${event.payload.error}`
+    isUpdating.value = false
+  })
+
+  // 启动 2 秒后自动检查更新，避免影响启动速度并确保事件监听已注册
+  setTimeout(() => {
+    checkUpdateOnStartup()
+  }, 2000)
 })
 
 // 组件卸载时清理事件监听器
 onUnmounted(() => {
   unlistenFocused?.()
   unlistenBlurred?.()
+  unlistenRestartRequest?.()
+  unlistenResourceUpdate?.()
+  unlistenDownloadProgress?.()
+  unlistenUpdateFinished?.()
+  unlistenUpdateError?.()
 })
 </script>
 
@@ -249,5 +463,159 @@ onUnmounted(() => {
 
 .app-root.fullscreen .main-content {
   padding: 0;
+}
+
+/* 启动时自动更新弹窗 */
+.update-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  backdrop-filter: blur(4px);
+}
+
+.update-modal {
+  width: 90%;
+  max-width: 480px;
+  background: var(--steam-bg-secondary);
+  border: 1px solid var(--steam-border-color);
+  border-radius: 4px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  overflow: hidden;
+}
+
+.update-modal-title {
+  margin: 0;
+  padding: 18px 24px;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--steam-text-primary);
+  background: var(--steam-bg-tertiary);
+  border-bottom: 1px solid var(--steam-border-color);
+}
+
+.update-modal-body {
+  padding: 24px;
+}
+
+.update-modal-info {
+  margin: 0 0 10px;
+  font-size: 14px;
+  color: var(--steam-text-secondary);
+}
+
+.update-modal-info strong {
+  color: var(--steam-text-primary);
+  font-weight: 600;
+}
+
+.update-modal-type {
+  margin: 14px 0 0;
+  padding: 10px 14px;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.update-modal-type.type-exe {
+  background: rgba(255, 159, 67, 0.15);
+  color: #ff9f43;
+}
+
+.update-modal-type.type-resource {
+  background: rgba(59, 130, 246, 0.15);
+  color: var(--steam-accent-blue);
+}
+
+.update-modal-desc {
+  margin: 14px 0 0;
+  font-size: 13px;
+  color: var(--steam-text-secondary);
+  line-height: 1.5;
+  padding: 12px;
+  background: var(--steam-bg-tertiary);
+  border-radius: 4px;
+}
+
+.update-progress {
+  margin-top: 18px;
+}
+
+.update-progress .progress-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  font-size: 13px;
+  color: var(--steam-text-secondary);
+}
+
+.update-progress .progress-bar-bg {
+  height: 8px;
+  background: var(--steam-bg-primary);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.update-progress .progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--steam-accent-blue), var(--steam-accent-green));
+  transition: width 0.2s ease-out;
+}
+
+.update-progress .progress-percent {
+  margin-top: 6px;
+  text-align: right;
+  font-size: 12px;
+  color: var(--steam-text-secondary);
+  font-family: monospace;
+}
+
+.update-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 16px 24px;
+  background: var(--steam-bg-tertiary);
+  border-top: 1px solid var(--steam-border-color);
+}
+
+.modal-btn {
+  padding: 8px 18px;
+  font-size: 14px;
+  border-radius: 4px;
+  border: 1px solid var(--steam-border-color);
+  cursor: pointer;
+  transition: all 0.15s ease-out;
+}
+
+.modal-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.modal-btn.secondary {
+  background: transparent;
+  color: var(--steam-text-primary);
+}
+
+.modal-btn.secondary:hover:not(:disabled) {
+  background: var(--steam-bg-tertiary);
+}
+
+.modal-btn.primary {
+  background: var(--steam-accent-blue);
+  color: white;
+  border-color: var(--steam-accent-blue);
+}
+
+.modal-btn.primary:hover:not(:disabled) {
+  background: var(--steam-accent-green);
+  border-color: var(--steam-accent-green);
 }
 </style>

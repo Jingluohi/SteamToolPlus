@@ -11,7 +11,7 @@
           <img src="../../../src-tauri/icons/128x128.png" alt="Steam Tool Plus" />
         </div>
         <h1 class="app-name">Steam Tool Plus</h1>
-        <p class="app-version">版本 v1.29.0</p>
+        <p class="app-version">版本 v{{ appVersion }}</p>
       </div>
 
       <!-- 作者信息区域（来自旧版设置） -->
@@ -97,10 +97,30 @@ interface TestedGamesData {
   categories: CategoryInfo[]
 }
 
+
+
+/**
+ * 应用版本号，从后端软编码读取
+ * 实际来源为 Cargo.toml 中的 package.version
+ */
+const appVersion = ref('')
+
 /**
  * 测试成功的游戏数据
  */
 const testedGamesData = ref<TestedGamesData | null>(null)
+
+/**
+ * 加载应用版本号
+ */
+async function loadAppVersion() {
+  try {
+    const info = await invoke<{ app_version: string; resource_version: string }>('get_app_versions')
+    appVersion.value = info.app_version
+  } catch (error) {
+    appVersion.value = '未知'
+  }
+}
 
 /**
  * 加载测试成功的游戏列表数据
@@ -122,6 +142,7 @@ async function loadTestedGamesData() {
  * 组件挂载时加载数据
  */
 onMounted(() => {
+  loadAppVersion()
   loadTestedGamesData()
 })
 

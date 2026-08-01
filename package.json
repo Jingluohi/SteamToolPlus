@@ -1,17 +1,4 @@
 {
-  "name": "steam-tool-plus",
-  "version": "1.29.0",
-  "description": "Steam Tool Plus - 本地游戏管理系统",
-  "type": "module",
-  "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "build:tsc": "vue-tsc --noEmit && vite build",
-    "preview": "vite preview",
-    "tauri": "tauri",
-    "tauri:dev": "tauri dev",
-    "tauri:build": "tauri build"
-  },
   "dependencies": {
     "@tauri-apps/api": "^2.11.1",
     "@tauri-apps/plugin-dialog": "^2.7.1",
@@ -24,6 +11,7 @@
     "vue": "^3.5.38",
     "vue-router": "^5.1.0"
   },
+  "description": "Steam Tool Plus - 本地游戏管理系统",
   "devDependencies": {
     "@tauri-apps/cli": "^2.11.3",
     "@vitejs/plugin-vue": "^6.0.7",
@@ -33,5 +21,17 @@
     "typescript": "^5.8.3",
     "vite": "^8.0.16",
     "vue-tsc": "^3.3.5"
-  }
+  },
+  "name": "steam-tool-plus",
+  "scripts": {
+    "build": "vite build",
+    "build:tsc": "vue-tsc --noEmit && vite build",
+    "dev": "vite",
+    "preview": "vite preview",
+    "tauri": "tauri",
+    "tauri:build": "tauri build",
+    "tauri:dev": "tauri dev"
+  },
+  "type": "module",
+  "version": "1.30.0"
 }

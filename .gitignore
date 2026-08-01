@@ -71,6 +71,7 @@ OpenSteamTool-1.4.8/
 DepotDownloaderMod-RE-Alpha_1.2/
 games-config-editor/
 successfully-tested-editor/
+release-tool/
 
 # Local utility folders
 others/
@@ -78,6 +79,11 @@ public/
 
 # Web archive files
 *.mhtml
+
+# Archive files
+*.7z
+*.zip
+*.rar
 
 # IDE specific
 *.iml

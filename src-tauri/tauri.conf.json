@@ -1,52 +1,53 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Steam Tool Plus",
-  "version": "1.29.0",
-  "identifier": "com.steamtoolplus.app",
-  "build": {
-    "beforeDevCommand": "npm run dev",
-    "devUrl": "http://localhost:1420",
-    "beforeBuildCommand": "npm run build",
-    "frontendDist": "../dist"
-  },
   "app": {
-    "windows": [
-      {
-        "title": "Steam Tool Plus",
-        "width": 1600,
-        "height": 950,
-        "minWidth": 1600,
-        "minHeight": 950,
-        "center": true,
-        "resizable": true,
-        "maximizable": true,
-        "minimizable": true,
-        "closable": true,
-        "decorations": false,
-        "transparent": false,
-        "shadow": true,
-        "visible": true,
-        "fullscreen": false,
-        "focus": true,
-        "dragDropEnabled": true
-      }
-    ],
+    "macOSPrivateApi": false,
     "security": {
-      "csp": {
-        "default-src": "'self'",
-        "script-src": "'self'",
-        "style-src": "'self' 'unsafe-inline'",
-        "img-src": "'self' blob: data: asset: http://asset.localhost",
-        "font-src": "'self'",
-        "connect-src": "'self'"
-      },
       "assetProtocol": {
         "enable": true,
-        "scope": ["**"]
+        "scope": [
+          "**"
+        ]
       },
-      "capabilities": ["default"]
+      "capabilities": [
+        "default"
+      ],
+      "csp": {
+        "connect-src": "'self' https://gitee.com",
+        "default-src": "'self'",
+        "font-src": "'self'",
+        "img-src": "'self' blob: data: asset: http://asset.localhost",
+        "script-src": "'self'",
+        "style-src": "'self' 'unsafe-inline'"
+      }
     },
-    "macOSPrivateApi": false
+    "windows": [
+      {
+        "center": true,
+        "closable": true,
+        "decorations": false,
+        "dragDropEnabled": true,
+        "focus": true,
+        "fullscreen": false,
+        "height": 950,
+        "maximizable": true,
+        "minHeight": 950,
+        "minWidth": 1600,
+        "minimizable": true,
+        "resizable": true,
+        "shadow": true,
+        "title": "Steam Tool Plus",
+        "transparent": false,
+        "visible": true,
+        "width": 1600
+      }
+    ]
+  },
+  "build": {
+    "beforeBuildCommand": "npm run build",
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://localhost:1420",
+    "frontendDist": "../dist"
   },
   "bundle": {
     "active": false,
@@ -58,9 +59,12 @@
       "icons/icon.ico"
     ]
   },
+  "identifier": "com.steamtoolplus.app",
   "plugins": {
     "shell": {
       "open": true
     }
-  }
+  },
+  "productName": "Steam Tool Plus",
+  "version": "1.30.0"
 }

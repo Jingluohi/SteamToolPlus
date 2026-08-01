@@ -103,9 +103,12 @@ pub fn extract_archive(archive_path: String) -> Result<String, String> {
 
     match ext.as_str() {
         "7z" => {
-            // 使用 sevenz-rust 库解压
-            sevenz_rust::decompress_file(archive_path, &temp_dir)
-                .map_err(|e| format!("解压7z文件失败: {:?}", e))?;
+            // 使用 zesven 库解压
+            let mut archive = zesven::Archive::open_path(archive_path)
+                .map_err(|e| format!("打开7z文件失败: {}", e))?;
+            let _ = archive
+                .extract(&temp_dir, (), &zesven::ExtractOptions::default())
+                .map_err(|e| format!("解压7z文件失败: {}", e))?;
         }
         "zip" => {
             // 使用PowerShell解压zip文件（隐藏窗口）
@@ -552,9 +555,12 @@ pub fn extract_manifest_archive(
     fs::create_dir_all(&temp_dir)
         .map_err(|e| format!("创建临时解压目录失败: {}", e))?;
 
-    // 使用 sevenz-rust 解压 7z 文件到临时目录
-    sevenz_rust::decompress_file(archive, &temp_dir)
-        .map_err(|e| format!("解压清单压缩包失败: {:?}", e))?;
+    // 使用 zesven 解压 7z 文件到临时目录
+    let mut archive = zesven::Archive::open_path(archive)
+        .map_err(|e| format!("打开清单压缩包失败: {}", e))?;
+    let _ = archive
+        .extract(&temp_dir, (), &zesven::ExtractOptions::default())
+        .map_err(|e| format!("解压清单压缩包失败: {}", e))?;
 
     // 在 2 层以内查找包含 .lua 或 .vdf 的文件夹
     let source_dir = match find_manifest_folder(&temp_dir, 2) {

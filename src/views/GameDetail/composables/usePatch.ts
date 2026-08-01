@@ -5,7 +5,7 @@
 
 import { ref, type Ref } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
-import { open } from '@tauri-apps/plugin-dialog'
+import { open, message } from '@tauri-apps/plugin-dialog'
 import type { GameConfigData } from '../../../types'
 import { getPatchSourcePath } from '../../../types'
 
@@ -102,7 +102,7 @@ export function usePatch(
       patchResult.value = result
       
       if (result.success) {
-        alert('补丁应用成功！')
+        await message('补丁应用成功！', { title: '提示', kind: 'info' })
       } else {
         alert('补丁应用完成，但有一些错误，请查看详情')
       }
@@ -164,7 +164,7 @@ export function usePatch(
       patchResult.value = result
 
       if (result.success) {
-        alert('补丁应用成功！')
+        await message('补丁应用成功！', { title: '提示', kind: 'info' })
       } else {
         alert('补丁应用完成，但有一些错误，请查看详情')
       }
