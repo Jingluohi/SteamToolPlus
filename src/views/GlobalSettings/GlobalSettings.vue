@@ -27,8 +27,9 @@
                 v-model="settings.steamPath"
                 type="text"
                 class="form-input"
-                placeholder="选择Steam安装路径"
-                readonly
+                placeholder="选择或输入Steam安装路径"
+                @blur="validateSteamPathInput"
+                @keydown.enter="validateSteamPathInput"
               />
               <Button variant="secondary" size="sm" @click="selectSteamPath">
                 浏览
@@ -48,8 +49,7 @@
                 v-model="settings.defaultDownloadPath"
                 type="text"
                 class="form-input"
-                placeholder="选择游戏默认下载路径"
-                readonly
+                placeholder="选择或输入游戏默认下载路径"
               />
               <Button variant="secondary" size="sm" @click="selectDefaultDownloadPath">
                 浏览
@@ -508,6 +508,38 @@ async function cleanSteamToolsResiduals() {
   }
 }
 
+// 验证用户手动输入的 Steam 路径
+// 若路径无效，则恢复为当前配置中的路径并提示用户
+async function validateSteamPathInput() {
+  const inputPath = settings.value.steamPath?.trim() || ''
+  if (!inputPath) {
+    return
+  }
+
+  try {
+    const result = await invoke<{
+      valid: boolean
+      path?: string
+      message?: string
+    }>('validate_steam_path_command', {
+      steamPath: inputPath
+    })
+
+    if (result.valid && result.path) {
+      settings.value.steamPath = result.path
+    } else {
+      alert(result.message || '路径无效，请选择包含 steam.exe 的 Steam 安装目录')
+      // 恢复为当前配置中的路径，避免保存无效路径
+      const config = configStore.config
+      settings.value.steamPath = config?.gameDirs.steamPath || ''
+    }
+  } catch (err) {
+    // 验证失败时恢复为当前配置中的路径
+    const config = configStore.config
+    settings.value.steamPath = config?.gameDirs.steamPath || ''
+  }
+}
+
 // 选择Steam路径
 async function selectSteamPath() {
   try {
@@ -558,20 +590,39 @@ async function selectDefaultDownloadPath() {
 async function saveSettings() {
   try {
     // 先获取当前配置，然后合并更新
-    const currentConfig = configStore.config
+    // 使用 JSON 深拷贝避免响应式引用导致的数据不同步问题
+    const currentConfig = configStore.config ? JSON.parse(JSON.stringify(configStore.config)) : null
     if (!currentConfig) {
       alert('配置未加载，请稍后重试')
       return
     }
 
-    // 确保 steamPath 有值
+    // 保存前先验证 Steam 路径是否有效
     const steamPathValue = settings.value.steamPath?.trim() || ''
+    if (steamPathValue) {
+      const validateResult = await invoke<{
+        valid: boolean
+        path?: string
+        message?: string
+      }>('validate_steam_path_command', {
+        steamPath: steamPathValue
+      })
+      if (!validateResult.valid) {
+        alert(validateResult.message || 'Steam 路径无效，请重新选择')
+        return
+      }
+      // 使用后端返回的规范化路径
+      if (validateResult.path) {
+        settings.value.steamPath = validateResult.path
+      }
+    }
+
     const defaultDownloadPathValue = settings.value.defaultDownloadPath?.trim() || ''
 
     const updateData = {
       gameDirs: {
-        steamPath: steamPathValue !== '' ? steamPathValue : currentConfig.gameDirs.steamPath,
-        defaultDownloadPath: defaultDownloadPathValue !== '' ? defaultDownloadPathValue : undefined,
+        steamPath: steamPathValue !== '' ? settings.value.steamPath : currentConfig.gameDirs.steamPath,
+        defaultDownloadPath: defaultDownloadPathValue !== '' ? defaultDownloadPathValue : currentConfig.gameDirs.defaultDownloadPath,
         coversPath: currentConfig.gameDirs.coversPath || 'data/covers'
       },
       launch: {
@@ -581,13 +632,15 @@ async function saveSettings() {
         manifestImportInitialized: currentConfig.launch.manifestImportInitialized || false
       },
       opensteamtool: {
-        kernelInstalled: currentConfig.opensteamtool?.kernelInstalled || kernelStatus.value.installed,
+        kernelInstalled: currentConfig.opensteamtool?.kernelInstalled ?? kernelStatus.value.installed,
         advancedMode: settings.value.openSteamToolAdvancedMode,
         hotReload: settings.value.openSteamToolHotReload
       }
     }
 
     await configStore.updateConfig(updateData)
+    // 保存成功后立即从 store 重新加载设置，确保界面与持久化配置一致
+    loadSettings()
     alert('设置已保存')
   } catch (err) {
     alert('保存设置失败: ' + (err instanceof Error ? err.message : String(err)))

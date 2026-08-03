@@ -3,7 +3,7 @@
  */
 
 import { invoke } from '@tauri-apps/api/core'
-import type { AppConfig, ThemeConfig, WindowConfig, GameDirConfig, LaunchConfig } from '../types/config.types'
+import type { AppConfig, ThemeConfig, WindowConfig, GameDirConfig, LaunchConfig, OpenSteamToolConfig } from '../types/config.types'
 
 /**
  * 获取应用配置
@@ -20,6 +20,7 @@ export async function updateConfig(request: {
   theme?: ThemeConfig
   gameDirs?: GameDirConfig
   launch?: LaunchConfig
+  opensteamtool?: OpenSteamToolConfig
 }): Promise<AppConfig> {
   // 后端使用 camelCase，直接发送
   return invoke<AppConfig>('update_config', { request })
