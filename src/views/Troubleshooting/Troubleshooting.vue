@@ -108,9 +108,9 @@ const troubleshootingItems = ref<TroubleshootingItem[]>([
     id: 1,
     question: '程序打开后显示空白/透明窗口',
     answer: [
-      '1. 确保程序根目录下存在 resources/pic/background/default.png 背景图片',
-      '2. 检查是否有杀毒软件拦截了程序',
-      '3. 尝试删除 %appdata%/SteamToolPlus/config/ 目录后重新启动程序'
+      '1. 确保程序整个文件夹被解压了',
+      '2. 在任务栏隐藏图标里关掉程序再重新从解压出来的文件夹里启动',
+      '3. 删除 %appdata%/SteamToolPlus/config/ 和程序exe根目录下的config文件夹目录后重新启动程序'
     ],
     isExpanded: false
   },
@@ -118,48 +118,45 @@ const troubleshootingItems = ref<TroubleshootingItem[]>([
     id: 2,
     question: '游戏下载进度卡在 0% 不动或到某一进度不动',
     answer: [
-      '1. 检查网络连接是否正常',
-      '2. 确认清单文件夹路径正确，包含有效的 manifest 文件',
-      '3. 检查磁盘空间是否充足',
-      '4. 看看任务管理器中ddv20.exe的磁盘占用，5mb/s以上就没事，耐心等待一下'
+      '1. 点击【暂停】按钮再点【开始下载】',
+      '2. 看看任务管理器中ddv20.exe的磁盘占用，5mb/s以上，cpu占用不是0% 就没事，耐心等待一下'
     ],
     isExpanded: false
   },
   {
     id: 3,
-    question: '黑神话：悟空打不开',
+    question: '打开游戏时弹窗提示 “Steam is not launched”',
     answer: [
-      '1. 确保游戏放到纯英文路径',
-      '2. 实在不会操作去下 https://pan.baidu.com/s/1w5Cm4OYT97g3kl1g6WPk5Q?pwd=vfub 提取码: vfub 记得解压再双击 bat'
+      '1. 打了steam联机补丁的游戏需要把steam打开放到系统后台，不然会报以上错误',
+      '2. 如果没用，重启steam'
     ],
     isExpanded: false
   },
   {
     id: 4,
-    question: '程序无法启动，提示缺少 DLL 文件',
+    question: '游戏无法启动，提示缺少 DLL 文件',
     answer: [
       '1. 安装最新的 Visual C++ Redistributable',
-      '2. 确保系统已安装 WebView2 运行时',
-      '3. 尝试重新下载并解压程序'
+      '2. 确保杀毒软件和系统防火墙没有隔离文件并说是病毒',
+      '3. 进QQ群问问题并附上截图'
     ],
     isExpanded: false
   },
   {
     id: 5,
-    question: '游戏添加到库后无法启动',
+    question: '游戏无法入库或下载显示"无互联网连接"',
     answer: [
-      '1. 检查游戏路径是否正确，确保 exe 文件存在',
-      '2. 确认游戏已正确安装或下载完成',
-      '3. 尝试直接从游戏目录运行 exe 文件，查看是否有错误提示',
-      '4. 检查游戏是否需要额外的运行库或依赖'
+      '1. 检查游戏路径是否正确，确保 设置界面里的steam路径选择的是steam的根目录即steam.exe存在的目录',
+      '2. 确保杀毒软件和系统防火墙没有隔离文件并说是病毒'
     ],
     isExpanded: false
-  },    
-  {id: 6,
+  },
+  {
+    id: 6,
     question: '有些游戏脱壳失败',
     answer: [
       '1. 有些游戏的运行程序exe未被套壳，别管',
-      '2. 联网或D加密我的程序的免steam补丁没有用',
+      '2. 联网验证游戏或D加密游戏我的程序的免steam通用补丁没有用，请去浏览页的游戏里找对应的专门补丁',
     ],
     isExpanded: false
   },
@@ -179,44 +176,16 @@ const troubleshootingItems = ref<TroubleshootingItem[]>([
     question: '游戏打不开',
     answer: [
       '1. 仔细查看补丁界面的使用说明',
-      '2. 确保游戏被放在纯英文路径',
+      `2. 确保游戏被放在纯英文路径并且系统用户名没有中文字符或者特殊字符如 ,',: 等`,
       '3. 确保系统杀毒软件没有隔离删除补丁文件的 dll'
     ],
     isExpanded: false
   },
   {
     id: 9,
-    question: '报 "Cannot start Denuvo service"',
-    answer: [
-      '1. 确保设置了虚拟化环境（应用补丁那个下面有说明文档）'
-    ],
-    isExpanded: false
-  },
-  {
-    id: 10,
-    question: 'D 加密虚拟机安全吗',
-    answer: [
-      '1. 补丁我大部分都试过了，可以正常游玩',
-      '2. 玩就别怕，怕就别玩',
-      '3. VBS 其实原理和我这个一样，只是他那个可能是傻瓜式操作',
-      '4. 任何说虚拟化环境不用改 bios 的都是瞎扯，毕竟 cpu 必须开虚拟化功能',
-      '5. 安全启动可以不关，但是还是要走高级启动运行非官方签字驱动运行'
-    ],
-    isExpanded: false
-  },
-  {
-    id: 11,
     question: '蓝奏云的补丁文件的密码是多少？',
     answer: [
       '1234'
-    ],
-    isExpanded: false
-  },
-  {
-    id: 12,
-    question: '打开游戏时显示 Steam is not launched',
-    answer: [
-      '这是 steam 联机游戏，需要打开 steam 进行游玩'
     ],
     isExpanded: false
   }

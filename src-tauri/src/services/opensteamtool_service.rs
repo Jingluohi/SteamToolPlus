@@ -64,6 +64,17 @@ pub struct OpenSteamToolImportResult {
     pub advanced_enabled: bool,
 }
 
+/// 去除 Windows verbatim 路径前缀 `\\?\`，使保存和显示的路径更简洁
+fn normalize_windows_path(path: &str) -> String {
+    #[cfg(target_os = "windows")]
+    {
+        if let Some(stripped) = path.strip_prefix(r"\\?\") {
+            return stripped.to_string();
+        }
+    }
+    path.to_string()
+}
+
 /// 验证给定路径是否为有效的 Steam 安装目录
 /// 必须包含 steam.exe 文件才算有效
 pub fn validate_steam_path(steam_path: &str) -> Result<String, String> {
@@ -83,13 +94,15 @@ pub fn validate_steam_path(steam_path: &str) -> Result<String, String> {
     // 检查 steam.exe 是否存在（支持大小写不敏感）
     let steam_exe = path.join("steam.exe");
     if steam_exe.exists() {
-        return Ok(steam_path.to_string());
+        return Ok(normalize_windows_path(steam_path));
     }
 
     // 兼容 Steam 安装目录下的 steam 目录（部分用户选择上层目录）
     let nested_steam_exe = path.join("Steam").join("steam.exe");
     if nested_steam_exe.exists() {
-        return Ok(path.join("Steam").to_string_lossy().to_string());
+        return Ok(normalize_windows_path(
+            &path.join("Steam").to_string_lossy(),
+        ));
     }
 
     Err(format!(

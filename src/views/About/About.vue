@@ -20,6 +20,14 @@
           作者：<a href="#" class="author-link" @click.prevent="openBilibili">B站：鲸落_hi</a>
         </p>
         <p class="app-qq-group">QQ交流群：1095428733</p>
+        <p class="app-resource-site">
+          <a href="#" class="resource-link" @click.prevent="openResourceSite">
+            <svg class="resource-icon" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm4 18H6V4h7v5h5v11z"/>
+            </svg>
+            <span>游戏资源网</span>
+          </a>
+        </p>
         <p class="app-github">
           <a href="#" class="github-link" @click.prevent="openGithub">
             <svg class="github-icon" viewBox="0 0 24 24" fill="currentColor">
@@ -159,6 +167,18 @@ async function openBilibili() {
 }
 
 /**
+ * 打开游戏资源网 - 使用系统默认浏览器
+ */
+async function openResourceSite() {
+  try {
+    // 使用 Tauri shell 插件在默认浏览器中打开金山文档游戏资源链接
+    await open('https://www.kdocs.cn/l/ct1aHmwRS4LU')
+  } catch (error) {
+    // 打开链接失败时静默处理
+  }
+}
+
+/**
  * 打开GitHub仓库 - 使用系统默认浏览器
  */
 async function openGithub() {
@@ -288,6 +308,35 @@ async function openGithub() {
   font-size: 14px;
   color: var(--steam-text-secondary);
   margin: 8px 0 0 0;
+}
+
+.app-resource-site {
+  margin: 12px 0;
+}
+
+.resource-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background-color: var(--steam-bg-tertiary);
+  border: 1px solid var(--steam-border);
+  border-radius: 6px;
+  color: var(--steam-text-primary);
+  text-decoration: none;
+  font-size: 15px;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.resource-link:hover {
+  background-color: var(--steam-border);
+  border-color: var(--steam-text-secondary);
+}
+
+.resource-icon {
+  width: 16px;
+  height: 16px;
 }
 
 .app-github {

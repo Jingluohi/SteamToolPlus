@@ -508,12 +508,12 @@ async function cleanSteamToolsResiduals() {
   }
 }
 
-// 验证用户手动输入的 Steam 路径
-// 若路径无效，则恢复为当前配置中的路径并提示用户
-async function validateSteamPathInput() {
-  const inputPath = settings.value.steamPath?.trim() || ''
+// 验证 Steam 路径并返回规范化后的路径
+// 验证失败时返回 null，由调用方决定是否恢复或提示
+async function validateSteamPath(steamPath: string): Promise<string | null> {
+  const inputPath = steamPath.trim()
   if (!inputPath) {
-    return
+    return null
   }
 
   try {
@@ -526,15 +526,24 @@ async function validateSteamPathInput() {
     })
 
     if (result.valid && result.path) {
-      settings.value.steamPath = result.path
-    } else {
-      alert(result.message || '路径无效，请选择包含 steam.exe 的 Steam 安装目录')
-      // 恢复为当前配置中的路径，避免保存无效路径
-      const config = configStore.config
-      settings.value.steamPath = config?.gameDirs.steamPath || ''
+      return result.path
     }
+    alert(result.message || '路径无效，请选择包含 steam.exe 的 Steam 安装目录')
+    return null
   } catch (err) {
-    // 验证失败时恢复为当前配置中的路径
+    alert(`验证 Steam 路径失败: ${err}`)
+    return null
+  }
+}
+
+// 验证用户手动输入的 Steam 路径
+// 若路径无效，则恢复为当前配置中的路径并提示用户
+async function validateSteamPathInput() {
+  const validated = await validateSteamPath(settings.value.steamPath)
+  if (validated !== null) {
+    settings.value.steamPath = validated
+  } else {
+    // 恢复为当前配置中的路径，避免保存无效路径
     const config = configStore.config
     settings.value.steamPath = config?.gameDirs.steamPath || ''
   }
@@ -549,19 +558,9 @@ async function selectSteamPath() {
     })
 
     if (selected && typeof selected === 'string') {
-      // 验证所选路径是否包含 steam.exe
-      const result = await invoke<{
-        valid: boolean
-        path?: string
-        message?: string
-      }>('validate_steam_path_command', {
-        steamPath: selected
-      })
-
-      if (result.valid && result.path) {
-        settings.value.steamPath = result.path
-      } else {
-        alert(result.message || '选择失败，请选择 Steam 的安装路径（包含 steam.exe）')
+      const validated = await validateSteamPath(selected)
+      if (validated !== null) {
+        settings.value.steamPath = validated
       }
     }
   } catch (err) {
@@ -598,31 +597,22 @@ async function saveSettings() {
     }
 
     // 保存前先验证 Steam 路径是否有效
-    const steamPathValue = settings.value.steamPath?.trim() || ''
-    if (steamPathValue) {
-      const validateResult = await invoke<{
-        valid: boolean
-        path?: string
-        message?: string
-      }>('validate_steam_path_command', {
-        steamPath: steamPathValue
-      })
-      if (!validateResult.valid) {
-        alert(validateResult.message || 'Steam 路径无效，请重新选择')
-        return
-      }
-      // 使用后端返回的规范化路径
-      if (validateResult.path) {
-        settings.value.steamPath = validateResult.path
-      }
+    // 验证通过后会使用后端返回的规范化路径，避免路径格式不一致
+    const validatedSteamPath = await validateSteamPath(settings.value.steamPath)
+    if (validatedSteamPath === null && settings.value.steamPath?.trim()) {
+      // 用户输入了路径但验证失败，中止保存
+      return
     }
+    // 使用验证后的路径（可能为 null，表示清空或保持原配置）
+    const finalSteamPath = validatedSteamPath ?? settings.value.steamPath ?? ''
 
     const defaultDownloadPathValue = settings.value.defaultDownloadPath?.trim() || ''
 
     const updateData = {
       gameDirs: {
-        steamPath: steamPathValue !== '' ? settings.value.steamPath : currentConfig.gameDirs.steamPath,
-        defaultDownloadPath: defaultDownloadPathValue !== '' ? defaultDownloadPathValue : currentConfig.gameDirs.defaultDownloadPath,
+        // 如果用户清空了路径，则保存空字符串；否则保存验证后的规范化路径
+        steamPath: finalSteamPath,
+        defaultDownloadPath: defaultDownloadPathValue,
         coversPath: currentConfig.gameDirs.coversPath || 'data/covers'
       },
       launch: {
@@ -638,9 +628,13 @@ async function saveSettings() {
       }
     }
 
-    await configStore.updateConfig(updateData)
+    const savedConfig = await configStore.updateConfig(updateData)
     // 保存成功后立即从 store 重新加载设置，确保界面与持久化配置一致
     loadSettings()
+    // 同步更新本地状态，确保即使 loadSettings 有延迟也能立即反映
+    if (savedConfig?.gameDirs?.steamPath !== undefined) {
+      settings.value.steamPath = savedConfig.gameDirs.steamPath || ''
+    }
     alert('设置已保存')
   } catch (err) {
     alert('保存设置失败: ' + (err instanceof Error ? err.message : String(err)))
