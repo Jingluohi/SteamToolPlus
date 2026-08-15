@@ -408,14 +408,15 @@ import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 import { open } from '@tauri-apps/plugin-dialog'
 import { open as openShell } from '@tauri-apps/plugin-shell'
-import { useConfigStore, useDownloadStore } from '../../store'
+import { useConfigStore, useDownloadStore, useDownloadManagerStore } from '../../store'
 import DownloadProgress from '../../components/download/DownloadProgress.vue'
 import QRCodeModal from '../../components/common/QRCodeModal.vue'
-import type { DownloadProgress as DownloadProgressType } from '../../types/download.types'
+
 
 // Store
 const configStore = useConfigStore()
 const downloadStore = useDownloadStore()
+const downloadManagerStore = useDownloadManagerStore()
 
 // 清单下载夸克网盘二维码弹窗状态
 const showQRCodeModal = ref(false)
@@ -519,19 +520,13 @@ const autoShutdown = ref(downloadStore.autoShutdown)
 
 /** 下载状态 */
 const isDownloading = ref(downloadStore.isDownloading)
-const downloadLogs = ref<DownloadLog[]>([...downloadStore.downloadLogs])
 const logContentRef = ref<HTMLDivElement>()
 
-/** 下载进度监控 */
-const isMonitoring = ref(downloadStore.isMonitoring)
-const downloadProgress = ref<DownloadProgressType>({
-  totalDepots: downloadStore.downloadProgress.totalDepots,
-  completedDepots: downloadStore.downloadProgress.completedDepots,
-  overallPercentage: downloadStore.downloadProgress.overallPercentage,
-  depots: JSON.parse(JSON.stringify(downloadStore.downloadProgress.depots)),
-  isComplete: downloadStore.downloadProgress.isComplete
-})
-let monitorInterval: number | null = null
+/** 下载进度监控（从全局 store 按 gameId 读取，支持多实例并行下载） */
+const currentGameId = computed(() => gameId.value)
+const downloadLogs = computed(() => downloadManagerStore.getGameLogs(currentGameId.value))
+const isMonitoring = computed(() => downloadManagerStore.isGameMonitoring(currentGameId.value))
+const downloadProgress = computed(() => downloadManagerStore.getGameProgress(currentGameId.value))
 
 // ============================================
 // 计算属性
@@ -637,19 +632,16 @@ const resetLocalState = () => {
   currentDownloadingGame.value = null
   autoShutdown.value = false
   isDownloading.value = false
-  downloadLogs.value = []
-  isMonitoring.value = false
-  downloadProgress.value = {
+  // 清空全局 store 中当前游戏的日志和进度
+  downloadManagerStore.clearLogs(gameId.value)
+  downloadManagerStore.stopMonitoring(gameId.value)
+  downloadManagerStore.updateProgress(gameId.value, {
     totalDepots: 0,
     completedDepots: 0,
     overallPercentage: 0,
     depots: [],
     isComplete: false
-  }
-  if (monitorInterval) {
-    clearInterval(monitorInterval)
-    monitorInterval = null
-  }
+  })
 }
 
 /**
@@ -683,18 +675,18 @@ const getStatusText = (status: BatchGame['status']) => {
 
 /**
  * 添加下载日志
- * 同时保存到 downloadStore，切换路由后可恢复
+ * 同时保存到 downloadStore 和全局 downloadManager store，
+ * 支持多游戏并行下载时各页面都能查看日志
  */
 const addLog = (message: string, type: DownloadLog['type'] = 'info') => {
   const now = new Date()
   const time = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`
   const logEntry = { time, message, type }
-  downloadLogs.value.push(logEntry)
-  downloadStore.addLog(logEntry)
 
-  if (downloadLogs.value.length > 500) {
-    downloadLogs.value = downloadLogs.value.slice(-400)
-  }
+  // 写入全局 store（按当前 gameId 索引）
+  downloadManagerStore.addLog(currentGameId.value, logEntry)
+  // 兼容旧 downloadStore（用于表单状态持久化）
+  downloadStore.addLog(logEntry)
 
   nextTick(() => {
     if (logContentRef.value) {
@@ -1062,7 +1054,7 @@ const startDownload = async () => {
   if (!canStartDownload.value) return
 
   isDownloading.value = true
-  downloadLogs.value = []
+  downloadManagerStore.clearLogs(currentGameId.value)
 
   if (downloadMode.value === 'single') {
     await startSingleDownload()
@@ -1083,6 +1075,7 @@ const startSingleDownload = async () => {
     const result = await invoke<{
       success: boolean
       message: string
+      processId?: number
     }>('start_game_download', {
       manifestPath: manifestPath.value,
       downloadPath: downloadPath.value,
@@ -1091,14 +1084,18 @@ const startSingleDownload = async () => {
 
     if (result.success) {
       addLog('下载命令已启动', 'success')
+      downloadManagerStore.setGameName(currentGameId.value, gameName.value || customGameName.value || gameId.value)
+      downloadManagerStore.setGameDownloading(currentGameId.value, true)
       startProgressMonitoring()
     } else {
       addLog(`下载启动失败: ${result.message}`, 'error')
       isDownloading.value = false
+      downloadManagerStore.setGameDownloading(currentGameId.value, false)
     }
   } catch (error) {
     addLog(`下载出错: ${error}`, 'error')
     isDownloading.value = false
+    downloadManagerStore.setGameDownloading(currentGameId.value, false)
   }
 }
 
@@ -1127,6 +1124,7 @@ const startBatchDownload = async () => {
       const result = await invoke<{
         success: boolean
         message: string
+        processId?: number
       }>('start_game_download', {
         manifestPath: game.path,
         downloadPath: gameDownloadPath,
@@ -1196,145 +1194,75 @@ const waitForGameDownload = async (_game: BatchGame): Promise<void> => {
 }
 
 /**
- * 解析进度文件名
- */
-const parseProgressFileName = (fileName: string): { depotId: string; percentage: number } | null => {
-  const match = fileName.match(/^(\d+)%\s*-\s*(\d+)\.json$/)
-  if (match) {
-    return {
-      percentage: parseInt(match[1], 10),
-      depotId: match[2]
-    }
-  }
-  return null
-}
-
-/**
- * 扫描进度文件
+ * 扫描进度文件（委托给 store）并处理页面级完成逻辑
  */
 const scanProgressFiles = async () => {
-  try {
-    const progressFiles = await invoke<Array<{ name: string; path: string }>>('get_download_progress_files', {
-      gameId: gameId.value || undefined
-    })
-    const updatedDepots = [...downloadProgress.value.depots]
+  const result = await downloadManagerStore.scanProgressFiles(currentGameId.value)
+  if (!result.hasChanges) return
 
-    for (const file of progressFiles) {
-      const parsed = parseProgressFileName(file.name)
-      if (parsed) {
-        const fileContent = await invoke<Record<string, string[]>>('read_json_file', {
-          filePath: file.path
-        }).catch(() => ({}))
-
-        const downloadedFiles = Object.keys(fileContent).length
-        const depotIndex = updatedDepots.findIndex(d => d.depotId === parsed.depotId)
-
-        if (depotIndex !== -1) {
-          updatedDepots[depotIndex] = {
-            depotId: parsed.depotId,
-            percentage: parsed.percentage,
-            downloadedFiles,
-            totalFiles: downloadedFiles,
-            status: parsed.percentage >= 100 ? 'completed' : 'downloading'
-          }
-        } else {
-          updatedDepots.push({
-            depotId: parsed.depotId,
-            percentage: parsed.percentage,
-            downloadedFiles,
-            totalFiles: downloadedFiles,
-            status: parsed.percentage >= 100 ? 'completed' : 'downloading'
-          })
-        }
-      }
-    }
-
-    const completedDepots = updatedDepots.filter(d => d.status === 'completed').length
-    const overallPercentage = updatedDepots.length > 0
-      ? Math.round(updatedDepots.reduce((sum, d) => sum + d.percentage, 0) / updatedDepots.length)
-      : 0
-
-    const isComplete = updatedDepots.length > 0 && updatedDepots.every(d => d.status === 'completed')
-
-    downloadProgress.value = {
-      totalDepots: downloadProgress.value.totalDepots || updatedDepots.length,
-      completedDepots,
-      overallPercentage,
-      depots: updatedDepots,
-      isComplete
-    }
-
-    if (isComplete) {
-      stopProgressMonitoring()
-      addLog('所有depot下载完成！', 'success')
-      // 删除所有进度 JSON 文件
-      await deleteProgressFiles(progressFiles)
-    }
-  } catch (error) {
-    // 扫描进度文件失败时静默处理
+  if (result.isComplete) {
+    stopProgressMonitoring()
+    addLog('所有depot下载完成！', 'success')
+    // 删除所有进度 JSON 文件
+    await deleteProgressFiles()
   }
 }
 
 /**
  * 删除进度文件
  */
-const deleteProgressFiles = async (progressFiles: Array<{ name: string; path: string }>) => {
+const deleteProgressFiles = async () => {
   addLog('正在清理进度文件...', 'info')
-  let deletedCount = 0
+  try {
+    const progressFiles = await invoke<Array<{ name: string; path: string }>>('get_download_progress_files', {
+      gameId: currentGameId.value || undefined
+    })
+    let deletedCount = 0
 
-  for (const file of progressFiles) {
-    try {
-      await invoke('delete_file', { filePath: file.path })
-      deletedCount++
-      addLog(`已删除进度文件: ${file.name}`, 'info')
-    } catch (error) {
-      addLog(`删除进度文件失败 ${file.name}: ${error}`, 'warning')
+    for (const file of progressFiles) {
+      try {
+        await invoke('delete_file', { filePath: file.path })
+        deletedCount++
+        addLog(`已删除进度文件: ${file.name}`, 'info')
+      } catch (error) {
+        addLog(`删除进度文件失败 ${file.name}: ${error}`, 'warning')
+      }
     }
-  }
 
-  addLog(`进度文件清理完成，共删除 ${deletedCount} 个文件`, 'success')
+    addLog(`进度文件清理完成，共删除 ${deletedCount} 个文件`, 'success')
+  } catch {
+    addLog('进度文件清理失败', 'warning')
+  }
 }
 
 /**
  * 开始监控下载进度
+ * 使用全局 store 管理定时器，支持多实例并行下载
  */
 const startProgressMonitoring = async () => {
   if (isMonitoring.value) return
-
-  isMonitoring.value = true
 
   const depotIds = manifestFiles.value.map(filePath => {
     const match = filePath.match(/[\\/](\d+)_\d+\.manifest$/)
     return match ? match[1] : null
   }).filter(id => id !== null) as string[]
 
-  downloadProgress.value.totalDepots = depotIds.length
-  downloadProgress.value.depots = depotIds.map(depotId => ({
-    depotId,
-    percentage: 0,
-    downloadedFiles: 0,
-    totalFiles: 0,
-    status: 'pending' as const
-  }))
-
+  downloadManagerStore.initDepots(currentGameId.value, depotIds)
   addLog(`检测到 ${depotIds.length} 个depot`, 'info')
 
   await scanProgressFiles()
 
-  monitorInterval = window.setInterval(() => {
+  const timerId = window.setInterval(() => {
     scanProgressFiles()
-  }, 1000)
+  }, 2000)
+  downloadManagerStore.registerMonitorTimer(currentGameId.value, timerId)
 }
 
 /**
  * 停止监控下载进度
  */
 const stopProgressMonitoring = () => {
-  isMonitoring.value = false
-  if (monitorInterval) {
-    clearInterval(monitorInterval)
-    monitorInterval = null
-  }
+  downloadManagerStore.stopMonitoring(currentGameId.value)
 }
 
 /**
@@ -1348,35 +1276,32 @@ onMounted(() => {
     return
   }
 
-  // 如果 store 中保存了下载中或已完成的进度，恢复定时监控
-  if (downloadStore.isMonitoring && !monitorInterval) {
-    monitorInterval = window.setInterval(() => {
-      scanProgressFiles()
-    }, 1000)
+  // 如果全局 store 中当前游戏仍在下载，恢复页面显示
+  if (downloadManagerStore.isGameDownloading(currentGameId.value) && !downloadManagerStore.isGameMonitoring(currentGameId.value)) {
+    startProgressMonitoring()
   }
 })
 
 /**
  * 组件卸载时保存状态到 downloadStore
+ * 不再停止全局监控定时器，支持后台多游戏并行下载
  */
 onUnmounted(() => {
-  // 先保存监控状态，再停止定时器，确保返回时能恢复进度扫描
   saveStateToStore()
-  stopProgressMonitoring()
 })
 
 /**
  * 监听清单路径变化，清空日志与进度
  */
 watch(manifestPath, () => {
-  downloadLogs.value = []
-  downloadProgress.value = {
+  downloadManagerStore.clearLogs(currentGameId.value)
+  downloadManagerStore.updateProgress(currentGameId.value, {
     totalDepots: 0,
     completedDepots: 0,
     overallPercentage: 0,
     depots: [],
     isComplete: false
-  }
+  })
   customGameName.value = ''
   stopProgressMonitoring()
 })
@@ -1389,6 +1314,7 @@ watch(() => downloadProgress.value.isComplete, (isComplete) => {
   if (isComplete && downloadMode.value === 'single') {
     downloadStore.setShouldResetOnReturn(true)
     isDownloading.value = false
+    downloadManagerStore.setGameDownloading(currentGameId.value, false)
   }
 })
 </script>

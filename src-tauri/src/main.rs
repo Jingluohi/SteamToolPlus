@@ -74,32 +74,6 @@ async fn exit_app(app_handle: tauri::AppHandle, exit_code: i32) {
     app_handle.exit(exit_code);
 }
 
-/// 检查 ddv20.exe 进程是否正在运行（不显示终端窗口）
-#[cfg(target_os = "windows")]
-pub fn check_ddv20_running() -> bool {
-    use std::os::windows::process::CommandExt;
-    use std::process::Command;
-
-    const CREATE_NO_WINDOW: u32 = 0x08000000;
-
-    let output = Command::new("tasklist")
-        .args(["/FI", "IMAGENAME eq ddv20.exe", "/NH"])
-        .creation_flags(CREATE_NO_WINDOW)
-        .output();
-
-    if let Ok(output) = output {
-        let stdout = String::from_utf8_lossy(&output.stdout);
-        return stdout.contains("ddv20.exe");
-    }
-
-    false
-}
-
-#[cfg(not(target_os = "windows"))]
-pub fn check_ddv20_running() -> bool {
-    false
-}
-
 /// 用户主动停止的下载游戏ID集合
 /// 用于防止暂停下载后监控线程自动重启 ddv20.exe
 static STOPPED_DOWNLOADS: Lazy<Mutex<HashSet<String>>> =
@@ -515,6 +489,8 @@ fn main() {
             cache_commands::clear_imported_manifest_cache,
             cache_commands::get_system_cache_size,
             cache_commands::clear_system_cache,
+            cache_commands::get_download_log_cache_size,
+            cache_commands::clear_download_log_cache,
             // 窗口命令
             window_commands::minimize_window,
             window_commands::maximize_window,
@@ -655,6 +631,7 @@ fn main() {
             game_data_commands::finalize_game_download,
             game_data_commands::check_game_process_status,
             game_data_commands::delete_game_directory,
+            game_data_commands::delete_game_log_cache,
             game_data_commands::open_game_directory,
             // 帮助命令
             help_commands::read_readme_file,

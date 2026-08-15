@@ -325,7 +325,6 @@ import GameImportTab from './components/GameImportTab.vue'
 import GameDownloadTab from './components/GameDownloadTab.vue'
 import PatchConfigTab from './components/PatchConfigTab.vue'
 import { usePatch } from './composables/usePatch'
-import type { DownloadProgress as DownloadProgressType } from '../../types/download.types'
 import type { GameConfigData } from '../../types'
 import { getPatchSourcePath } from '../../types'
 import { loadGamesConfigFromFile } from '../../api/game.api'
@@ -335,16 +334,19 @@ import {
   upsertGameData, 
   updateGameDownloadStatus,
   finalizeGameDownload,
+  deleteGameLogCache,
   type GameData 
 } from '../../api/gameData.api'
 import { getCategoryName, getCategoryColor } from '../../constants/game'
 import { safeAsync } from '../../utils/async-helper'
 import { sanitizeGameFolderName } from '../../utils/file-helper'
 import { useConfigStore } from '../../store/config.store'
+import { useDownloadManagerStore } from '../../store'
 
 const route = useRoute()
 const router = useRouter()
 const configStore = useConfigStore()
+const downloadManagerStore = useDownloadManagerStore()
 
 // 游戏ID
 const gameId = computed(() => route.params.id as string)
@@ -406,21 +408,14 @@ const {
   openDownloadUrl
 } = usePatch(game, gamePath)
 
-// 下载状态
+// 下载状态（使用全局 store 按 game_id 管理，支持多游戏同时下载和页面切换状态保持）
 const isDownloading = ref(false)
 const isVerifying = ref(false)
-const downloadLogs = ref<{ time: string; message: string; type: 'info' | 'success' | 'error' | 'warning' }[]>([])
+const downloadLogs = computed(() => downloadManagerStore.getGameLogs(gameId.value))
 
-// 下载进度监控
-const isMonitoring = ref(false)
-const downloadProgress = ref<DownloadProgressType>({
-  totalDepots: 0,
-  completedDepots: 0,
-  overallPercentage: 0,
-  depots: [],
-  isComplete: false
-})
-let monitorInterval: number | null = null
+// 下载进度监控（从全局 store 读取）
+const isMonitoring = computed(() => downloadManagerStore.isGameMonitoring(gameId.value))
+const downloadProgress = computed(() => downloadManagerStore.getGameProgress(gameId.value))
 
 // 下载完成弹窗
 const showDownloadCompleteModal = ref(false)
@@ -678,7 +673,7 @@ const startDownload = async () => {
   }
 
   isDownloading.value = true
-  downloadLogs.value = [] // 清空之前的日志
+  downloadManagerStore.clearLogs(gameId.value) // 清空之前的日志
 
   addDownloadLog('开始下载游戏...', 'info')
   addDownloadLog(`游戏: ${game.value?.game_name || gameId.value}`, 'info')
@@ -709,6 +704,7 @@ const startDownload = async () => {
     const result = await invoke<{
       success: boolean
       message: string
+      processId?: number
     }>('start_game_download', {
       manifestPath: manifestFolderPath.value,
       downloadPath: downloadPath.value,
@@ -757,18 +753,51 @@ const stopDownload = async () => {
 }
 
 /**
- * 解析进度文件名获取depot ID和百分比
- * 文件名格式: "{百分比}% - {depotId}.json"
+ * 扫描进度文件（委托给 store）并处理页面级完成逻辑
  */
-const parseProgressFileName = (fileName: string): { depotId: string; percentage: number } | null => {
-  const match = fileName.match(/^(\d+)%\s*-\s*(\d+)\.json$/)
-  if (match) {
-    return {
-      percentage: parseInt(match[1], 10),
-      depotId: match[2]
+const scanProgressFiles = async () => {
+  const result = await downloadManagerStore.scanProgressFiles(gameId.value)
+  if (!result.hasChanges) return
+
+  const progress = downloadManagerStore.getGameProgress(gameId.value)
+
+  // 更新下载状态到 game.json
+  if (existingGameData.value) {
+    await updateGameDownloadStatus(
+      gameId.value,
+      progress.isComplete ? 'completed' : 'downloading',
+      progress.overallPercentage
+    )
+  }
+
+  if (result.isComplete) {
+    stopProgressMonitoring()
+    addDownloadLog('所有depot下载完成！', 'success')
+    await updateGameDownloadStatus(gameId.value, 'completed', 100)
+
+    // 执行下载完成收尾：扫描目录、定位 exe、标记已安装
+    let finalizedGame = null
+    try {
+      finalizedGame = await finalizeGameDownload(gameId.value)
+      existingGameData.value = finalizedGame
+      addDownloadLog('游戏已入库，可前往游戏库查看', 'success')
+    } catch (finalizeError) {
+      addDownloadLog(`入库处理失败: ${finalizeError}`, 'error')
+      existingGameData.value = await getGameData(gameId.value)
+    }
+
+    const finalInstallPath = finalizedGame?.install_path || existingGameData.value?.install_path || downloadPath.value
+    if (finalInstallPath) {
+      gamePath.value = finalInstallPath
+    }
+
+    if (patchTabs.value.length > 0) {
+      downloadCompleteInstallPath.value = finalInstallPath
+      const exePath = finalizedGame?.exe_path || existingGameData.value?.exe_path || ''
+      downloadCompleteExePath.value = exePath ? exePath.substring(0, exePath.lastIndexOf('\\')) : ''
+      showDownloadCompleteModal.value = true
     }
   }
-  return null
 }
 
 /**
@@ -787,17 +816,17 @@ const verifyIntegrity = async () => {
   }
 
   isVerifying.value = true
-  downloadLogs.value = []
+  downloadManagerStore.clearLogs(gameId.value)
   addDownloadLog('开始验证游戏完整性...', 'info')
   addDownloadLog(`游戏: ${game.value?.game_name || gameId.value}`, 'info')
   addDownloadLog(`清单路径: ${manifestFolderPath.value}`, 'info')
   addDownloadLog(`下载路径: ${existingGameData.value.download_path}`, 'info')
 
   try {
-    // 调用与下载相同的命令，ddv20.exe 会自动验证并补全
     const result = await invoke<{
       success: boolean
       message: string
+      processId?: number
     }>('start_game_download', {
       manifestPath: manifestFolderPath.value,
       downloadPath: existingGameData.value.download_path,
@@ -807,7 +836,6 @@ const verifyIntegrity = async () => {
     if (result.success) {
       addDownloadLog('验证命令已启动', 'success')
       addDownloadLog(result.message, 'info')
-      // 启动进度监控
       startProgressMonitoring()
     } else {
       addDownloadLog(`验证启动失败: ${result.message}`, 'error')
@@ -834,119 +862,15 @@ const handleReplaceManifest = async () => {
     await invoke('delete_game_manifest_folder', { gameId: gameId.value })
     addDownloadLog('已删除本地清单文件夹', 'success')
 
-    // 重置清单相关状态
     manifestCheckStatus.value = 'checking'
     manifestFolderPath.value = ''
     selectedDownloadManifestPath.value = ''
     downloadManifestSourceMode.value = '7z'
 
-    // 重新检查清单状态
     await checkManifestFolder()
   } catch (error) {
     addDownloadLog(`替换清单失败: ${error}`, 'error')
     alert(`替换清单失败: ${error}`)
-  }
-}
-
-/**
- * 扫描进度文件
- */
-const scanProgressFiles = async () => {
-  try {
-    // 获取指定游戏的进度文件
-    const progressFiles = await invoke<Array<{ name: string; path: string }>>('get_download_progress_files', {
-      gameId: gameId.value
-    })
-
-    // 更新每个depot的进度
-    const updatedDepots = [...downloadProgress.value.depots]
-
-    for (const file of progressFiles) {
-      const parsed = parseProgressFileName(file.name)
-      if (parsed) {
-        // 读取文件内容获取已下载文件数量
-        const fileContent = await invoke<Record<string, string[]>>('read_json_file', {
-          filePath: file.path
-        }).catch(() => ({}))
-
-        const downloadedFiles = Object.keys(fileContent).length
-
-        // 查找对应的depot并更新
-        const depotIndex = updatedDepots.findIndex(d => d.depotId === parsed.depotId)
-        if (depotIndex !== -1) {
-          updatedDepots[depotIndex] = {
-            depotId: parsed.depotId,
-            percentage: parsed.percentage,
-            downloadedFiles,
-            totalFiles: downloadedFiles,
-            status: parsed.percentage >= 100 ? 'completed' : 'downloading'
-          }
-        } else {
-          // 如果depot不在列表中，添加它
-          updatedDepots.push({
-            depotId: parsed.depotId,
-            percentage: parsed.percentage,
-            downloadedFiles,
-            totalFiles: downloadedFiles,
-            status: parsed.percentage >= 100 ? 'completed' : 'downloading'
-          })
-        }
-      }
-    }
-
-    // 计算总体进度
-    const completedDepots = updatedDepots.filter(d => d.status === 'completed').length
-    const overallPercentage = updatedDepots.length > 0
-      ? Math.round(updatedDepots.reduce((sum, d) => sum + d.percentage, 0) / updatedDepots.length)
-      : 0
-
-    downloadProgress.value = {
-      totalDepots: downloadProgress.value.totalDepots || updatedDepots.length,
-      completedDepots,
-      overallPercentage,
-      depots: updatedDepots,
-      isComplete: updatedDepots.length > 0 && updatedDepots.every(d => d.status === 'completed')
-    }
-
-    // 更新下载状态到game.json
-    if (existingGameData.value) {
-      await updateGameDownloadStatus(gameId.value, downloadProgress.value.isComplete ? 'completed' : 'downloading', overallPercentage)
-    }
-
-    // 如果下载完成，停止监控
-    if (downloadProgress.value.isComplete) {
-      stopProgressMonitoring()
-      addDownloadLog('所有depot下载完成！', 'success')
-      // 更新游戏数据为已完成
-      await updateGameDownloadStatus(gameId.value, 'completed', 100)
-
-      // 执行下载完成收尾：扫描目录、定位 exe、标记已安装
-      let finalizedGame = null
-      try {
-        finalizedGame = await finalizeGameDownload(gameId.value)
-        existingGameData.value = finalizedGame
-        addDownloadLog('游戏已入库，可前往游戏库查看', 'success')
-      } catch (finalizeError) {
-        addDownloadLog(`入库处理失败: ${finalizeError}`, 'error')
-        existingGameData.value = await getGameData(gameId.value)
-      }
-
-      // 同步设置游戏路径为安装根目录，确保弹窗跳转补丁页时路径不为空
-      const finalInstallPath = finalizedGame?.install_path || existingGameData.value?.install_path || downloadPath.value
-      if (finalInstallPath) {
-        gamePath.value = finalInstallPath
-      }
-
-      // 如果该游戏存在补丁配置，弹出补丁选择弹窗
-      if (patchTabs.value.length > 0) {
-        downloadCompleteInstallPath.value = finalInstallPath
-        const exePath = finalizedGame?.exe_path || existingGameData.value?.exe_path || ''
-        downloadCompleteExePath.value = exePath ? exePath.substring(0, exePath.lastIndexOf('\\')) : ''
-        showDownloadCompleteModal.value = true
-      }
-    }
-  } catch (error) {
-    // 扫描进度文件失败时静默处理
   }
 }
 
@@ -962,11 +886,10 @@ const goToPatchTab = (tab: { id: string; name: string; patchType: number; patchP
 
 /**
  * 开始监控下载进度
+ * 使用全局 store 管理定时器，页面切换不丢失，支持多游戏同时监控
  */
 const startProgressMonitoring = async () => {
   if (isMonitoring.value) return
-
-  isMonitoring.value = true
 
   // 首先读取manifest文件夹，获取所有depot ID
   try {
@@ -985,15 +908,8 @@ const startProgressMonitoring = async () => {
       return match ? match[1] : null
     }).filter(id => id !== null) as string[]
 
-    // 初始化所有depot的进度状态
-    downloadProgress.value.totalDepots = depotIds.length
-    downloadProgress.value.depots = depotIds.map(depotId => ({
-      depotId,
-      percentage: 0,
-      downloadedFiles: 0,
-      totalFiles: 0,
-      status: 'pending' as const
-    }))
+    // 初始化所有depot的进度状态到全局 store
+    downloadManagerStore.initDepots(gameId.value, depotIds)
 
     addDownloadLog(`检测到 ${depotIds.length} 个depot`, 'info')
   } catch (error) {
@@ -1003,21 +919,18 @@ const startProgressMonitoring = async () => {
   // 立即扫描一次
   await scanProgressFiles()
 
-  // 设置定时扫描
-  monitorInterval = window.setInterval(() => {
+  // 设置定时扫描，注册到全局 store
+  const timerId = window.setInterval(() => {
     scanProgressFiles()
-  }, 1000)
+  }, 2000)
+  downloadManagerStore.registerMonitorTimer(gameId.value, timerId)
 }
 
 /**
  * 停止监控下载进度
  */
 const stopProgressMonitoring = () => {
-  isMonitoring.value = false
-  if (monitorInterval) {
-    clearInterval(monitorInterval)
-    monitorInterval = null
-  }
+  downloadManagerStore.stopMonitoring(gameId.value)
 }
 
 // 应用补丁
@@ -1081,6 +994,9 @@ onMounted(async () => {
     if (config) gamesConfig.value = config
   }
 
+  // 初始化全局 store 中该游戏的状态
+  downloadManagerStore.setGameName(gameId.value, game.value?.game_name || gameId.value)
+
   // 加载已存在的游戏数据
   const gameData = await safeAsync(() => getGameData(gameId.value))
   if (gameData) {
@@ -1096,12 +1012,18 @@ onMounted(async () => {
       }
     }
 
-    // 如果记录为已下载但实际目录不存在，重置状态
+    // 如果记录为已下载但实际目录不存在，重置状态并清理缓存
     if (gameData.download_status === 'completed' && !isGameDirExists) {
       gameData.download_status = ''
       gameData.is_installed = false
       // 更新到 game.json
       await safeAsync(() => upsertGameData(gameData))
+      // 删除该游戏的下载日志缓存目录
+      try {
+        await deleteGameLogCache(gameId.value)
+      } catch {
+        // 缓存删除失败不影响主流程
+      }
     }
 
     existingGameData.value = gameData
@@ -1170,9 +1092,10 @@ onMounted(async () => {
   await loadTrainerContent()
 })
 
-// 组件卸载时清理定时器
+// 组件卸载时不再停止监控，保持全局 store 中的下载状态，
+// 支持页面切换后仍能查看和恢复下载进度。
 onUnmounted(() => {
-  stopProgressMonitoring()
+  // 监控定时器由全局 downloadManager store 统一管理
 })
 
 /**
@@ -1266,18 +1189,14 @@ const autoSetDownloadPath = async () => {
 
 /**
  * 添加下载日志
+ * 写入全局 store，确保页面切换后日志不丢失
  * @param message 日志消息
  * @param type 日志类型
  */
 const addDownloadLog = (message: string, type: 'info' | 'success' | 'error' | 'warning' = 'info') => {
   const now = new Date()
   const time = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`
-  downloadLogs.value.push({ time, message, type })
-
-  // 限制日志数量
-  if (downloadLogs.value.length > 100) {
-    downloadLogs.value = downloadLogs.value.slice(-80)
-  }
+  downloadManagerStore.addLog(gameId.value, { time, message, type })
 }
 
 /**

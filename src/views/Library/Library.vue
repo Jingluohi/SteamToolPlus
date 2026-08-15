@@ -371,6 +371,7 @@ import {
   checkGameProcessStatus,
   formatPlayTime,
   formatDate,
+  deleteGameLogCache,
   type GameData
 } from '../../api/gameData.api'
 import { formatDurationCN } from '../../utils/date'
@@ -582,7 +583,7 @@ const loadGames = async () => {
       }
     }
 
-    // 重置目录不存在的游戏状态
+    // 重置目录不存在的游戏状态，并清理对应的下载日志缓存
     for (const game of gamesToReset) {
       const resetGame: GameData = {
         ...game,
@@ -593,6 +594,12 @@ const loadGames = async () => {
         download_progress: 0
       }
       await upsertGameData(resetGame)
+      // 删除该游戏的下载日志缓存目录
+      try {
+        await deleteGameLogCache(game.game_id)
+      } catch {
+        // 缓存删除失败不影响主流程
+      }
       const index = games.value.findIndex(g => g.game_id === game.game_id)
       if (index !== -1) {
         games.value[index] = resetGame

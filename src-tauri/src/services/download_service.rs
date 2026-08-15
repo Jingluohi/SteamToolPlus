@@ -21,6 +21,9 @@ pub struct ManifestFolderResult {
 pub struct DownloadResult {
     pub success: bool,
     pub message: String,
+    /// ddv20.exe 进程 ID
+    #[serde(rename = "processId")]
+    pub process_id: Option<u32>,
 }
 
 /// 进度文件信息
@@ -57,13 +60,14 @@ pub trait DownloadServiceTrait: Send + Sync {
     /// 获取清单路径
     fn get_manifest_path(&self, app: &AppHandle, game_id: &str) -> Result<String, String>;
     /// 启动游戏下载
+    /// 返回下载结果和 ddv20.exe 子进程句柄
     fn start_game_download(
         &self,
         app: &AppHandle,
         manifest_path: &str,
         download_path: &str,
         game_id: &str,
-    ) -> Result<DownloadResult, String>;
+    ) -> Result<(DownloadResult, std::process::Child), String>;
     /// 获取下载进度文件
     /// 如果提供了 game_id，则只扫描该游戏对应的 log 目录
     fn get_download_progress_files(&self, game_id: Option<&str>) -> Result<Vec<ProgressFileInfo>, String>;
@@ -78,9 +82,6 @@ pub trait DownloadServiceTrait: Send + Sync {
     /// 检查并清理已完成的下载
     /// 当游戏的所有 depot 都下载完成后，静默删除对应的进度 JSON 文件
     fn check_and_cleanup_completed_downloads(&self, app: &AppHandle, game_id: Option<&str>) -> Result<(), String>;
-    /// 停止下载进程
-    /// 终止 ddv20.exe 进程
-    fn stop_download(&self) -> Result<(), String>;
     /// 检查游戏的所有 depot 是否都已完成下载
     fn check_all_depots_completed(&self, app: &AppHandle, game_id: &str) -> Result<bool, String>;
 }
@@ -315,13 +316,14 @@ impl DownloadServiceTrait for DownloadService {
 
     /// 启动游戏下载
     /// 在 log/{game_id}/ 目录下运行 ddv20.exe，使 JSON 进度文件有序存放
+    /// 直接启动 ddv20.exe 并创建新控制台窗口，返回子进程句柄以便按 PID 管理
     fn start_game_download(
         &self,
         app: &AppHandle,
         manifest_path: &str,
         download_path: &str,
         game_id: &str,
-    ) -> Result<DownloadResult, String> {
+    ) -> Result<(DownloadResult, std::process::Child), String> {
         let resource_dir = self.get_resource_dir(app)?;
         let ddv20_path = resource_dir.join("ddv20.exe");
 
@@ -341,24 +343,23 @@ impl DownloadServiceTrait for DownloadService {
         // 创建游戏的 log 目录
         let game_log_dir = self.create_game_log_dir(game_id)?;
 
-        // 在 Windows 上使用 start 命令在新终端窗口中运行 ddv20.exe
+        // 在 Windows 上直接启动 ddv20.exe，并创建新控制台窗口显示下载日志
         // 工作目录设置为 log/{game_id}/，这样 JSON 文件会生成在该目录下
         #[cfg(target_os = "windows")]
         {
             use std::process::Command;
+            use std::os::windows::process::CommandExt;
+
+            // CREATE_NEW_CONSOLE: 为新进程创建一个新的控制台窗口
+            const CREATE_NEW_CONSOLE: u32 = 0x00000010;
 
             // 使用原始路径（反斜杠），通过参数方式传递避免转义问题
             let ddv20_path_str = ddv20_path.to_string_lossy().to_string();
             let download_path_str = download_path.to_string();
             let manifest_path_str = manifest_path.to_string();
 
-            // 使用 start 命令在新窗口中运行 ddv20
-            // 通过参数数组方式传递，避免 cmd /c 字符串的转义问题
-            let child = Command::new("cmd")
-                .arg("/c")
-                .arg("start")
-                .arg("")
-                .arg(&ddv20_path_str)
+            // 直接启动 ddv20.exe，获取真实子进程句柄（PID）
+            let child = Command::new(&ddv20_path_str)
                 .arg("-lu")
                 .arg("China")
                 .arg("--use-http")
@@ -368,13 +369,18 @@ impl DownloadServiceTrait for DownloadService {
                 .arg("-p")
                 .arg(&manifest_path_str)
                 .current_dir(&game_log_dir)
+                .creation_flags(CREATE_NEW_CONSOLE)
                 .spawn()
                 .map_err(|e| format!("启动下载进程失败: {}", e))?;
 
-            Ok(DownloadResult {
+            let process_id = child.id();
+            let result = DownloadResult {
                 success: true,
-                message: format!("下载进程已启动 (PID: {:?})", child.id()),
-            })
+                message: format!("下载进程已启动 (PID: {})", process_id),
+                process_id: Some(process_id),
+            };
+
+            Ok((result, child))
         }
 
         #[cfg(not(target_os = "windows"))]
@@ -577,40 +583,6 @@ impl DownloadServiceTrait for DownloadService {
         }
 
         Ok(())
-    }
-
-    /// 停止下载进程
-    /// 终止 ddv20.exe 进程
-    fn stop_download(&self) -> Result<(), String> {
-        #[cfg(target_os = "windows")]
-        {
-            use std::process::Command;
-            use std::os::windows::process::CommandExt;
-            const CREATE_NO_WINDOW: u32 = 0x08000000;
-
-            // 使用 taskkill 命令终止 ddv20.exe 进程
-            let output = Command::new("taskkill")
-                .args(["/F", "/IM", "ddv20.exe"])
-                .creation_flags(CREATE_NO_WINDOW)
-                .output()
-                .map_err(|e| format!("执行终止进程命令失败: {}", e))?;
-
-            if output.status.success() {
-                Ok(())
-            } else {
-                let stderr = String::from_utf8_lossy(&output.stderr);
-                if stderr.contains("not found") || stderr.contains("找不到") {
-                    Err("ddv20.exe 进程未运行".to_string())
-                } else {
-                    Err(format!("终止进程失败: {}", stderr))
-                }
-            }
-        }
-
-        #[cfg(not(target_os = "windows"))]
-        {
-            Err("当前仅支持 Windows 系统".to_string())
-        }
     }
 
     /// 检查游戏的所有 depot 是否都已完成下载

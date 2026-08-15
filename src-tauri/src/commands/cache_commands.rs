@@ -123,3 +123,59 @@ fn calculate_path_size(path: &Path) -> Result<u64, String> {
         Ok(total)
     }
 }
+
+/// 获取下载日志缓存目录的大小
+/// 路径: %APPDATA%/SteamToolPlus/log/
+#[tauri::command]
+pub fn get_download_log_cache_size() -> Result<u64, String> {
+    let log_dir = crate::utils::config_path_utils::get_appdata_dir()?
+        .join("log");
+    if !log_dir.exists() {
+        return Ok(0);
+    }
+    calculate_path_size(&log_dir)
+}
+
+/// 清理下载日志缓存目录
+/// 删除 %APPDATA%/SteamToolPlus/log/ 下的所有内容
+#[tauri::command]
+pub fn clear_download_log_cache() -> Result<SystemCacheClearResult, String> {
+    let log_dir = crate::utils::config_path_utils::get_appdata_dir()?
+        .join("log");
+
+    let freed_size = if log_dir.exists() {
+        calculate_path_size(&log_dir).unwrap_or(0)
+    } else {
+        return Ok(SystemCacheClearResult {
+            freed_size: 0,
+            deleted_count: 0,
+        });
+    };
+
+    // 删除 log 目录下所有内容（保留 log 目录本身）
+    let mut deleted_count: usize = 0;
+    let entries = std::fs::read_dir(&log_dir)
+        .map_err(|e| format!("读取下载日志目录失败: {}", e))?;
+
+    for entry in entries.flatten() {
+        let path = entry.path();
+        let remove_result = if path.is_file() {
+            std::fs::remove_file(&path)
+        } else {
+            std::fs::remove_dir_all(&path)
+        };
+        match remove_result {
+            Ok(_) => {
+                deleted_count += 1;
+            }
+            Err(e) => {
+                log::warn!("清理下载日志缓存失败 {}: {}", path.display(), e);
+            }
+        }
+    }
+
+    Ok(SystemCacheClearResult {
+        freed_size,
+        deleted_count,
+    })
+}

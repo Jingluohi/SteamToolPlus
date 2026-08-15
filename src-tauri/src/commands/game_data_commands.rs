@@ -910,3 +910,19 @@ pub async fn finalize_game_download(
 ) -> Result<GameData, String> {
     game_data_service::finalize_download(app, game_id).await
 }
+
+/// 删除指定游戏的下载日志缓存目录
+/// 路径: %APPDATA%/SteamToolPlus/log/{game_id}/
+/// 当游戏目录被删除或重置时调用，清理对应的下载进度缓存文件
+#[tauri::command]
+pub fn delete_game_log_cache(game_id: String) -> Result<(), String> {
+    use std::fs;
+    let log_dir = crate::utils::config_path_utils::get_appdata_dir()?
+        .join("log")
+        .join(&game_id);
+    if log_dir.exists() {
+        fs::remove_dir_all(&log_dir)
+            .map_err(|e| format!("删除游戏日志缓存失败 ({}): {}", log_dir.display(), e))?;
+    }
+    Ok(())
+}

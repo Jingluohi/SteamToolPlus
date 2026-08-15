@@ -71,6 +71,8 @@ export interface DownloadResult {
   success: boolean
   /** 消息 */
   message: string
+  /** ddv20.exe 进程 ID */
+  processId?: number
 }
 
 /**

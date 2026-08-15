@@ -244,6 +244,26 @@
             </Button>
           </div>
         </div>
+
+        <div class="setting-item">
+          <div class="setting-info">
+            <h3 class="setting-name">下载日志缓存</h3>
+            <p class="setting-desc">
+              清理程序在 %APPDATA%/SteamToolPlus/log/ 目录下生成的下载日志缓存文件，当前缓存大小：{{ formatBytes(downloadLogCacheSize) }}
+            </p>
+          </div>
+          <div class="setting-control">
+            <Button
+              variant="danger"
+              size="sm"
+              :loading="downloadLogCacheClearStatus.loading"
+              :disabled="downloadLogCacheSize === 0"
+              @click="clearDownloadLogCache"
+            >
+              清理
+            </Button>
+          </div>
+        </div>
       </section>
 
       <!-- 操作按钮 -->
@@ -312,6 +332,15 @@ const systemCacheClearStatus = ref({
 // 系统缓存大小定时刷新器
 let systemCacheSizeTimer: ReturnType<typeof setInterval> | null = null
 
+// 下载日志缓存大小（字节）
+const downloadLogCacheSize = ref(0)
+// 下载日志缓存清理状态
+const downloadLogCacheClearStatus = ref({
+  loading: false
+})
+// 下载日志缓存大小定时刷新器
+let downloadLogCacheSizeTimer: ReturnType<typeof setInterval> | null = null
+
 // 监听Steam路径变化，重新检测内核状态和Steam运行状态
 watch(() => settings.value.steamPath, async (newPath, oldPath) => {
   if (newPath && newPath !== oldPath) {
@@ -332,8 +361,10 @@ onMounted(async () => {
     await checkKernelStatus()
     await checkSteamRunning()
     await loadSystemCacheSize()
-    // 每 5 秒刷新一次系统缓存大小，实现实时显示
+    await loadDownloadLogCacheSize()
+    // 每 5 秒刷新一次缓存大小，实现实时显示
     systemCacheSizeTimer = setInterval(loadSystemCacheSize, 5000)
+    downloadLogCacheSizeTimer = setInterval(loadDownloadLogCacheSize, 5000)
   })
 })
 
@@ -342,6 +373,10 @@ onUnmounted(() => {
   if (systemCacheSizeTimer) {
     clearInterval(systemCacheSizeTimer)
     systemCacheSizeTimer = null
+  }
+  if (downloadLogCacheSizeTimer) {
+    clearInterval(downloadLogCacheSizeTimer)
+    downloadLogCacheSizeTimer = null
   }
 })
 
@@ -708,6 +743,41 @@ async function clearSystemCache() {
     alert(`清理系统缓存失败: ${error}`)
   } finally {
     systemCacheClearStatus.value.loading = false
+  }
+}
+
+// 加载下载日志缓存大小
+async function loadDownloadLogCacheSize() {
+  try {
+    downloadLogCacheSize.value = await invoke<number>('get_download_log_cache_size')
+  } catch (error) {
+    console.error('获取下载日志缓存大小失败:', error)
+    downloadLogCacheSize.value = 0
+  }
+}
+
+// 清理下载日志缓存
+async function clearDownloadLogCache() {
+  if (downloadLogCacheSize.value === 0) {
+    return
+  }
+
+  const confirmClear = confirm(
+    `确定要清理下载日志缓存吗？\n\n当前缓存大小：${formatBytes(downloadLogCacheSize.value)}\n\n将删除 %APPDATA%/SteamToolPlus/log/ 下的所有内容。`
+  )
+  if (!confirmClear) {
+    return
+  }
+
+  downloadLogCacheClearStatus.value.loading = true
+  try {
+    const result = await invoke<{ freed_size: number; deleted_count: number }>('clear_download_log_cache')
+    downloadLogCacheSize.value = 0
+    alert(`已清理 ${result.deleted_count} 个缓存项，释放 ${formatBytes(result.freed_size)}`)
+  } catch (error) {
+    alert(`清理下载日志缓存失败: ${error}`)
+  } finally {
+    downloadLogCacheClearStatus.value.loading = false
   }
 }
 

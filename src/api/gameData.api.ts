@@ -172,6 +172,14 @@ export async function finalizeGameDownload(gameId: string): Promise<GameData> {
 }
 
 /**
+ * 删除指定游戏的下载日志缓存目录
+ * 路径: %APPDATA%/SteamToolPlus/log/{gameId}/
+ */
+export async function deleteGameLogCache(gameId: string): Promise<void> {
+  return invoke('delete_game_log_cache', { gameId })
+}
+
+/**
  * 格式化游戏时长（分钟 → 中文可读格式）
  */
 export function formatPlayTime(minutes: number): string {

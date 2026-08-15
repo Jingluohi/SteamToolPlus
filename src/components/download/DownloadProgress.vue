@@ -60,7 +60,6 @@
           />
         </div>
         <div class="depot-files">
-          <span class="files-count">已下载文件: {{ depot.downloadedFiles }}</span>
           <span v-if="depot.status === 'completed'" class="status-badge completed">
             <svg viewBox="0 0 24 24" fill="currentColor">
               <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
@@ -310,11 +309,6 @@ defineProps<Props>()
   display: flex;
   justify-content: space-between;
   align-items: center;
-}
-
-.files-count {
-  font-size: 12px;
-  color: var(--steam-text-secondary);
 }
 
 .status-badge {
