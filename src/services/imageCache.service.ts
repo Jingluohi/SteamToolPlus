@@ -113,6 +113,17 @@ export function clearAllImageCaches(): void {
 }
 
 /**
+ * 按游戏 ID 批量释放封面图片缓存
+ * 用于浏览页切换页码后，清除上一页占用的缓存条目，帮助 WebView 及时回收 GPU 内存
+ * @param gameIds 需要释放封面的游戏 ID 列表
+ */
+export function releaseCoverImages(gameIds: string[]): void {
+  for (const gameId of gameIds) {
+    coverImageCache.delete(gameId)
+  }
+}
+
+/**
  * 触发图片刷新信号
  * 通知所有使用图片缓存的组件重新加载图片
  */

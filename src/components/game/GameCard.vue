@@ -238,15 +238,18 @@ onUnmounted(() => {
     clearTimeout(releaseTimer)
     releaseTimer = null
   }
-  
+
   // 清除 observer
   if (observer && cardRef.value) {
     observer.unobserve(cardRef.value)
     observer = null
   }
-  
-  // 释放图片内存
-  releaseCover()
+
+  // 组件已销毁，DOM 中的 img 元素即将被移除，立即释放本地图片引用
+  // 不依赖 releaseCover 中的 nextTick，避免卸载阶段响应式更新不可靠导致 URL 残留
+  imageLoaded.value = false
+  coverUrl.value = ''
+  isVisible.value = false
 })
 
 /**

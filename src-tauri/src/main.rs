@@ -19,6 +19,34 @@ use tauri::{Manager, Emitter};
 use tauri::tray::{TrayIconBuilder, TrayIconEvent, MouseButton};
 use tauri::menu::{Menu, MenuItem};
 use tauri::WindowEvent;
+use update_manager::UpdateCheckResult;
+
+/// 启动时更新检查结果
+/// 在 setup 中异步执行检查，前端通过 get_pending_startup_update 命令获取结果
+static PENDING_STARTUP_UPDATE: Lazy<Mutex<Option<UpdateCheckResult>>> =
+    Lazy::new(|| Mutex::new(None));
+
+/// 检查关键资源文件是否存在
+/// 用于检测用户是否从压缩包中直接运行 exe 而未完整解压
+/// 返回 Ok(()) 表示资源正常，Err(msg) 表示资源缺失
+fn check_critical_resources() -> Result<(), String> {
+    let exe_dir = utils::config_path_utils::get_exe_dir()
+        .map_err(|e| format!("无法获取程序路径: {}", e))?;
+
+    // 检查 resources 目录是否存在
+    let resources_dir = exe_dir.join("resources");
+    if !resources_dir.exists() || !resources_dir.is_dir() {
+        return Err("未找到 resources 目录".to_string());
+    }
+
+    // 检查 games_config.json 是否存在
+    let games_config_path = resources_dir.join("games_config.json");
+    if !games_config_path.exists() {
+        return Err("未找到 resources/games_config.json 配置文件".to_string());
+    }
+
+    Ok(())
+}
 
 /// 应用程序状态结构体
 /// 包含所有全局服务的引用
@@ -59,6 +87,18 @@ fn show_main_window(app_handle: &tauri::AppHandle) {
             log::info!("主窗口已显示并触发图片刷新");
         });
     }
+}
+
+/// 获取启动时预检查的更新结果
+/// 前端在挂载时调用此命令，获取 setup 阶段已完成的更新检查结果
+/// 这样更新弹窗可以在窗口刚显示时就弹出，无需等待网络请求
+#[tauri::command]
+async fn get_pending_startup_update() -> Result<Option<UpdateCheckResult>, String> {
+    let result = PENDING_STARTUP_UPDATE
+        .lock()
+        .map_err(|e| format!("获取更新状态失败: {}", e))?
+        .clone();
+    Ok(result)
 }
 
 /// 重启应用程序
@@ -200,6 +240,25 @@ fn main() {
             // 应用程序启动时的初始化逻辑
             log::info!("Steam Tool Plus 应用程序启动");
 
+            // === 第一步：检查关键资源文件是否存在 ===
+            // 防止用户从压缩包中直接运行 exe 而未完整解压
+            if let Err(msg) = check_critical_resources() {
+                log::error!("关键资源检查失败: {}", msg);
+                use tauri_plugin_dialog::DialogExt;
+                app.dialog()
+                    .message(format!(
+                        "无法找到必要的资源文件：{}\n\n\
+                        请确保将压缩包内的所有文件完整解压到同一目录后再运行程序。\n\
+                        不要直接从压缩包中运行 exe。",
+                        msg
+                    ))
+                    .title("Steam Tool Plus - 资源文件缺失")
+                    .kind(tauri_plugin_dialog::MessageDialogKind::Error)
+                    .blocking_show();
+                app.handle().exit(1);
+                return Ok(());
+            }
+
             // 启动实例冲突监听器
             update_manager::spawn_instance_control_watcher(app.handle().clone());
 
@@ -211,6 +270,51 @@ fn main() {
             let app_state = app.state::<AppState>();
             let config = app_state.config_service.get_config();
             let start_minimized = config.launch.start_minimized_to_tray;
+
+            // === 第二步：异步执行更新检查（不阻塞窗口显示） ===
+            // 结果存到全局变量，前端通过 get_pending_startup_update 命令轮询获取
+            tauri::async_runtime::spawn(async move {
+                log::info!("开始异步检查更新...");
+                match update_manager::check_for_update().await {
+                    Ok(result) if result.has_update => {
+                        if let Ok(mut pending) = PENDING_STARTUP_UPDATE.lock() {
+                            *pending = Some(result);
+                        }
+                        log::info!("检测到可用更新，前端轮询后会自动弹出提示");
+                    }
+                    Ok(_) => {
+                        // 没有更新，存入空结果（表示检查已完成但没有更新）
+                        if let Ok(mut pending) = PENDING_STARTUP_UPDATE.lock() {
+                            // 使用一个特殊标记表示检查已完成
+                            *pending = Some(update_manager::UpdateCheckResult {
+                                has_update: false,
+                                local_app_version: String::new(),
+                                local_resource_version: String::new(),
+                                remote_resource_version: String::new(),
+                                remote_description: None,
+                                has_exe_update: false,
+                                patch_url: String::new(),
+                            });
+                        }
+                        log::info!("当前已是最新版本");
+                    }
+                    Err(e) => {
+                        log::warn!("更新检查失败: {}", e);
+                        // 检查失败也存入空结果，防止前端一直轮询
+                        if let Ok(mut pending) = PENDING_STARTUP_UPDATE.lock() {
+                            *pending = Some(update_manager::UpdateCheckResult {
+                                has_update: false,
+                                local_app_version: String::new(),
+                                local_resource_version: String::new(),
+                                remote_resource_version: String::new(),
+                                remote_description: None,
+                                has_exe_update: false,
+                                patch_url: String::new(),
+                            });
+                        }
+                    }
+                }
+            });
 
             // 创建托盘菜单 - 包含常用功能快捷入口
             let open_item = MenuItem::with_id(app, "open", "打开主窗口", true, None::<&str>)?;
@@ -656,6 +760,8 @@ fn main() {
             update_manager::get_app_versions,
             update_manager::check_for_update,
             update_manager::apply_update,
+            // 启动时更新检查命令
+            get_pending_startup_update,
             // 清单入库命令
             manifest_commands::scan_manifest_folder,
             manifest_commands::extract_archive,

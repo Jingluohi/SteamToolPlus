@@ -176,10 +176,11 @@
  * 使用分页加载，每页20张卡片，控制内存占用
  */
 
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter, onBeforeRouteLeave } from 'vue-router'
 import type { GameConfigData } from '../../types'
 import { loadGamesConfigFromFile } from '../../api/game.api'
+import { releaseCoverImages } from '../../services/imageCache.service'
 import GameCard from '../../components/game/GameCard.vue'
 
 // 路由
@@ -194,6 +195,15 @@ const gamesConfig = ref<GameConfigData[]>([])
 const searchKeyword = ref('')
 const currentPage = ref(1)
 const jumpPageInput = ref<number | null>(null)
+
+// 上一页游戏 ID 列表，用于页码切换后延迟释放图片缓存
+const previousPageGameIds = ref<string[]>([])
+
+// 上一页图片缓存释放定时器
+let pageReleaseTimer: ReturnType<typeof setTimeout> | null = null
+
+// 上一页图片缓存释放延迟（毫秒）
+const PAGE_RELEASE_DELAY = 3000
 
 // 计算属性：跳转页码是否有效
 const isValidJumpPage = computed(() => {
@@ -308,6 +318,14 @@ onMounted(async () => {
   clampCurrentPage()
 })
 
+// 组件卸载时清理未执行的释放定时器
+onUnmounted(() => {
+  if (pageReleaseTimer) {
+    clearTimeout(pageReleaseTimer)
+    pageReleaseTimer = null
+  }
+})
+
 // 监听搜索变化，重置到第一页
 watch(searchKeyword, () => {
   currentPage.value = 1
@@ -316,6 +334,35 @@ watch(searchKeyword, () => {
 // 总页数变化时（例如搜索过滤后），自动钳制当前页码到有效范围
 watch(totalPages, () => {
   clampCurrentPage()
+})
+
+// 监听页码变化，延迟释放上一页图片缓存
+// 当用户翻页后，旧页 GameCard 组件已被销毁，但全局缓存仍持有 asset:// URL 字符串，
+// 可能导致 WebView 延迟释放 GPU 内存；3 秒后主动清除旧页缓存条目以加速回收
+watch(currentPage, (newPage, oldPage) => {
+  if (newPage === oldPage || oldPage === undefined) return
+
+  // 计算旧页游戏 ID 列表
+  const oldStart = (oldPage - 1) * PAGE_SIZE
+  const oldEnd = oldStart + PAGE_SIZE
+  previousPageGameIds.value = filteredGames.value
+    .slice(oldStart, oldEnd)
+    .map(game => game.game_id)
+
+  // 取消之前的释放定时器，防止快速连续翻页时误释放中间页
+  if (pageReleaseTimer) {
+    clearTimeout(pageReleaseTimer)
+    pageReleaseTimer = null
+  }
+
+  // 3 秒后释放旧页图片缓存
+  pageReleaseTimer = setTimeout(() => {
+    if (previousPageGameIds.value.length > 0) {
+      releaseCoverImages(previousPageGameIds.value)
+      previousPageGameIds.value = []
+    }
+    pageReleaseTimer = null
+  }, PAGE_RELEASE_DELAY)
 })
 
 /**

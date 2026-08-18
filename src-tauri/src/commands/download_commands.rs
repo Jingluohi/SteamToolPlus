@@ -9,7 +9,7 @@ use crate::services::game_data_service;
 use crate::utils::resource_utils::get_resource_dir;
 use std::thread;
 use std::time::Duration;
-use std::sync::atomic::{AtomicU32, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::sync::Arc;
 use std::collections::HashMap;
 use std::sync::Mutex;
@@ -17,7 +17,14 @@ use once_cell::sync::Lazy;
 
 /// 全局下载进程管理表
 /// key: game_id, value: ddv20.exe 子进程句柄
+/// 注意：只有监控线程负责从该表移除 child，stop_download 不直接操作此表
 static DOWNLOAD_PROCESSES: Lazy<Mutex<HashMap<String, std::process::Child>>> =
+    Lazy::new(|| Mutex::new(HashMap::new()));
+
+/// 全局下载停止信号量表
+/// key: game_id, value: Arc<AtomicBool> 停止信号
+/// stop_download 设置信号 → 监控线程检测信号后自行 kill 进程并清理
+static DOWNLOAD_STOP_SIGNALS: Lazy<Mutex<HashMap<String, Arc<AtomicBool>>>> =
     Lazy::new(|| Mutex::new(HashMap::new()));
 
 /// 读取清单文件夹
@@ -65,13 +72,17 @@ pub async fn start_game_download(
 ) -> Result<crate::services::DownloadResult, String> {
     let service = DownloadService::new();
 
-    // 如果该游戏已有正在运行的下载进程，先终止旧进程，避免同一游戏多实例冲突
+    // 如果该游戏已有正在运行的下载进程，通过停止信号量通知旧监控线程
+    // 旧监控线程检测到信号后会自行 kill 进程并退出，避免直接竞争进程句柄
     {
-        let mut processes = DOWNLOAD_PROCESSES.lock().map_err(|e| format!("锁获取失败: {}", e))?;
-        if let Some(mut old_child) = processes.remove(&game_id) {
-            let _ = old_child.kill();
-            log::info!("游戏 {} 存在旧下载进程，已终止", game_id);
+        let mut old_signals = DOWNLOAD_STOP_SIGNALS.lock()
+            .map_err(|e| format!("获取停止信号量表锁失败: {}", e))?;
+        if let Some(signal) = old_signals.get(&game_id) {
+            signal.store(true, Ordering::SeqCst);
+            log::info!("游戏 {} 存在旧下载进程，已发送停止信号", game_id);
         }
+        // 移除旧信号量，新进程会创建新的
+        old_signals.remove(&game_id);
     }
 
     let start_result = service.start_game_download(&app, &manifest_path, &download_path, &game_id);
@@ -80,10 +91,17 @@ pub async fn start_game_download(
         Ok((result, child)) => {
             let process_id = result.process_id;
 
-            // 保存子进程句柄到全局管理表
+            // 创建新的停止信号量（初始 false），监控线程持有该信号的克隆
+            let stop_signal = Arc::new(AtomicBool::new(false));
+
+            // 保存子进程句柄和停止信号量到全局管理表
             {
-                let mut processes = DOWNLOAD_PROCESSES.lock().map_err(|e| format!("锁获取失败: {}", e))?;
+                let mut processes = DOWNLOAD_PROCESSES.lock()
+                    .map_err(|e| format!("锁获取失败: {}", e))?;
+                let mut signals = DOWNLOAD_STOP_SIGNALS.lock()
+                    .map_err(|e| format!("信号量表锁获取失败: {}", e))?;
                 processes.insert(game_id.clone(), child);
+                signals.insert(game_id.clone(), stop_signal.clone());
             }
 
             // 更新游戏状态为 downloading
@@ -94,7 +112,7 @@ pub async fn start_game_download(
                 0,
             ).await;
 
-            // 启动后台监控任务，支持自动续传
+            // 启动后台监控任务，传递停止信号量的克隆
             let app_handle = app.clone();
             let manifest_path_clone = manifest_path.clone();
             let download_path_clone = download_path.clone();
@@ -107,6 +125,7 @@ pub async fn start_game_download(
                     game_id_clone,
                     manifest_path_clone,
                     download_path_clone,
+                    stop_signal, // 传递信号量，监控线程独占进程句柄管理权
                 );
             });
 
@@ -117,12 +136,13 @@ pub async fn start_game_download(
 }
 
 /// 监控单个游戏的下载进程
-/// 通过全局进程表中的 Child 句柄进行精准监控，支持多实例并行下载
+/// 监控线程独占进程句柄管理权：stop_download 只发信号，由本线程自行 kill 进程
 fn monitor_download_process(
     app_handle: AppHandle,
     game_id: String,
     manifest_path: String,
     download_path: String,
+    stop_signal: Arc<AtomicBool>, // 停止信号量，stop_download 设置此信号
 ) {
     let service = DownloadService::new();
     let retry_count = Arc::new(AtomicU32::new(0));
@@ -138,19 +158,29 @@ fn monitor_download_process(
     };
 
     loop {
-        // 等待进程启动稳定
-        thread::sleep(Duration::from_secs(3));
+        // 每次循环开始时检查停止信号
+        if stop_signal.load(Ordering::SeqCst) {
+            log::info!("游戏 {} 收到停止信号，正在终止进程", game_id);
+            kill_process(&game_id);
+            break;
+        }
 
-        // 等待该游戏对应的 ddv20.exe 进程退出
-        wait_for_process_exit(&game_id);
+        // 等待该游戏对应的 ddv20.exe 进程退出或被停止信号终止
+        let stopped_by_user = wait_for_process_exit(&game_id, &stop_signal);
+
+        if stopped_by_user {
+            log::info!("游戏 {} 被用户主动停止，不再自动续传", game_id);
+            // 清理信号量（stop_signal 是 Arc 克隆，不影响其他引用）
+            let _ = DOWNLOAD_STOP_SIGNALS.lock()
+                .map(|mut signals| { signals.remove(&game_id); });
+            break;
+        }
 
         log::info!("检测到游戏 {} 的 ddv20.exe 进程已退出", game_id);
 
-        // 检查是否是用户主动停止的下载
-        if crate::take_download_stopped(&game_id) {
-            log::info!("游戏 {} 被用户主动停止，不再自动续传", game_id);
-            let _ = DOWNLOAD_PROCESSES.lock()
-                .map(|mut processes| { processes.remove(&game_id); });
+        // 再次检查停止信号（防止在 wait_for_process_exit 刚返回时被设置）
+        if stop_signal.load(Ordering::SeqCst) {
+            log::info!("游戏 {} 在进程退出后收到停止信号", game_id);
             break;
         }
 
@@ -199,6 +229,12 @@ fn monitor_download_process(
         log::info!("游戏 {} 将在3秒后自动续传 (重试 {}/{})", game_id, current_retry + 1, MAX_RETRIES);
         thread::sleep(Duration::from_secs(3));
 
+        // 续传前检查停止信号
+        if stop_signal.load(Ordering::SeqCst) {
+            log::info!("游戏 {} 续传前收到停止信号", game_id);
+            break;
+        }
+
         // 重新启动 ddv20.exe 进行续传
         match service.start_game_download(
             &app_handle,
@@ -206,7 +242,7 @@ fn monitor_download_process(
             &download_path,
             &game_id,
         ) {
-            Ok((_, child)) => {
+            Ok((result, child)) => {
                 let mut processes = match DOWNLOAD_PROCESSES.lock() {
                     Ok(p) => p,
                     Err(e) => {
@@ -214,8 +250,16 @@ fn monitor_download_process(
                         continue;
                     }
                 };
+                // 续传前检查停止信号（防止在 start_game_download 期间被设置）
+                if stop_signal.load(Ordering::SeqCst) {
+                    drop(processes);
+                    // 进程已启动，需要 kill 掉
+                    kill_process(&game_id);
+                    log::info!("游戏 {} 续传后收到停止信号，已终止新进程", game_id);
+                    break;
+                }
                 processes.insert(game_id.clone(), child);
-                log::info!("游戏 {} 续传已启动", game_id);
+                log::info!("游戏 {} 续传已启动 (PID: {:?})", game_id, result.process_id);
             }
             Err(e) => {
                 log::error!("游戏 {} 续传启动失败: {}", game_id, e);
@@ -223,15 +267,73 @@ fn monitor_download_process(
         }
     }
 
+    // 清理：移除该游戏的停止信号量
+    let _ = DOWNLOAD_STOP_SIGNALS.lock()
+        .map(|mut signals| { signals.remove(&game_id); });
     log::info!("下载监控任务已结束，游戏ID: {}", game_id);
 }
 
+/// 在 DOWNLOAD_PROCESSES 中查找并终止指定游戏的进程
+/// 被监控线程内部调用，是唯一调用 kill() 的地方
+/// 使用 taskkill /F /T 递归终止整个进程树，再调用 child.kill() 二次保障
+fn kill_process(game_id: &str) {
+    let mut processes = match DOWNLOAD_PROCESSES.lock() {
+        Ok(p) => p,
+        Err(e) => {
+            log::error!("获取进程表锁失败: {}", e);
+            return;
+        }
+    };
+    if let Some(mut child) = processes.remove(game_id) {
+        let pid = child.id();
+        // 第一步：使用 taskkill /F /T 递归终止进程树（包括 ddv20.exe 可能启动的子进程）
+        let taskkill_ok = kill_process_tree(pid);
+        // 第二步：调用 child.kill() 作为后备
+        let child_result = child.kill();
+        log::info!(
+            "终止游戏 {} 进程: PID={}, taskkill=/F /T, 成功={}, child.kill={:?}",
+            game_id, pid, taskkill_ok, child_result
+        );
+    }
+}
+
+/// 递归终止指定 PID 的进程树
+/// 使用 Windows taskkill /F /T（/T 表示递归终止子进程）
+/// 使用 CREATE_NO_WINDOW 避免 taskkill 自身弹出控制台窗口
+#[cfg(target_os = "windows")]
+fn kill_process_tree(pid: u32) -> bool {
+    use std::os::windows::process::CommandExt;
+    const CREATE_NO_WINDOW: u32 = 0x08000000;
+    match std::process::Command::new("taskkill")
+        .args(&["/F", "/T", "/PID", &pid.to_string()])
+        .creation_flags(CREATE_NO_WINDOW)
+        .output()
+    {
+        Ok(output) => output.status.success(),
+        Err(e) => {
+            log::warn!("调用 taskkill 失败: {}", e);
+            false
+        }
+    }
+}
+
+#[cfg(not(target_os = "windows"))]
+fn kill_process_tree(_pid: u32) -> bool {
+    false
+}
+
 /// 等待指定游戏的 ddv20.exe 进程退出
-/// 通过全局进程表中的 Child 句柄精准判断，不影响其他游戏的下载进程
-/// 检查完成后立即释放锁，避免阻塞 stop_download 等操作
-fn wait_for_process_exit(game_id: &str) {
+/// 每1秒轮询一次，同时检查停止信号量
+/// 返回值：true = 被停止信号终止，false = 进程自然退出
+fn wait_for_process_exit(game_id: &str, stop_signal: &AtomicBool) -> bool {
     loop {
-        thread::sleep(Duration::from_secs(5));
+        // 每次循环先检查停止信号
+        if stop_signal.load(Ordering::SeqCst) {
+            kill_process(game_id);
+            return true;
+        }
+
+        thread::sleep(Duration::from_secs(1));
 
         let is_running = {
             let mut processes = match DOWNLOAD_PROCESSES.lock() {
@@ -269,7 +371,7 @@ fn wait_for_process_exit(game_id: &str) {
         };
 
         if !is_running {
-            return;
+            return false;
         }
     }
 }
@@ -335,24 +437,19 @@ pub fn check_and_cleanup_completed_downloads(app: AppHandle, game_id: Option<Str
 }
 
 /// 停止下载进程
-/// 终止指定游戏对应的 ddv20.exe 进程，不影响其他正在下载的游戏
-/// 并将游戏状态设置为 idle（未下载）
+/// 只设置停止信号量，由监控线程自行 kill 进程并清理
+/// 监控线程每1秒检测信号，响应延迟不超过1秒
 #[tauri::command]
 pub async fn stop_download(app: AppHandle, game_id: String) -> Result<(), String> {
-    // 标记该游戏ID为用户主动停止，防止监控线程自动续传
-    crate::mark_download_stopped(&game_id);
-
-    // 从全局进程表中取出该游戏的子进程句柄并终止
+    // 设置停止信号量，监控线程检测到后会自动 kill 进程并退出
     {
-        let mut processes = DOWNLOAD_PROCESSES.lock()
-            .map_err(|e| format!("获取进程表锁失败: {}", e))?;
-
-        if let Some(mut child) = processes.remove(&game_id) {
-            if let Err(e) = child.kill() {
-                log::warn!("终止游戏 {} 的 ddv20.exe 进程失败: {}", game_id, e);
-            } else {
-                log::info!("已终止游戏 {} 的 ddv20.exe 进程", game_id);
-            }
+        let signals = DOWNLOAD_STOP_SIGNALS.lock()
+            .map_err(|e| format!("获取停止信号量表锁失败: {}", e))?;
+        if let Some(signal) = signals.get(&game_id) {
+            signal.store(true, Ordering::SeqCst);
+            log::info!("已设置游戏 {} 的停止信号", game_id);
+        } else {
+            log::warn!("游戏 {} 没有找到对应的停止信号量，可能已经停止", game_id);
         }
     }
 

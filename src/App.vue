@@ -185,18 +185,45 @@ function closeUpdateModal() {
 
 /**
  * 启动时自动检查更新
+ * 轮询后端预检查结果，不阻塞窗口显示，更新弹窗第一时间弹出
  */
 async function checkUpdateOnStartup() {
+  // 轮询后端预检查结果（后端在 setup 中已异步触发更新检查）
+  const maxAttempts = 30 // 30 * 200ms = 6 秒超时
+  for (let i = 0; i < maxAttempts; i++) {
+    try {
+      const pendingResult = await invoke<UpdateCheckResult | null>('get_pending_startup_update')
+      if (pendingResult !== null) {
+        // 后端检查已完成
+        if (pendingResult.has_update) {
+          // 显示更新弹窗
+          localResourceVersion.value = pendingResult.local_resource_version
+          remoteResourceVersion.value = pendingResult.remote_resource_version
+          remoteDescription.value = pendingResult.remote_description ?? ''
+          remoteHasExeUpdate.value = pendingResult.has_exe_update
+          patchUrl.value = pendingResult.patch_url
+          showUpdateModal.value = true
+        }
+        return // 检查完成，无论是否有更新都结束
+      }
+    } catch {
+      // 忽略轮询中的错误
+    }
+    // 等待 200ms 后再次轮询
+    await new Promise(resolve => setTimeout(resolve, 200))
+  }
+
+  // 兜底：轮询超时后直接调用实时检查
   try {
     const result = await invoke<UpdateCheckResult>('check_for_update')
-    if (!result.has_update) return
-
-    localResourceVersion.value = result.local_resource_version
-    remoteResourceVersion.value = result.remote_resource_version
-    remoteDescription.value = result.remote_description ?? ''
-    remoteHasExeUpdate.value = result.has_exe_update
-    patchUrl.value = result.patch_url
-    showUpdateModal.value = true
+    if (result.has_update) {
+      localResourceVersion.value = result.local_resource_version
+      remoteResourceVersion.value = result.remote_resource_version
+      remoteDescription.value = result.remote_description ?? ''
+      remoteHasExeUpdate.value = result.has_exe_update
+      patchUrl.value = result.patch_url
+      showUpdateModal.value = true
+    }
   } catch (error) {
     console.log('[自动更新] 检查失败:', error)
   }
@@ -364,10 +391,9 @@ onMounted(async () => {
     isUpdating.value = false
   })
 
-  // 启动 2 秒后自动检查更新，避免影响启动速度并确保事件监听已注册
-  setTimeout(() => {
-    checkUpdateOnStartup()
-  }, 2000)
+  // 启动时立即检查更新（轮询后端预检查结果，无需等待）
+  // 不延迟，确保更新弹窗在第一时间弹出
+  checkUpdateOnStartup()
 })
 
 // 组件卸载时清理事件监听器
