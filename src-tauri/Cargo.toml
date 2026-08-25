@@ -1,6 +1,6 @@
 [package]
 name = "steam-tool-plus"
-version = "1.30.2"
+version = "1.31.0"
 description = "Steam Tool Plus - 本地游戏管理系统"
 authors = ["Steam Tool Plus"]
 edition = "2021"
@@ -64,6 +64,11 @@ sysinfo = "0.35"
 [features]
 default = ["custom-protocol"]
 custom-protocol = ["tauri/custom-protocol"]
+
+# Windows 平台专属依赖：封装 WebView2 内存管理（TrySuspend/Resume、MemoryUsageTargetLevel）
+[target.'cfg(windows)'.dependencies]
+webview2-com = "0.38"
+windows = "0.61"
 
 # 发布优化配置 - 极致体积优化
 [profile.release]
