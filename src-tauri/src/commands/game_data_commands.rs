@@ -1,6 +1,8 @@
 // 游戏数据管理命令
 // 处理游戏数据的增删改查
 
+use std::collections::HashSet;
+use sysinfo::{Pid, ProcessesToUpdate, System};
 use tauri::AppHandle;
 use crate::services::game_data_service::{self, GameData};
 
@@ -198,6 +200,12 @@ pub async fn check_game_exists(app: AppHandle, game_id: String) -> Result<bool, 
     game_data_service::game_exists(app, game_id).await
 }
 
+/// 检查所有已安装游戏目录，将目录缺失的游戏重置为未安装
+#[tauri::command]
+pub async fn reset_missing_installed_games(app: AppHandle) -> Result<Vec<GameData>, String> {
+    game_data_service::reset_missing_installed_games(app).await
+}
+
 /// 导入自定义游戏
 #[tauri::command]
 #[allow(clippy::too_many_arguments)]
@@ -305,25 +313,30 @@ pub async fn launch_game_with_tracking(
         // 游戏启动时间
         let game_start_time = Instant::now();
 
+        // 复用同一个 sysinfo System 实例做进程监控，
+        // 替代原先每 2~3 秒 spawn wmic/tasklist 子进程的做法，消除周期性 CPU 尖峰
+        let mut system = System::new();
+        let mut known_pids: HashSet<u32> = HashSet::new();
+        let mut known_names: HashSet<String> = HashSet::new();
+
         // 动态获取进程快照 - 多次尝试捕获游戏进程（处理启动器延迟启动的情况）
-        let mut game_processes = Vec::new();
         let max_attempts = 10; // 最多尝试10次
         let attempt_interval = Duration::from_secs(2); // 每2秒尝试一次
 
-        for attempt in 1..=max_attempts {
+        for _attempt in 1..=max_attempts {
             thread::sleep(attempt_interval);
 
-            // 获取当前进程快照
-            let current_processes = get_game_processes_snapshot(&install_path, &exe_name, initial_pid);
+            system.refresh_processes(ProcessesToUpdate::All, true);
+            let snapshot = get_game_processes_snapshot(&system, &install_path, &exe_name, initial_pid);
 
-            if !current_processes.is_empty() {
-                game_processes = current_processes;
+            if !snapshot.is_empty() {
+                for (pid, name) in snapshot {
+                    known_pids.insert(pid);
+                    if !name.is_empty() {
+                        known_names.insert(name);
+                    }
+                }
                 break;
-            }
-
-            // 如果还没找到进程且还没达到最大尝试次数，继续等待
-            if attempt < max_attempts {
-                continue;
             }
         }
 
@@ -333,8 +346,11 @@ pub async fn launch_game_with_tracking(
         let check_interval = Duration::from_secs(3); // 每3秒检查一次
 
         loop {
+            system.refresh_processes(ProcessesToUpdate::All, true);
             // 检查游戏是否还在运行（使用动态检测，不依赖初始快照）
-            let is_running = check_game_running_dynamic(&install_path, &exe_name, initial_pid, &game_processes);
+            let is_running = game_process_is_running(
+                &system, &install_path, &exe_name, initial_pid, &known_pids, &known_names,
+            );
 
             if is_running {
                 // 游戏还在运行，更新最后看到时间
@@ -381,333 +397,129 @@ pub async fn launch_game_with_tracking(
 }
 
 /// 获取游戏进程快照
-/// 返回 (PID, 进程名) 的列表
-fn get_game_processes_snapshot(dir_path: &str, exe_name: &str, initial_pid: u32) -> Vec<(u32, String)> {
-    use std::process::Command;
-    
-    let mut processes = Vec::new();
-    let dir_lower = dir_path.to_lowercase();
-    let exe_lower = exe_name.to_lowercase();
-    
-    // 使用 wmic 获取所有进程的详细信息
-    #[cfg(target_os = "windows")]
-    let output = {
-        use std::os::windows::process::CommandExt;
-        const CREATE_NO_WINDOW: u32 = 0x08000000;
-        Command::new("wmic")
-            .args(["process", "get", "ProcessId,ExecutablePath,Name", "/format:csv"])
-            .creation_flags(CREATE_NO_WINDOW)
-            .output()
-    };
-    
-    #[cfg(not(target_os = "windows"))]
-    let output = Command::new("wmic")
-        .args(&["process", "get", "ProcessId,ExecutablePath,Name", "/format:csv"])
-        .output();
-    
-    match output {
-        Ok(output) => {
-            let stdout = String::from_utf8_lossy(&output.stdout);
-            
-            for line in stdout.lines() {
-                // CSV格式: Node,ExecutablePath,Name,ProcessId
-                let parts: Vec<&str> = line.split(',').collect();
-                if parts.len() >= 4 {
-                    let exe_path = parts[1].trim().trim_matches('"');
-                    let proc_name = parts[2].trim().trim_matches('"').to_lowercase();
-                    let pid_str = parts[3].trim().trim_matches('"');
-                    
-                    if let Ok(pid_num) = pid_str.parse::<u32>() {
-                        // 检查是否是我们启动的初始进程
-                        if pid_num == initial_pid {
-                            processes.push((pid_num, proc_name.clone()));
-                            continue;
-                        }
-                        
-                        // 检查进程是否在游戏目录下
-                        if !exe_path.is_empty() {
-                            let exe_path_lower = exe_path.to_lowercase();
-                            if exe_path_lower.starts_with(&dir_lower) {
-                                processes.push((pid_num, proc_name.clone()));
-                                continue;
-                            }
-                        }
-                        
-                        // 检查进程名是否匹配原始exe名（有些游戏会改名）
-                        if proc_name == exe_lower || 
-                           proc_name.contains(&exe_lower.replace(".exe", "")) {
-                            // 避免重复添加
-                            if !processes.iter().any(|(p, _)| *p == pid_num) {
-                                processes.push((pid_num, proc_name.clone()));
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        Err(e) => {
-            eprintln!("[SteamTool] 获取进程列表失败: {}", e);
-        }
-    }
-    
-    processes
-}
-
-/// 检查游戏是否还在运行
-/// 模仿 Steam 的检测逻辑：
-/// 1. 检查原始进程是否还在
-/// 2. 检查游戏目录下是否有相关进程
-/// 3. 检查已知的游戏进程是否还在
-fn check_game_running(
-    dir_path: &str, 
-    exe_name: &str, 
-    initial_pid: u32,
-    known_processes: &[(u32, String)]
-) -> bool {
-    use std::process::Command;
-    
-    let dir_lower = dir_path.to_lowercase();
-    let exe_lower = exe_name.to_lowercase();
-    
-    // 使用 tasklist 获取所有进程（比 wmic 更快）
-    #[cfg(target_os = "windows")]
-    let output = {
-        use std::os::windows::process::CommandExt;
-        const CREATE_NO_WINDOW: u32 = 0x08000000;
-        Command::new("tasklist")
-            .args(["/FO", "CSV", "/NH"])
-            .creation_flags(CREATE_NO_WINDOW)
-            .output()
-    };
-    
-    #[cfg(not(target_os = "windows"))]
-    let output = Command::new("tasklist")
-        .args(&["/FO", "CSV", "/NH"])
-        .output();
-    
-    match output {
-        Ok(output) => {
-            let stdout = String::from_utf8_lossy(&output.stdout);
-            let found_any = false;
-            
-            for line in stdout.lines() {
-                // CSV格式: "进程名","PID","会话名","会话#","内存使用"
-                let parts: Vec<&str> = line.split(',').collect();
-                if parts.len() >= 2 {
-                    let proc_name = parts[0].trim().trim_matches('"').to_lowercase();
-                    let pid_str = parts[1].trim().trim_matches('"');
-                    
-                    if let Ok(pid_num) = pid_str.parse::<u32>() {
-                        // 1. 检查是否是初始进程
-                        if pid_num == initial_pid {
-                            return true;
-                        }
-                        
-                        // 2. 检查是否在已知的游戏进程列表中
-                        if known_processes.iter().any(|(p, n)| *p == pid_num || n == &proc_name) {
-                            return true;
-                        }
-                        
-                        // 3. 检查进程名是否匹配原始exe名
-                        if proc_name == exe_lower {
-                            return true;
-                        }
-                        
-                        // 4. 检查进程名是否包含游戏名称（如 "The Last of Us"）
-                        let game_name_hint = exe_lower.replace("launcher.exe", "")
-                            .replace(".exe", "")
-                            .trim()
-                            .to_string();
-                        if !game_name_hint.is_empty() && proc_name.contains(&game_name_hint) {
-                            return true;
-                        }
-                    }
-                }
-            }
-            
-            // 如果 tasklist 没有找到，尝试使用 wmic 检查游戏目录下的进程
-            if !found_any {
-                return check_processes_in_directory_wmic(&dir_lower);
-            }
-            
-            false
-        }
-        Err(_) => {
-            // tasklist 失败，回退到 wmic
-            check_processes_in_directory_wmic(&dir_lower)
-        }
-    }
-}
-
-/// 使用 wmic 检查游戏目录下的进程
-fn check_processes_in_directory_wmic(dir_lower: &str) -> bool {
-    use std::process::Command;
-
-    #[cfg(target_os = "windows")]
-    let output = {
-        use std::os::windows::process::CommandExt;
-        const CREATE_NO_WINDOW: u32 = 0x08000000;
-        Command::new("wmic")
-            .args(["process", "get", "ExecutablePath", "/format:csv"])
-            .creation_flags(CREATE_NO_WINDOW)
-            .output()
-    };
-    
-    #[cfg(not(target_os = "windows"))]
-    let output = Command::new("wmic")
-        .args(&["process", "get", "ExecutablePath", "/format:csv"])
-        .output();
-
-    match output {
-        Ok(output) => {
-            let stdout = String::from_utf8_lossy(&output.stdout);
-
-            for line in stdout.lines() {
-                let parts: Vec<&str> = line.split(',').collect();
-                if parts.len() >= 2 {
-                    let exe_path = parts[1].trim().trim_matches('"');
-                    if !exe_path.is_empty() {
-                        let exe_lower = exe_path.to_lowercase();
-                        if exe_lower.starts_with(dir_lower) {
-                            return true;
-                        }
-                    }
-                }
-            }
-            false
-        }
-        Err(_) => false
-    }
-}
-
-/// 动态检查游戏是否还在运行
-/// 与 check_game_running 不同，这个函数会实时扫描游戏目录下的所有进程
-/// 不依赖初始进程快照，适用于启动器延迟启动游戏的情况
-fn check_game_running_dynamic(
+/// 返回 (PID, 进程名) 的列表（基于 sysinfo 内存枚举，不 spawn 子进程）
+fn get_game_processes_snapshot(
+    system: &System,
     dir_path: &str,
     exe_name: &str,
     initial_pid: u32,
-    known_processes: &[(u32, String)]
-) -> bool {
-    use std::process::Command;
-
+) -> Vec<(u32, String)> {
+    let mut processes = Vec::new();
     let dir_lower = dir_path.to_lowercase();
     let exe_lower = exe_name.to_lowercase();
+    let exe_base = exe_lower.replace(".exe", "");
 
-    // 首先检查初始进程是否还在运行
-    if is_process_running(initial_pid) {
-        return true;
-    }
+    for process in system.processes().values() {
+        let pid = process.pid().as_u32();
+        let proc_name = process.name().to_string_lossy().to_lowercase();
 
-    // 使用 wmic 获取所有进程的详细信息（包括可执行路径）
-    #[cfg(target_os = "windows")]
-    let output = {
-        use std::os::windows::process::CommandExt;
-        const CREATE_NO_WINDOW: u32 = 0x08000000;
-        Command::new("wmic")
-            .args(["process", "get", "ProcessId,ExecutablePath,Name", "/format:csv"])
-            .creation_flags(CREATE_NO_WINDOW)
-            .output()
-    };
-    
-    #[cfg(not(target_os = "windows"))]
-    let output = Command::new("wmic")
-        .args(&["process", "get", "ProcessId,ExecutablePath,Name", "/format:csv"])
-        .output();
-
-    match output {
-        Ok(output) => {
-            let stdout = String::from_utf8_lossy(&output.stdout);
-
-            for line in stdout.lines() {
-                // CSV格式: Node,ExecutablePath,Name,ProcessId
-                let parts: Vec<&str> = line.split(',').collect();
-                if parts.len() >= 4 {
-                    let exe_path = parts[1].trim().trim_matches('"');
-                    let proc_name = parts[2].trim().trim_matches('"').to_lowercase();
-                    let pid_str = parts[3].trim().trim_matches('"');
-
-                    if let Ok(pid_num) = pid_str.parse::<u32>() {
-                        // 跳过系统进程和当前检查进程
-                        if pid_num == std::process::id() {
-                            continue;
-                        }
-
-                        // 1. 检查是否在已知的游戏进程列表中
-                        if known_processes.iter().any(|(p, n)| *p == pid_num || n == &proc_name) {
-                            return true;
-                        }
-
-                        // 2. 检查进程是否在游戏目录下（这是最关键的检测）
-                        if !exe_path.is_empty() {
-                            let exe_path_lower = exe_path.to_lowercase();
-                            if exe_path_lower.starts_with(&dir_lower) {
-                                return true;
-                            }
-                        }
-
-                        // 3. 检查进程名是否匹配原始exe名
-                        if proc_name == exe_lower {
-                            return true;
-                        }
-
-                        // 4. 检查进程名是否包含游戏名称（如 "The Last of Us"）
-                        let game_name_hint = exe_lower.replace("launcher.exe", "")
-                            .replace(".exe", "")
-                            .trim()
-                            .to_string();
-                        if !game_name_hint.is_empty() && proc_name.contains(&game_name_hint) {
-                            return true;
-                        }
-
-                        // 5. 检查进程名是否包含游戏目录名（有些游戏exe名和目录名相关）
-                        let dir_name = std::path::Path::new(dir_path)
-                            .file_name()
-                            .and_then(|n| n.to_str())
-                            .unwrap_or("")
-                            .to_lowercase();
-                        if !dir_name.is_empty() && proc_name.contains(&dir_name) {
-                            return true;
-                        }
-                    }
-                }
+        // 检查是否是我们启动的初始进程
+        if pid == initial_pid {
+            if !processes.iter().any(|(p, _)| *p == pid) {
+                processes.push((pid, proc_name.clone()));
             }
-            false
+            continue;
         }
-        Err(_) => {
-            // wmic 失败，回退到 tasklist
-            check_game_running(dir_path, exe_name, initial_pid, known_processes)
+
+        // 检查进程是否在游戏目录下
+        if let Some(exe) = process.exe() {
+            let exe_path_lower = exe.to_string_lossy().to_lowercase();
+            if exe_path_lower.starts_with(&dir_lower) {
+                processes.push((pid, proc_name.clone()));
+                continue;
+            }
+        }
+
+        // 检查进程名是否匹配原始exe名（有些游戏会改名）
+        if proc_name == exe_lower || (!exe_base.is_empty() && proc_name.contains(&exe_base)) {
+            // 避免重复添加
+            if !processes.iter().any(|(p, _)| *p == pid) {
+                processes.push((pid, proc_name.clone()));
+            }
         }
     }
+
+    processes
 }
 
-/// 检查特定PID的进程是否还在运行
-fn is_process_running(pid: u32) -> bool {
-    use std::process::Command;
-    
-    #[cfg(target_os = "windows")]
-    let output = {
-        use std::os::windows::process::CommandExt;
-        const CREATE_NO_WINDOW: u32 = 0x08000000;
-        Command::new("tasklist")
-            .args(["/FI", &format!("PID eq {}", pid), "/FO", "CSV", "/NH"])
-            .creation_flags(CREATE_NO_WINDOW)
-            .output()
-    };
-    
-    #[cfg(not(target_os = "windows"))]
-    let output = Command::new("tasklist")
-        .args(&["/FI", &format!("PID eq {}", pid), "/FO", "CSV", "/NH"])
-        .output();
-    
-    match output {
-        Ok(output) => {
-            let stdout = String::from_utf8_lossy(&output.stdout);
-            // 如果输出包含PID，说明进程还在运行
-            stdout.contains(&pid.to_string())
+/// 动态检查游戏是否还在运行（基于 sysinfo，替代原 wmic/tasklist 子进程枚举）
+/// 检测逻辑与原 check_game_running_dynamic 等价：
+/// 1. 初始进程（可能是启动器）
+/// 2. 之前探测到的游戏进程（pid/名称）
+/// 3. 游戏安装目录下的进程
+/// 4. 进程名匹配原始 exe 名
+/// 5. 进程名包含游戏名提示 / 目录名
+fn game_process_is_running(
+    system: &System,
+    dir_path: &str,
+    exe_name: &str,
+    initial_pid: u32,
+    known_pids: &HashSet<u32>,
+    known_names: &HashSet<String>,
+) -> bool {
+    let dir_lower = dir_path.to_lowercase();
+    let exe_lower = exe_name.to_lowercase();
+    let game_name_hint = exe_lower
+        .replace("launcher.exe", "")
+        .replace(".exe", "")
+        .trim()
+        .to_string();
+    let dir_name = std::path::Path::new(dir_path)
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("")
+        .to_lowercase();
+
+    for process in system.processes().values() {
+        let pid = process.pid().as_u32();
+
+        // 跳过当前程序自身
+        if pid == std::process::id() {
+            continue;
         }
-        Err(_) => false
+        let proc_name = process.name().to_string_lossy().to_lowercase();
+
+        // 1. 初始进程（可能是启动器）
+        if pid == initial_pid {
+            return true;
+        }
+
+        // 2. 之前探测到的游戏进程
+        if known_pids.contains(&pid) || known_names.contains(&proc_name) {
+            return true;
+        }
+
+        // 3. 游戏安装目录下的进程
+        if let Some(exe) = process.exe() {
+            if exe.to_string_lossy().to_lowercase().starts_with(&dir_lower) {
+                return true;
+            }
+        }
+
+        // 4. 进程名匹配原始 exe 名
+        if proc_name == exe_lower {
+            return true;
+        }
+
+        // 5. 进程名包含游戏名提示
+        if !game_name_hint.is_empty() && proc_name.contains(&game_name_hint) {
+            return true;
+        }
+
+        // 6. 进程名包含游戏目录名
+        if !dir_name.is_empty() && proc_name.contains(&dir_name) {
+            return true;
+        }
     }
+
+    false
+}
+
+/// 检查特定PID的进程是否还在运行（基于 sysinfo）
+fn is_process_running(pid: u32) -> bool {
+    let mut system = System::new();
+    system.refresh_processes(ProcessesToUpdate::All, true);
+    system.process(Pid::from_u32(pid)).is_some()
 }
 
 /// 关闭游戏进程
@@ -799,50 +611,32 @@ pub async fn check_game_process_status(
     Ok((is_running, minutes))
 }
 
-/// 简化版检查游戏进程是否还在运行（用于前端轮询）
+/// 简化版检查游戏进程是否还在运行（用于前端轮询，基于 sysinfo）
 fn is_game_process_running_simple(exe_name: &str) -> bool {
-    use std::process::Command;
-    
     if exe_name.is_empty() {
         return false;
     }
-    
-    // 使用 tasklist 查找进程
-    #[cfg(target_os = "windows")]
-    let output = {
-        use std::os::windows::process::CommandExt;
-        const CREATE_NO_WINDOW: u32 = 0x08000000;
-        Command::new("tasklist")
-            .args(["/FO", "CSV", "/NH"])
-            .creation_flags(CREATE_NO_WINDOW)
-            .output()
-    };
-    
-    #[cfg(not(target_os = "windows"))]
-    let output = Command::new("tasklist")
-        .args(&["/FO", "CSV", "/NH"])
-        .output();
-    
-    match output {
-        Ok(output) => {
-            let stdout = String::from_utf8_lossy(&output.stdout);
-            for line in stdout.lines() {
-                // CSV格式: "进程名","PID","会话名","会话#","内存使用"
-                let parts: Vec<&str> = line.split(',').collect();
-                if parts.len() >= 2 {
-                    let process_name = parts[0].trim().trim_matches('"').to_lowercase();
-                    // 检查进程名是否匹配（支持部分匹配）
-                    if process_name == exe_name || 
-                       process_name.starts_with(&exe_name.replace(".exe", "")) ||
-                       exe_name.starts_with(&process_name.replace(".exe", "")) {
-                        return true;
-                    }
-                }
-            }
-            false
+
+    let exe_lower = exe_name.to_lowercase();
+    let exe_base = exe_lower.replace(".exe", "");
+
+    let mut system = System::new();
+    system.refresh_processes(ProcessesToUpdate::All, true);
+
+    for process in system.processes().values() {
+        let process_name = process.name().to_string_lossy().to_lowercase();
+        let process_base = process_name.replace(".exe", "");
+
+        // 检查进程名是否匹配（支持部分匹配）
+        if process_name == exe_lower
+            || process_name.starts_with(&exe_base)
+            || exe_lower.starts_with(&process_base)
+        {
+            return true;
         }
-        Err(_) => false
     }
+
+    false
 }
 
 /// 更新游戏数据（用于编辑功能）

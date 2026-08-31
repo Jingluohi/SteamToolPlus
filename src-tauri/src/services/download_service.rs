@@ -28,6 +28,7 @@ pub struct DownloadResult {
 
 /// 进度文件信息
 #[derive(Debug, Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ProgressFileInfo {
     pub name: String,
     pub path: String,
@@ -35,6 +36,8 @@ pub struct ProgressFileInfo {
     pub progress: u32,
     /// Depot ID
     pub depot_id: String,
+    /// 所属游戏 ID
+    pub game_id: String,
 }
 
 /// 目录项信息
@@ -148,6 +151,7 @@ impl DownloadService {
     fn scan_progress_files_in_dir(
         &self,
         dir: &Path,
+        game_id: &str,
         progress_files: &mut Vec<ProgressFileInfo>,
     ) -> Result<(), String> {
         let entries = std::fs::read_dir(dir).map_err(|e| format!("读取目录失败: {}", e))?;
@@ -168,6 +172,7 @@ impl DownloadService {
                             path: file_path.to_string_lossy().to_string(),
                             progress,
                             depot_id,
+                            game_id: game_id.to_string(),
                         });
                     }
                 }
@@ -399,7 +404,7 @@ impl DownloadServiceTrait for DownloadService {
             // 扫描指定游戏的 log 目录
             let game_log_dir = self.get_game_log_dir(gid)?;
             if game_log_dir.exists() {
-                self.scan_progress_files_in_dir(&game_log_dir, &mut progress_files)?;
+                self.scan_progress_files_in_dir(&game_log_dir, gid, &mut progress_files)?;
             }
         } else {
             // 扫描所有游戏的 log 目录
@@ -415,7 +420,15 @@ impl DownloadServiceTrait for DownloadService {
                     let entry = entry.map_err(|e| format!("读取目录条目失败: {}", e))?;
                     let game_dir = entry.path();
                     if game_dir.is_dir() {
-                        self.scan_progress_files_in_dir(&game_dir, &mut progress_files)?;
+                        // 使用子目录名作为 game_id
+                        let gid = game_dir
+                            .file_name()
+                            .and_then(|n| n.to_str())
+                            .unwrap_or("");
+                        if gid.is_empty() {
+                            continue;
+                        }
+                        self.scan_progress_files_in_dir(&game_dir, gid, &mut progress_files)?;
                     }
                 }
             }

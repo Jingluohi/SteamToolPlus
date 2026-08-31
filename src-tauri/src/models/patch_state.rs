@@ -6,10 +6,11 @@ use serde::{Deserialize, Serialize};
 /// Patch 页面持久化状态
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PatchState {
-    /// 模拟器模式：0=标准模式，1=高级模式
-    pub emulator_mode: i32,
-    /// 是否使用实验版 DLL（仅在标准模式下有效）
-    pub use_experimental: bool,
+    /// 模拟器引擎模式（单机构建 / 局域网联机构建）：
+    /// - `regular`：单机（仅替换 steam_api.dll，无 Overlay/局域网）
+    /// - `experimental`：局域网联机 - 功能版 steam_api（experimental 构建，支持 Overlay/局域网）
+    /// - `steamclient`：局域网联机 - ColdClientLoader 注入 steamclient（steamclient_experimental，支持 Overlay/局域网）
+    pub emulator_mode: String,
     /// 游戏文件夹路径
     pub game_path: String,
     /// 游戏主程序 exe 路径
@@ -25,8 +26,7 @@ pub struct PatchState {
 impl Default for PatchState {
     fn default() -> Self {
         Self {
-            emulator_mode: 0,
-            use_experimental: false,
+            emulator_mode: "regular".to_string(),
             game_path: String::new(),
             game_exe_path: String::new(),
             steam_app_id: String::new(),

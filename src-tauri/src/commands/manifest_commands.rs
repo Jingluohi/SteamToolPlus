@@ -4,9 +4,9 @@
  */
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::OnceLock;
 use regex::Regex;
 use serde_json::json;
-use crate::services::config_service::ConfigServiceTrait;
 use crate::utils::resource_utils::get_resource_dir;
 use tauri::AppHandle;
 
@@ -143,8 +143,9 @@ pub fn extract_archive(archive_path: String) -> Result<String, String> {
 fn parse_vdf_content(content: &str) -> Vec<(String, String)> {
     let mut depots = Vec::new();
     let mut current_depot: Option<String> = None;
-    // 将正则表达式移到循环外部，避免每次迭代都重新编译
-    let re = Regex::new(r#""DecryptionKey"\s+"([a-fA-F0-9]+)""#).unwrap();
+    // 正则静态化，编译一次复用，避免每次调用重复编译
+    static RE: OnceLock<Regex> = OnceLock::new();
+    let re = RE.get_or_init(|| Regex::new(r#""DecryptionKey"\s+"([a-fA-F0-9]+)""#).unwrap());
 
     for line in content.lines() {
         let trimmed = line.trim();
@@ -318,14 +319,13 @@ pub fn convert_vdf_to_lua_internal(
 /// 1. 结束steam.exe进程
 /// 2. 启动Steam
 #[tauri::command]
-pub fn restart_steam() -> Result<serde_json::Value, String> {
+pub fn restart_steam(state: tauri::State<crate::AppState>) -> Result<serde_json::Value, String> {
     use std::process::Command;
     use std::thread;
     use std::time::Duration;
 
-    // 从配置中读取Steam路径
-    let config = crate::services::ConfigService::new();
-    let app_config = config.get_config();
+    // 从配置中读取Steam路径（复用共享配置服务）
+    let app_config = state.config_service.get_config();
     let steam_path_str = app_config.game_dirs.steam_path
         .ok_or("未配置Steam路径，请前往全局设置配置")?;
 

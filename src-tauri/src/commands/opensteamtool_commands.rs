@@ -4,10 +4,10 @@
 use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::OnceLock;
 use tauri::AppHandle;
 
 use crate::commands::manifest_commands::convert_vdf_to_lua_internal;
-use crate::services::config_service::{ConfigService, ConfigServiceTrait};
 use crate::services::fake_imported_service::add_fake_imported_game;
 use crate::services::opensteamtool_service::{
     clean_steamtools_residuals, detect_steam_path, generate_opensteamtool_toml,
@@ -20,8 +20,8 @@ use crate::utils::resource_utils::get_resource_dir;
 /// 获取Steam安装路径
 /// 优先读取用户配置，其次从注册表读取，最后尝试默认路径
 #[tauri::command]
-pub fn get_steam_path() -> Result<String, String> {
-    let config_steam_path = ConfigService::new().get_config().game_dirs.steam_path;
+pub fn get_steam_path(state: tauri::State<crate::AppState>) -> Result<String, String> {
+    let config_steam_path = state.config_service.get_config().game_dirs.steam_path;
     detect_steam_path(config_steam_path.as_deref())
 }
 
@@ -49,11 +49,11 @@ pub fn validate_steam_path_command(steam_path: String) -> Result<serde_json::Val
 
 /// 安装OpenSteamTool内核DLL
 #[tauri::command]
-pub fn install_opensteamtool_kernel(app: AppHandle, steam_path: String) -> Result<serde_json::Value, String> {
+pub fn install_opensteamtool_kernel(app: AppHandle, state: tauri::State<crate::AppState>, steam_path: String) -> Result<serde_json::Value, String> {
     install_kernel(&app, &steam_path)?;
 
-    // 更新配置
-    let config_service = ConfigService::new();
+    // 更新配置（复用共享配置服务，避免重复创建实例并重新加载/备份配置）
+    let config_service = state.config_service.clone();
     let mut config = config_service.get_config();
     config.opensteamtool.kernel_installed = true;
     let _ = config_service.update_config(crate::models::UpdateConfigRequest {
@@ -72,11 +72,11 @@ pub fn install_opensteamtool_kernel(app: AppHandle, steam_path: String) -> Resul
 
 /// 卸载OpenSteamTool内核DLL
 #[tauri::command]
-pub fn uninstall_opensteamtool_kernel(steam_path: String) -> Result<serde_json::Value, String> {
+pub fn uninstall_opensteamtool_kernel(state: tauri::State<crate::AppState>, steam_path: String) -> Result<serde_json::Value, String> {
     uninstall_kernel(&steam_path)?;
 
-    // 更新配置
-    let config_service = ConfigService::new();
+    // 更新配置（复用共享配置服务）
+    let config_service = state.config_service.clone();
     let mut config = config_service.get_config();
     config.opensteamtool.kernel_installed = false;
     let _ = config_service.update_config(crate::models::UpdateConfigRequest {
@@ -130,6 +130,8 @@ pub fn import_with_opensteamtool_command(
         app_id,
         game_name,
         lua_content,
+        additional_lua_files: Vec::new(),
+        manifest_files: Vec::new(),
         install_kernel: install_kernel.unwrap_or(true),
         restart_steam: restart_steam.unwrap_or(true),
         advanced_mode: advanced_mode.unwrap_or(false),
@@ -248,6 +250,36 @@ fn apply_lock_version_to_lua(
     result_lines.join("\n")
 }
 
+/// 读取并处理所有Lua文件
+/// 逐文件应用 lock_version（生成/移除 setManifestid），并为每个文件提取入库用的 app_id
+/// OpenSteamTool 会加载 config/lua 目录下所有 .lua，
+/// 因此清单包内的主游戏、DLC、创意工坊depot各自保留，创意工坊密钥随之一并入库
+///
+/// # 返回
+/// 处理好的 (app_id, lua内容) 列表，顺序与输入 lua_files 一致
+fn process_lua_files(
+    lua_files: &[String],
+    manifest_map: &HashMap<String, String>,
+    lock_version: bool,
+    default_app_id: u32,
+) -> Result<Vec<(u32, String)>, String> {
+    if lua_files.is_empty() {
+        return Err("未找到Lua文件，OpenSteamTool内核模式需要Lua文件".to_string());
+    }
+
+    let mut result = Vec::new();
+    for lua_file in lua_files {
+        let content =
+            fs::read_to_string(lua_file).map_err(|e| format!("读取Lua文件失败: {}", e))?;
+        // 逐文件应用锁定版本逻辑
+        let content = apply_lock_version_to_lua(&content, lock_version, manifest_map);
+        // 提取该Lua文件对应的 app_id，提取失败时回退为主游戏 app_id
+        let file_app_id = extract_app_id_from_lua(&content).unwrap_or(default_app_id);
+        result.push((file_app_id, content));
+    }
+    Ok(result)
+}
+
 /// 尝试将VDF文件转换为Lua文件
 /// 返回转换后的Lua文件路径列表
 ///
@@ -325,26 +357,23 @@ pub fn import_game_with_opensteamtool(
         lua_files.extend(converted);
     }
 
-    // 读取第一个Lua文件内容
-    let lua_content = if let Some(lua_file) = lua_files.first() {
-        fs::read_to_string(lua_file).map_err(|e| format!("读取Lua文件失败: {}", e))?
-    } else {
-        return Err("未找到Lua文件，OpenSteamTool内核模式需要Lua文件".to_string());
-    };
-
-    // 根据 lock_version 调整 Lua 内容，确保已有 Lua 文件也能响应开关
+    // 根据 lock_version 调整每个Lua文件内容，确保已有 Lua 文件也能响应开关
+    // 并逐文件提取入库用 app_id，主游戏、DLC、创意工坊各自保留
     let manifest_map = build_manifest_map(&manifest_files);
-    let lua_content = apply_lock_version_to_lua(
-        &lua_content,
-        lock_version.unwrap_or(false),
-        &manifest_map,
-    );
+    let lock = lock_version.unwrap_or(false);
+    let managed_lua_files = process_lua_files(&lua_files, &manifest_map, lock, app_id)?;
+
+    // 主游戏Lua：内容为第一个Lua文件，app_id 沿用传入的主游戏AppID（与假入库记录/封面一致）
+    let lua_content = managed_lua_files[0].1.clone();
+    let additional_lua_files = managed_lua_files.into_iter().skip(1).collect();
 
     let options = OpenSteamToolImportOptions {
         steam_path,
         app_id,
         game_name,
         lua_content,
+        additional_lua_files,
+        manifest_files,
         install_kernel: true,
         restart_steam: true,
         advanced_mode: advanced_mode.unwrap_or(false),
@@ -404,28 +433,26 @@ pub fn import_manifest_with_opensteamtool(
         lua_files.extend(converted);
     }
 
-    // 读取Lua内容
-    let lua_content = if let Some(lua_file) = lua_files.first() {
-        fs::read_to_string(lua_file).map_err(|e| format!("读取Lua文件失败: {}", e))?
-    } else {
-        return Err("未找到Lua文件，OpenSteamTool内核模式需要Lua文件".to_string());
-    };
-
-    // 根据 lock_version 调整 Lua 内容，确保已有 Lua 文件也能响应开关
-    let manifest_map = build_manifest_map(&manifest_files);
-    let lua_content = apply_lock_version_to_lua(
-        &lua_content,
-        lock_version.unwrap_or(false),
-        &manifest_map,
-    );
-
-    // 提取AppID
+    // 提取主游戏AppID：优先使用用户提供的，否则从第一个Lua文件提取
     let detected_app_id = if let Some(id) = app_id {
         id
     } else {
-        extract_app_id_from_lua(&lua_content)
+        lua_files
+            .first()
+            .and_then(|f| fs::read_to_string(f).ok())
+            .and_then(|c| extract_app_id_from_lua(&c))
             .ok_or("无法从Lua内容中提取AppID，请手动提供")?
     };
+
+    // 根据 lock_version 调整每个Lua文件内容，确保已有 Lua 文件也能响应开关
+    // 并逐文件提取入库用 app_id，主游戏、DLC、创意工坊各自保留
+    let manifest_map = build_manifest_map(&manifest_files);
+    let lock = lock_version.unwrap_or(false);
+    let managed_lua_files = process_lua_files(&lua_files, &manifest_map, lock, detected_app_id)?;
+
+    // 主游戏Lua：内容为第一个Lua文件，app_id 使用上面确定的 detected_app_id
+    let lua_content = managed_lua_files[0].1.clone();
+    let additional_lua_files = managed_lua_files.into_iter().skip(1).collect();
 
     let game_name_value = game_name.unwrap_or_else(|| format!("Game_{}", detected_app_id));
 
@@ -434,6 +461,8 @@ pub fn import_manifest_with_opensteamtool(
         app_id: detected_app_id,
         game_name: game_name_value,
         lua_content,
+        additional_lua_files,
+        manifest_files,
         install_kernel: true,
         restart_steam: true,
         advanced_mode: advanced_mode.unwrap_or(false),
@@ -478,9 +507,9 @@ pub fn clean_steamtools_residuals_command(steam_path: String) -> Result<SteamToo
 
 /// 从Lua内容中提取AppID
 fn extract_app_id_from_lua(lua_content: &str) -> Option<u32> {
-    use regex::Regex;
-
-    let re = Regex::new(r"addappid\s*\(\s*(\d+)\s*").ok()?;
+    // 正则静态化，编译一次复用，避免每次调用重复编译
+    static RE: OnceLock<regex::Regex> = OnceLock::new();
+    let re = RE.get_or_init(|| regex::Regex::new(r"addappid\s*\(\s*(\d+)\s*").unwrap());
     re.captures(lua_content)
         .and_then(|cap| cap.get(1))
         .and_then(|m| m.as_str().parse::<u32>().ok())

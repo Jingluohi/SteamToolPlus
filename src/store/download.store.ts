@@ -192,7 +192,7 @@ export const useDownloadStore = defineStore('download', () => {
   function addLog(log: StoreDownloadLog) {
     downloadLogs.value.push(log)
     if (downloadLogs.value.length > 500) {
-      downloadLogs.value = downloadLogs.value.slice(-400)
+      downloadLogs.value.splice(0, downloadLogs.value.length - 400)
     }
   }
 

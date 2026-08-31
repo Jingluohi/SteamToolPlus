@@ -2,15 +2,33 @@
 // 提供获取资源目录的统一方法，避免重复代码
 
 use std::path::PathBuf;
+use std::sync::OnceLock;
 use tauri::{AppHandle, Manager};
 
+/// 资源目录解析结果缓存
+/// 进程内只解析一次，后续调用直接返回缓存结果，避免每次 IO 探测与日志开销
+static RESOURCE_DIR_CACHE: OnceLock<PathBuf> = OnceLock::new();
+
 /// 获取资源目录路径
+/// 首次调用执行探测并缓存，后续调用直接返回缓存结果
 /// 按以下优先级查找：
 /// 1. 程序所在目录的 resources/Resources 文件夹（打包后）
 /// 2. 程序所在目录的父目录的 resources 文件夹（开发模式）
 /// 3. 向上查找项目根目录的 resources 文件夹（开发模式）
 /// 4. Tauri 的 resource_dir
 pub fn get_resource_dir(app: &AppHandle) -> Result<PathBuf, String> {
+    if let Some(dir) = RESOURCE_DIR_CACHE.get() {
+        return Ok(dir.clone());
+    }
+
+    let dir = resolve_resource_dir(app)?;
+    // 首次解析后写入缓存；并发下 set 可能被拒绝，但 dir 本身即为正确结果
+    let _ = RESOURCE_DIR_CACHE.set(dir.clone());
+    Ok(dir)
+}
+
+/// 执行实际的资源目录探测（仅在首次调用时执行一次）
+fn resolve_resource_dir(app: &AppHandle) -> Result<PathBuf, String> {
     // 获取程序所在目录
     let exe_dir = std::env::current_exe()
         .map_err(|e| format!("无法获取程序路径: {}", e))?

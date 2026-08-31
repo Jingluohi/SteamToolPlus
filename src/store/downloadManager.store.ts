@@ -7,12 +7,20 @@
  * - 原地修改 downloadProgress 对象，避免每 2 秒创建新对象
  * - 日志截断用 splice 而非 slice，避免创建新数组
  * - 集中管理扫描逻辑，消除页面级重复代码
+ *
+ * 轮询优化（问题 12）：
+ * - 全局限定单个定时器，取代过去「每个游戏各自一个 setInterval」的方案
+ * - 每次轮询只发起一次批量 IPC（扫描全部游戏的进度文件），按 gameId 分发结果
+ * - 下载完成事件通过回调表通知页面，页面不再各自维护完成检测代码
  */
 
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
-import type { DownloadProgress, DownloadLog } from '../types/download.types'
+import type { DownloadProgress, DownloadLog, ProgressFileInfo } from '../types/download.types'
+
+/** 轮询间隔（毫秒） */
+const POLL_INTERVAL_MS = 2000
 
 /**
  * 单个游戏的下载状态
@@ -37,26 +45,23 @@ function createEmptyProgress(): DownloadProgress {
   }
 }
 
-/** 解析进度文件名: "{百分比}% - {depotId}.json" */
-function parseProgressFileName(fileName: string): { depotId: string; percentage: number } | null {
-  const match = fileName.match(/^(\d+)%\s*-\s*(\d+)\.json$/)
-  if (match) {
-    return {
-      percentage: parseInt(match[1], 10),
-      depotId: match[2]
-    }
-  }
-  return null
-}
-
 export const useDownloadManagerStore = defineStore('downloadManager', () => {
   // ==================== State ====================
 
   /** 所有游戏的下载状态 Map<gameId, GameDownloadState> */
   const downloads = ref<Map<string, GameDownloadState>>(new Map())
 
-  /** 监控定时器表（非响应式） Map<gameId, timerId> */
-  const monitorTimers = new Map<string, number>()
+  /** 统一轮询的全局定时器（非响应式，全局唯一） */
+  let pollTimer: number | null = null
+
+  /** 正在被轮询监控的游戏 ID 集合（非响应式） */
+  const polledGameIds = new Set<string>()
+
+  /** 下载完成回调表 Map<gameId, Set<callback>>（非响应式） */
+  const completeCallbacks = new Map<string, Set<() => void>>()
+
+  /** 进度变化回调表 Map<gameId, Set<callback>>（非响应式） */
+  const progressCallbacks = new Map<string, Set<() => void>>()
 
   // ==================== 内部辅助 ====================
 
@@ -73,6 +78,94 @@ export const useDownloadManagerStore = defineStore('downloadManager', () => {
       })
     }
     return downloads.value.get(gameId)!
+  }
+
+  /** 启动全局定时器（幂等） */
+  function ensureGlobalTimer() {
+    if (pollTimer !== null) return
+    pollTimer = window.setInterval(() => {
+      void pollAllProgress()
+    }, POLL_INTERVAL_MS)
+  }
+
+  /** 停止全局定时器 */
+  function stopGlobalTimer() {
+    if (pollTimer !== null) {
+      clearInterval(pollTimer)
+      pollTimer = null
+    }
+  }
+
+  /**
+   * 根据一批进度文件更新某个游戏的 depot 进度
+   * 返回是否发生了进度变化
+   */
+  function applyProgressFiles(gameId: string, files: ProgressFileInfo[]): boolean {
+    let hasChanges = false
+
+    for (const file of files) {
+      const newStatus: 'downloading' | 'completed' =
+        file.progress >= 100 ? 'completed' : 'downloading'
+      const current = getGameProgress(gameId).depots.find(d => d.depotId === file.depotId)
+
+      if (!current || current.percentage !== file.progress || current.status !== newStatus) {
+        updateDepotProgress(gameId, file.depotId, file.progress, newStatus)
+        hasChanges = true
+      }
+    }
+
+    return hasChanges
+  }
+
+  /** 进度变化或完成时，触发该游戏对应的回调 */
+  function applyAndNotify(gameId: string, files: ProgressFileInfo[]): boolean {
+    const hasChanges = applyProgressFiles(gameId, files)
+    if (hasChanges) {
+      notifyCallbacks(progressCallbacks, gameId)
+      if (getGameProgress(gameId).isComplete) {
+        notifyCallbacks(completeCallbacks, gameId)
+      }
+    }
+    return hasChanges
+  }
+
+  /** 通知某个游戏的回调表（先快照，回调内部可能移除自身） */
+  function notifyCallbacks(
+    table: Map<string, Set<() => void>>,
+    gameId: string
+  ) {
+    const callbacks = table.get(gameId)
+    if (!callbacks || callbacks.size === 0) return
+    for (const cb of Array.from(callbacks)) {
+      cb()
+    }
+  }
+
+  /**
+   * 批量轮询：一次 IPC 扫描所有被监控游戏，按 gameId 分发更新
+   * 取代过去「每个游戏各自一个 setInterval + 各发一次 IPC」的方案
+   */
+  async function pollAllProgress(): Promise<void> {
+    if (polledGameIds.size === 0) return
+
+    try {
+      // 不传 gameId，后端扫描 log/*/ 全部子目录
+      const files = await invoke<ProgressFileInfo[]>('get_download_progress_files')
+
+      // 按 gameId 分组
+      const byGame = new Map<string, ProgressFileInfo[]>()
+      for (const file of files) {
+        if (!polledGameIds.has(file.gameId)) continue
+        if (!byGame.has(file.gameId)) byGame.set(file.gameId, [])
+        byGame.get(file.gameId)!.push(file)
+      }
+
+      for (const [gameId, gameFiles] of byGame) {
+        applyAndNotify(gameId, gameFiles)
+      }
+    } catch {
+      // 忽略单次扫描错误，等待下一轮重试
+    }
   }
 
   // ==================== Getters ====================
@@ -165,32 +258,13 @@ export const useDownloadManagerStore = defineStore('downloadManager', () => {
   }
 
   /**
-   * 扫描指定游戏的进度文件，更新 depot 进度
-   * 返回结果供页面处理完成逻辑
+   * 立即扫描指定游戏的进度文件（单次，用于开始监控时的首屏反馈）
+   * 若检测到完成会触发完成回调
    */
   async function scanProgressFiles(gameId: string): Promise<{ hasChanges: boolean; isComplete: boolean }> {
     try {
-      const progressFiles = await invoke<Array<{ name: string; path: string }>>(
-        'get_download_progress_files',
-        { gameId }
-      )
-
-      let hasChanges = false
-
-      for (const file of progressFiles) {
-        const parsed = parseProgressFileName(file.name)
-        if (!parsed) continue
-
-        const newStatus = parsed.percentage >= 100 ? 'completed' : 'downloading'
-        const currentDepot = getGameProgress(gameId).depots
-          .find(d => d.depotId === parsed.depotId)
-
-        if (!currentDepot || currentDepot.percentage !== parsed.percentage || currentDepot.status !== newStatus) {
-          updateDepotProgress(gameId, parsed.depotId, parsed.percentage, newStatus)
-          hasChanges = true
-        }
-      }
-
+      const files = await invoke<ProgressFileInfo[]>('get_download_progress_files', { gameId })
+      const hasChanges = applyAndNotify(gameId, files)
       return { hasChanges, isComplete: getGameProgress(gameId).isComplete }
     } catch {
       return { hasChanges: false, isComplete: false }
@@ -220,22 +294,48 @@ export const useDownloadManagerStore = defineStore('downloadManager', () => {
     state.downloadProgress = progress
   }
 
-  /** 注册监控定时器 */
-  function registerMonitorTimer(gameId: string, timerId: number) {
-    stopMonitoring(gameId)
-    monitorTimers.set(gameId, timerId)
+  /**
+   * 开始监控指定游戏（加入统一轮询）
+   * 不再需要页面传入定时器 ID，全局定时器由 store 统一管理
+   */
+  function startMonitoring(gameId: string) {
     ensureState(gameId).isMonitoring = true
+    polledGameIds.add(gameId)
+    ensureGlobalTimer()
   }
 
-  /** 停止指定游戏的监控 */
+  /** 停止指定游戏的监控（从统一轮询中移除，并清理回调） */
   function stopMonitoring(gameId: string) {
-    const timerId = monitorTimers.get(gameId)
-    if (timerId !== undefined) {
-      clearInterval(timerId)
-      monitorTimers.delete(gameId)
-    }
+    polledGameIds.delete(gameId)
+    completeCallbacks.delete(gameId)
+    progressCallbacks.delete(gameId)
     const state = downloads.value.get(gameId)
     if (state) state.isMonitoring = false
+    if (polledGameIds.size === 0) {
+      stopGlobalTimer()
+    }
+  }
+
+  /** 注册某个游戏的下载完成回调 */
+  function onComplete(gameId: string, callback: () => void) {
+    registerCallback(completeCallbacks, gameId, callback)
+  }
+
+  /** 注册某个游戏的进度变化回调（每个轮询周期的进度更新都会触发） */
+  function onProgress(gameId: string, callback: () => void) {
+    registerCallback(progressCallbacks, gameId, callback)
+  }
+
+  /** 向指定回调表注册回调 */
+  function registerCallback(
+    table: Map<string, Set<() => void>>,
+    gameId: string,
+    callback: () => void
+  ) {
+    if (!table.has(gameId)) {
+      table.set(gameId, new Set())
+    }
+    table.get(gameId)!.add(callback)
   }
 
   /** 标记下载完成 */
@@ -275,8 +375,10 @@ export const useDownloadManagerStore = defineStore('downloadManager', () => {
     updateProgress,
     addLog,
     clearLogs,
-    registerMonitorTimer,
+    startMonitoring,
     stopMonitoring,
+    onComplete,
+    onProgress,
     markComplete,
     resetGame
   }

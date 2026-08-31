@@ -4,11 +4,11 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::sync::OnceLock;
 use std::thread;
 use std::time::Duration;
-use tauri::AppHandle;
+use tauri::{AppHandle, Manager};
 
-use crate::services::config_service::{ConfigService, ConfigServiceTrait};
 use crate::services::fake_imported_service::cleanup_fake_imported_files;
 use crate::utils::resource_utils::get_resource_dir;
 
@@ -39,8 +39,15 @@ pub struct OpenSteamToolImportOptions {
     pub app_id: u32,
     /// 游戏名称（用于日志展示）
     pub game_name: String,
-    /// Lua脚本内容
+    /// Lua脚本内容（主游戏）
     pub lua_content: String,
+    /// 额外的Lua文件（DLC/创意工坊等），每项为(入库到的app_id, Lua内容)
+    /// OpenSteamTool 会加载 config/lua 目录下的所有 .lua，
+    /// 因此清单包内的主游戏、每个DLC、创意工坊depot各自独立写入，全部保留
+    pub additional_lua_files: Vec<(u32, String)>,
+    /// 需一并复制到 Steam/config/depotcache/ 的清单文件路径（锁定版本时必须有本地 manifest，
+    /// 否则 OpenSteamTool 只能从远程 manifest 服务取请求码，取不到就回退到最新版）
+    pub manifest_files: Vec<String>,
     /// 是否自动安装内核DLL（首次使用）
     pub install_kernel: bool,
     /// 是否重启Steam
@@ -520,9 +527,9 @@ pub fn clean_steamtools_residuals(steam_path: &str) -> Result<SteamToolsCleanRes
 /// 从Lua脚本内容中提取AppID
 /// 支持 addappid(appid) 格式
 fn extract_app_id_from_lua(lua_content: &str) -> Option<u32> {
-    use regex::Regex;
-
-    let re = Regex::new(r"addappid\s*\(\s*(\d+)\s*").ok()?;
+    // 正则静态化，编译一次复用，避免每次调用重复编译
+    static RE: OnceLock<regex::Regex> = OnceLock::new();
+    let re = RE.get_or_init(|| regex::Regex::new(r"addappid\s*\(\s*(\d+)\s*").unwrap());
     re.captures(lua_content)
         .and_then(|cap| cap.get(1))
         .and_then(|m| m.as_str().parse::<u32>().ok())
@@ -541,18 +548,17 @@ pub fn import_with_opensteamtool(
         install_kernel(app, &steam_path)?;
         kernel_installed = true;
 
-        // 更新配置：记录内核已安装
-        if let Ok(config_service) = std::panic::catch_unwind(|| ConfigService::new()) {
-            let mut current_config = config_service.get_config();
-            current_config.opensteamtool.kernel_installed = true;
-            let _ = config_service.update_config(crate::models::UpdateConfigRequest {
-                window: None,
-                theme: None,
-                game_dirs: None,
-                launch: None,
-                opensteamtool: Some(current_config.opensteamtool),
-            });
-        }
+        // 更新配置：记录内核已安装（复用 AppState 中的共享配置服务）
+        let config_service = app.state::<crate::AppState>().config_service.clone();
+        let mut current_config = config_service.get_config();
+        current_config.opensteamtool.kernel_installed = true;
+        let _ = config_service.update_config(crate::models::UpdateConfigRequest {
+            window: None,
+            theme: None,
+            game_dirs: None,
+            launch: None,
+            opensteamtool: Some(current_config.opensteamtool),
+        });
     }
 
     // 2. 确定AppID
@@ -572,12 +578,59 @@ pub fn import_with_opensteamtool(
     }
 
     // 4. 写入Lua文件
+    // 主游戏写入 {app_id}.lua
     let lua_file = write_lua_file(&steam_path, app_id, &options.lua_content)?;
-    let lua_written = lua_file.exists();
+    let mut lua_written = lua_file.exists();
 
-    // 4. manifest 文件不再需要复制到 Steam/config/depotcache/
-    // OpenSteamTool 只需要 Lua 中的 addappid/setManifestid，Steam 会自己在线下载 manifest
-    let manifest_copied = 0;
+    // 4.1 写入额外的Lua文件（DLC/创意工坊等）
+    // OpenSteamTool 会加载 config/lua 目录下的所有 .lua，
+    // 因此每个文件按各自提取的 app_id 命名写入，确保创意工坊密钥、DLC 等全部入库生效
+    for (extra_app_id, extra_content) in &options.additional_lua_files {
+        if *extra_app_id == 0 || *extra_app_id == app_id {
+            continue;
+        }
+        match write_lua_file(&steam_path, *extra_app_id, extra_content) {
+            Ok(f) => {
+                lua_written = lua_written && f.exists();
+                log::info!("已写入附加Lua文件: {}", f.display());
+            }
+            Err(e) => {
+                log::warn!("写入附加Lua文件失败 appid={}: {}", extra_app_id, e);
+            }
+        }
+    }
+
+    // 4. 复制清单(.manifest)文件到 Steam/config/depotcache/
+    // setManifestid 只是把 depot 的 GID 补丁为锁定值，Steam 之后仍需要清单的实际内容。
+    // OpenSteamTool 会向远程 manifest 服务(http/manifest.opensteamtool.com 等)取请求码，
+    // 若该服务不可达或不认识该 GID，请求码为 0，Steam 会回退到最新版。
+    // 因此必须在 depotcache 里放一份本地 {depotId}_{manifestId}.manifest，让 Steam 直接读本地清单，
+    // 锁定版本才能真正生效。
+    let mut manifest_copied = 0usize;
+    if !options.manifest_files.is_empty() {
+        let depotcache_dir = Path::new(&steam_path).join("config").join("depotcache");
+        fs::create_dir_all(&depotcache_dir).map_err(|e| {
+            format!("创建 depotcache 目录失败: {}", e)
+        })?;
+
+        for manifest_file in &options.manifest_files {
+            let src = PathBuf::from(manifest_file);
+            if !src.is_file() {
+                continue;
+            }
+            let Some(file_name) = src.file_name() else { continue };
+            let dest = depotcache_dir.join(file_name);
+            match fs::copy(&src, &dest) {
+                Ok(_) => {
+                    manifest_copied += 1;
+                    log::info!("已复制清单文件: {}", dest.display());
+                }
+                Err(e) => {
+                    log::warn!("复制清单文件失败 {}: {}", src.display(), e);
+                }
+            }
+        }
+    }
 
     // 5. 高级模式：不再自动写注册表，仅做占位记录
     let advanced_enabled = options.advanced_mode;

@@ -115,6 +115,7 @@
           :is-preparing-download-manifest="isPreparingDownloadManifest"
           @select-manifest-archive="selectDownloadManifestArchive"
           @select-manifest-folder="selectDownloadManifestFolder"
+          @update:download-manifest-source-mode="downloadManifestSourceMode = $event"
           @start-download="startDownload"
           @stop-download="stopDownload"
           @open-qingdan-qr-code="openQingdanQRCode"
@@ -131,6 +132,7 @@
           :applyingPatch="applyingPatch"
           :patchResult="patchResult"
           :patchLocalStatus="patchLocalStatus"
+          :patchAppliedFromFile="patchAppliedFromFile"
           :patchReadmes="patchReadmes"
           @openDownloadUrl="openDownloadUrl"
           @selectAndApplyPatch="selectAndApplyPatch"
@@ -388,7 +390,9 @@ const setDefaultTab = () => {
     // 如果没有下载功能和解压即玩，默认选中第一个补丁标签
     currentTab.value = `patch-${game.value.tags[0].patch_type}`
   } else {
-    currentTab.value = ''
+    // 以上都不满足时，入库Steam标签始终存在，默认选中它
+    // 覆盖"游戏仅有入库Steam选项"的情况
+    currentTab.value = 'import'
   }
 }
 
@@ -400,6 +404,7 @@ const {
   patchResult,
   patchReadmes,
   patchLocalStatus,
+  patchAppliedFromFile,
   checkPatchLocalStatus,
   applyPatch,
   selectAndApplyPatch,
@@ -753,50 +758,48 @@ const stopDownload = async () => {
 }
 
 /**
- * 扫描进度文件（委托给 store）并处理页面级完成逻辑
+ * 进度变化处理（由全局 store 的进度回调触发）
+ * 将中间下载进度持久化到 game.json
  */
-const scanProgressFiles = async () => {
-  const result = await downloadManagerStore.scanProgressFiles(gameId.value)
-  if (!result.hasChanges) return
-
+const handleDownloadProgress = async () => {
   const progress = downloadManagerStore.getGameProgress(gameId.value)
 
-  // 更新下载状态到 game.json
+  if (progress.isComplete) return
+
   if (existingGameData.value) {
-    await updateGameDownloadStatus(
-      gameId.value,
-      progress.isComplete ? 'completed' : 'downloading',
-      progress.overallPercentage
-    )
+    await updateGameDownloadStatus(gameId.value, 'downloading', progress.overallPercentage)
+  }
+}
+
+/**
+ * 下载完成处理（由全局 store 的完成回调触发）
+ */
+const handleDownloadComplete = async () => {
+  stopProgressMonitoring()
+  addDownloadLog('所有depot下载完成！', 'success')
+  await updateGameDownloadStatus(gameId.value, 'completed', 100)
+
+  // 执行下载完成收尾：扫描目录、定位 exe、标记已安装
+  let finalizedGame = null
+  try {
+    finalizedGame = await finalizeGameDownload(gameId.value)
+    existingGameData.value = finalizedGame
+    addDownloadLog('游戏已入库，可前往游戏库查看', 'success')
+  } catch (finalizeError) {
+    addDownloadLog(`入库处理失败: ${finalizeError}`, 'error')
+    existingGameData.value = await getGameData(gameId.value)
   }
 
-  if (result.isComplete) {
-    stopProgressMonitoring()
-    addDownloadLog('所有depot下载完成！', 'success')
-    await updateGameDownloadStatus(gameId.value, 'completed', 100)
+  const finalInstallPath = finalizedGame?.install_path || existingGameData.value?.install_path || downloadPath.value
+  if (finalInstallPath) {
+    gamePath.value = finalInstallPath
+  }
 
-    // 执行下载完成收尾：扫描目录、定位 exe、标记已安装
-    let finalizedGame = null
-    try {
-      finalizedGame = await finalizeGameDownload(gameId.value)
-      existingGameData.value = finalizedGame
-      addDownloadLog('游戏已入库，可前往游戏库查看', 'success')
-    } catch (finalizeError) {
-      addDownloadLog(`入库处理失败: ${finalizeError}`, 'error')
-      existingGameData.value = await getGameData(gameId.value)
-    }
-
-    const finalInstallPath = finalizedGame?.install_path || existingGameData.value?.install_path || downloadPath.value
-    if (finalInstallPath) {
-      gamePath.value = finalInstallPath
-    }
-
-    if (patchTabs.value.length > 0) {
-      downloadCompleteInstallPath.value = finalInstallPath
-      const exePath = finalizedGame?.exe_path || existingGameData.value?.exe_path || ''
-      downloadCompleteExePath.value = exePath ? exePath.substring(0, exePath.lastIndexOf('\\')) : ''
-      showDownloadCompleteModal.value = true
-    }
+  if (patchTabs.value.length > 0) {
+    downloadCompleteInstallPath.value = finalInstallPath
+    const exePath = finalizedGame?.exe_path || existingGameData.value?.exe_path || ''
+    downloadCompleteExePath.value = exePath ? exePath.substring(0, exePath.lastIndexOf('\\')) : ''
+    showDownloadCompleteModal.value = true
   }
 }
 
@@ -886,7 +889,7 @@ const goToPatchTab = (tab: { id: string; name: string; patchType: number; patchP
 
 /**
  * 开始监控下载进度
- * 使用全局 store 管理定时器，页面切换不丢失，支持多游戏同时监控
+ * 使用全局 store 的统一定时器，页面切换不丢失，支持多游戏同时监控
  */
 const startProgressMonitoring = async () => {
   if (isMonitoring.value) return
@@ -916,14 +919,15 @@ const startProgressMonitoring = async () => {
     addDownloadLog(`读取manifest文件夹失败: ${error}`, 'error')
   }
 
-  // 立即扫描一次
-  await scanProgressFiles()
+  // 注册进度变化与完成回调
+  downloadManagerStore.onProgress(gameId.value, handleDownloadProgress)
+  downloadManagerStore.onComplete(gameId.value, handleDownloadComplete)
 
-  // 设置定时扫描，注册到全局 store
-  const timerId = window.setInterval(() => {
-    scanProgressFiles()
-  }, 2000)
-  downloadManagerStore.registerMonitorTimer(gameId.value, timerId)
+  // 立即扫描一次
+  await downloadManagerStore.scanProgressFiles(gameId.value)
+
+  // 加入统一轮询
+  downloadManagerStore.startMonitoring(gameId.value)
 }
 
 /**

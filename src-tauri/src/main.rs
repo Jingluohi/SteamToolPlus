@@ -74,19 +74,28 @@ fn initialize_app_state() -> AppState {
 /// 统一处理窗口显示逻辑，确保图片正确加载
 fn show_main_window(app_handle: &tauri::AppHandle) {
     if let Some(window) = app_handle.get_webview_window("main") {
+        // 若渲染进程之前被 TrySuspend 暂停（隐藏到托盘时），先恢复
+        crate::utils::webview2_memory::resume_renderer(app_handle);
         let _ = window.show();
         let _ = window.set_focus();
-        // 延迟注入刷新脚本，确保窗口已完全显示
-        let window_clone = window.clone();
-        std::thread::spawn(move || {
-            std::thread::sleep(std::time::Duration::from_millis(100));
-            // 注入刷新脚本：通知前端刷新所有图片
-            let _ = window_clone.eval(r#"
-                window.dispatchEvent(new CustomEvent('window-focused'));
-            "#);
-            log::info!("主窗口已显示并触发图片刷新");
-        });
+        // 直接向前端发送刷新事件，通知恢复背景与封面图片
+        // 使用 Emitter 的 emit（前端 listen 可接收），替代原先无效的 DOM CustomEvent 注入
+        let _ = window.emit("window-focused", ());
     }
+}
+
+/// 触发一次 GPU discardable 缓存回收（前端翻页时调用）
+/// 短暂降低 WebView2 内存目标等级，让 Chromium 丢弃旧页纹理后恢复正常
+#[tauri::command]
+fn flush_gpu_cache(app: tauri::AppHandle) {
+    crate::utils::webview2_memory::flush_gpu_cache(&app);
+}
+
+/// 结束 WebView2 GPU 进程，强制释放全部 GPU 显存（前端空闲超时/手动触发时调用）
+/// GPU 进程退出后 Chromium 会自动重启，图片由前端自动重载，渲染进程状态不受影响
+#[tauri::command]
+fn kill_gpu_process() {
+    crate::utils::gpu_process::kill_gpu_process();
 }
 
 /// 获取启动时预检查的更新结果
@@ -111,6 +120,8 @@ async fn restart_app(app_handle: tauri::AppHandle) -> Result<(), String> {
 /// 退出应用程序
 #[tauri::command]
 async fn exit_app(app_handle: tauri::AppHandle, exit_code: i32) {
+    // 退出前强制将内存缓存中的游戏数据落盘，避免最后一次变更因后台线程延迟而丢失
+    crate::services::game_data_service::flush_now();
     app_handle.exit(exit_code);
 }
 
@@ -139,6 +150,9 @@ pub fn take_download_stopped(game_id: &str) -> bool {
 /// 重置所有正在下载的游戏状态
 /// 在程序关闭时调用，将 download_status 从 "downloading" 重置为 "idle"
 fn reset_downloading_games() -> Result<(), String> {
+    // 先将内存缓存中的最新游戏数据强制落盘，确保读取到的是最新状态
+    crate::services::game_data_service::flush_now();
+
     use crate::services::game_data_service::GameDataCollection;
     use crate::utils::config_path_utils;
     use std::fs;
@@ -169,7 +183,6 @@ fn reset_downloading_games() -> Result<(), String> {
             log::info!("重置游戏 {} 的下载状态", game_id);
             game.download_status = "idle".to_string();
             game.download_progress = 0;
-            game.last_played = Some(chrono::Local::now().to_rfc3339());
             has_changes = true;
         }
     }
@@ -469,39 +482,19 @@ fn main() {
 
                         // 隐藏窗口
                         if let Some(window) = app_handle.get_webview_window("main") {
-                            // 先通知前端释放 Vue 数据（避免内存泄漏）
+                            // 通知前端释放图片缓存与背景资源（前端已注册 window-blurred 处理）
                             let _ = window.emit("window-blurred", ());
 
                             // 隐藏窗口
                             let _ = window.hide();
                             log::info!("窗口已隐藏到托盘");
 
-                            // 立即注入 JS 清理 DOM 图片，释放 WebView2 GPU 进程显存
-                            let window_clone = window.clone();
-                            std::thread::spawn(move || {
-                                // 等待窗口完全隐藏后再清理 DOM
-                                std::thread::sleep(std::time::Duration::from_millis(300));
-                                let _ = window_clone.eval(r#"
-                                    (function() {
-                                        // 清除所有 img 标签的图片，释放 GPU 显存
-                                        document.querySelectorAll('img').forEach(function(img) {
-                                            img.removeAttribute('src');
-                                            img.removeAttribute('srcset');
-                                            img.removeAttribute('data-src');
-                                            img.removeAttribute('data-srcset');
-                                        });
-                                        // 清除所有背景图片
-                                        document.querySelectorAll('[style*="background-image"]').forEach(function(el) {
-                                            el.style.backgroundImage = '';
-                                        });
-                                        // 清除所有 CSS 变量中的图片 URL
-                                        document.documentElement.style.setProperty('--bg-image-url', '');
-                                        // 强制回流，确保浏览器释放资源
-                                        document.body.offsetHeight;
-                                    })();
-                                "#);
-                                log::info!("DOM 图片已清理，GPU 显存已释放");
-                            });
+                            // 暂停渲染进程，彻底释放 GPU/渲染内存（恢复时在 show_main_window 中 Resume）
+                            crate::utils::webview2_memory::suspend_renderer(&app_handle);
+
+                            // 结束 WebView2 GPU 进程，强制归零 GPU 显存
+                            // （Chromium 会在下次显示时自动重启 GPU 进程）
+                            crate::utils::gpu_process::kill_gpu_process();
                         }
                     }
                 }
@@ -545,21 +538,6 @@ fn main() {
                 }
             });
 
-            // 处理窗口焦点事件：窗口获得焦点时通知前端
-            // 只在窗口获得焦点时通知前端刷新图片（从托盘恢复、Alt+Tab 切换回来等）
-            // 不监听失去焦点，避免切换到其他应用时误触发图片释放
-            let window_clone = window.clone();
-            window.on_window_event(move |event| {
-                if let WindowEvent::Focused(focused) = event {
-                    if *focused {
-                        // 窗口获得焦点（从托盘恢复、Alt+Tab 切换回来等）
-                        let _ = window_clone.emit("window-focused", ());
-                        log::info!("窗口获得焦点，已通知前端刷新背景");
-                    }
-                    // 不再监听失去焦点事件，避免误触发
-                }
-            });
-
             Ok(())
         })
         // 注册游戏相关命令
@@ -577,6 +555,7 @@ fn main() {
             game_commands::load_games_config_from_file,
             game_commands::load_tested_games_config,
             game_commands::get_game_cover_image,
+            game_commands::get_game_cover_bytes,
             game_commands::check_game_installed,
             game_commands::check_patch_file_exists,
             game_commands::get_game_cover_path,
@@ -709,10 +688,6 @@ fn main() {
             patch_commands::save_steam_http_response,
             patch_commands::load_steam_http_response,
             patch_commands::list_steam_http_configs,
-            patch_commands::save_custom_broadcasts,
-            patch_commands::load_custom_broadcasts,
-            patch_commands::save_auto_accept_invite,
-            patch_commands::load_auto_accept_invite,
             patch_commands::load_other_config,
             // ColdClientLoader 和 lobby_connect 配置命令
             patch_commands::save_coldclient_config,
@@ -727,6 +702,7 @@ fn main() {
             game_data_commands::update_game_download_status,
             game_data_commands::update_game_play_time,
             game_data_commands::check_game_exists,
+            game_data_commands::reset_missing_installed_games,
             game_data_commands::import_custom_game,
             game_data_commands::launch_game_with_tracking,
             game_data_commands::update_game_data,
@@ -756,6 +732,8 @@ fn main() {
             // 应用重启命令
             restart_app,
             exit_app,
+            flush_gpu_cache,
+            kill_gpu_process,
             update_manager::check_instance_restart_request,
             update_manager::get_app_versions,
             update_manager::check_for_update,

@@ -47,7 +47,7 @@
               :class="{ 
                 active: activeTab === item.id,
                 configured: configStatus[item.id],
-                disabled: item.id === 'overlay' && !useExperimental
+                disabled: (item.id === 'overlay' || item.id === 'lan') && !isOverlayCapable
               }"
               @click="handleNavClick(item.id)"
             >
@@ -69,7 +69,8 @@
               class="nav-item"
               :class="{ 
                 active: activeTab === item.id,
-                configured: configStatus[item.id]
+                configured: configStatus[item.id],
+                disabled: item.id === 'lan' && !isOverlayCapable
               }"
               @click="handleNavClick(item.id)"
             >
@@ -301,7 +302,7 @@ import LobbyConnectConfigPanel from './panels/LobbyConnectConfigPanel.vue'
 const props = defineProps<{
   gamePath: string
   gameId: string
-  useExperimental?: boolean
+  mode?: string
 }>()
 
 const emit = defineEmits<{
@@ -309,16 +310,23 @@ const emit = defineEmits<{
   saved: []
 }>()
 
+/**
+ * 当前引擎模式是否支持 Overlay / 局域网联机
+ * 仅「局域网联机」的两个子引擎（experimental / steamclient）支持
+ */
+const isOverlayCapable = computed(() => props.mode === 'experimental' || props.mode === 'steamclient')
+
 const activeTab = ref('main')
 const searchQuery = ref('')
 
 /**
  * 处理导航项点击
- * 若点击的是 Overlay 且未启用功能版，则阻止切换并提示
+ * Overlay 与局域网联机仅在「局域网联机」模式（experimental / steamclient）下可用，
+ * 其它模式（单机 regular）下阻止切换并给出提示
  */
 function handleNavClick(tabId: string) {
-  if (tabId === 'overlay' && !props.useExperimental) {
-    alert('Overlay 功能需要启用功能版才能使用')
+  if ((tabId === 'overlay' || tabId === 'lan') && !isOverlayCapable.value) {
+    alert('该功能需要「局域网联机」模式（支持 Overlay）才能使用，请先在免 Steam 补丁页的基础配置中切换到局域网联机模式。')
     return
   }
   activeTab.value = tabId
@@ -447,7 +455,7 @@ watch(debouncedSearchQuery, (query) => {
   if (!query) return
   const matched = allFilteredConfigs.value
   // 未启用功能版时，Overlay 标签不可选
-  const availableTabs = matched.filter(c => c.id !== 'overlay' || props.useExperimental)
+  const availableTabs = matched.filter(c => (c.id !== 'overlay' && c.id !== 'lan') || isOverlayCapable.value)
   if (availableTabs.length > 0 && !availableTabs.some(c => c.id === activeTab.value)) {
     activeTab.value = availableTabs[0].id
   }

@@ -86,7 +86,9 @@ export interface ProgressFileInfo {
   /** 进度百分比 (0-100) */
   progress: number
   /** Depot ID */
-  depot_id: string
+  depotId: string
+  /** 所属游戏 ID */
+  gameId: string
 }
 
 /**

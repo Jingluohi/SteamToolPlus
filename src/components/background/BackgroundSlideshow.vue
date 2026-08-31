@@ -208,22 +208,39 @@ onMounted(() => {
   loadBackgroundConfig()
 
   // 监听程序主题变化（通过观察data-theme与data-bg-mode属性）
+  // 防抖合并：主题/模式短时间内多次变化时只执行最后一次加载，减少重复 IO
+  let observerTimer: ReturnType<typeof setTimeout> | null = null
   const observer = new MutationObserver((mutations) => {
+    let themeChanged = false
+    let modeChanged = false
     mutations.forEach((mutation) => {
       if (mutation.attributeName === 'data-theme') {
-        // 主题切换时重新加载背景图片
-        loadBackgroundItems()
+        themeChanged = true
       } else if (mutation.attributeName === 'data-bg-mode') {
-        // 图片/纯色模式切换时重新加载背景配置
-        loadBackgroundConfig()
+        modeChanged = true
       }
     })
+
+    if (observerTimer) clearTimeout(observerTimer)
+    observerTimer = setTimeout(() => {
+      observerTimer = null
+      if (modeChanged) {
+        // 图片/纯色模式切换时重新加载背景配置
+        loadBackgroundConfig()
+      } else if (themeChanged) {
+        // 主题切换时重新加载背景图片
+        loadBackgroundItems()
+      }
+    }, 150)
   })
 
   observer.observe(document.documentElement, {
     attributes: true,
     attributeFilter: ['data-theme', 'data-bg-mode']
   })
+
+  // 监听窗口可见性变化：隐藏时释放图片资源并停止轮播，恢复时刷新
+  window.addEventListener('visibilitychange', handleVisibilityChange)
 })
 
 // 监听 pageType 变化，重新加载背景
@@ -241,6 +258,8 @@ onUnmounted(() => {
   if (intervalId) {
     clearInterval(intervalId)
   }
+
+  window.removeEventListener('visibilitychange', handleVisibilityChange)
 })
 
 /**
@@ -265,6 +284,9 @@ function releaseImages() {
  */
 let refreshTimer: ReturnType<typeof setTimeout> | null = null
 async function refreshItems() {
+  // 纯色模式下没有背景图片，跳过重载，避免无谓的 IO 与定时器空转
+  if (isSolidMode.value) return
+
   // 防抖：如果正在刷新中，取消之前的定时器
   if (refreshTimer) {
     clearTimeout(refreshTimer)
@@ -283,6 +305,15 @@ async function refreshItems() {
     // 重新加载图片
     await loadBackgroundConfig()
   }, 150)
+}
+
+// 窗口可见性变化处理：隐藏时释放图片并停止轮播，恢复时刷新
+function handleVisibilityChange() {
+  if (document.hidden) {
+    releaseImages()
+  } else {
+    refreshItems()
+  }
 }
 
 // 暴露方法供外部调用

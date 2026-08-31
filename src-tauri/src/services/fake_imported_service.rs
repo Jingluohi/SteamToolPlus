@@ -201,7 +201,8 @@ pub fn has_real_steam_ownership(steam_path: &str, app_id: u32) -> bool {
 
 /// 删除 OpenSteamTool 为该游戏写入的文件
 /// 当前只删除 Steam/config/lua/{app_id}.lua
-/// manifest 文件不再由程序复制到 Steam/config/depotcache/，因此无需清理
+/// 已复制到 Steam/config/depotcache/ 的 .manifest 为 Steam 共享清单缓存，
+/// 可能还包含其它游戏的清单，因此不在此清理，避免误删共享文件
 /// 返回删除的文件列表
 pub fn cleanup_fake_imported_files(
     steam_path: &str,

@@ -147,7 +147,8 @@ pub fn handle_instance_conflicts() {
         Err(_) => return,
     };
 
-    let mut system = System::new_all();
+    // 只刷新进程信息，避免 new_all 加载磁盘/网络/组件等无关数据
+    let mut system = System::new();
     system.refresh_processes(ProcessesToUpdate::All, true);
 
     let current_pid = std::process::id();
@@ -240,7 +241,8 @@ pub fn spawn_instance_control_watcher(app_handle: tauri::AppHandle) {
         let mut has_emitted = false;
 
         loop {
-            thread::sleep(Duration::from_millis(500));
+            // 控制文件仅在实例冲突时短暂存在，降低轮询频率以减少常驻线程的空转 CPU 占用
+            thread::sleep(Duration::from_millis(2000));
 
             if !control_path.exists() {
                 has_emitted = false;

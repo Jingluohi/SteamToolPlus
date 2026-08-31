@@ -97,3 +97,7 @@ workspace.xml
 
 # Trae rules (private)
 .trae/
+
+# Development instruction documents (private)
+*审计指令*.md
+*开发指令*.md

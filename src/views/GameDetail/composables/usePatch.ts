@@ -53,6 +53,9 @@ export function usePatch(
   /** 本地补丁文件存在状态缓存 */
   const patchLocalStatus = ref<Map<number, boolean>>(new Map())
 
+  /** 已从用户选择的7z文件直接应用成功的补丁类型集合（会话内存态，不写入本地补丁源目录） */
+  const patchAppliedFromFile = ref<Set<number>>(new Set())
+
   // ==================== 补丁方法 ====================
 
   /**
@@ -121,9 +124,9 @@ export function usePatch(
 
   /**
    * 选择本地补丁文件并直接应用
-   * @param _tab 补丁标签（用于接口一致性，实际从用户选择的文件应用）
+   * @param tab 补丁标签（用于标记已应用的补丁类型）
    */
-  const selectAndApplyPatch = async (_tab: PatchTag) => {
+  const selectAndApplyPatch = async (tab: PatchTag) => {
     if (!gamePath.value) {
       alert('请先选择游戏路径')
       return
@@ -164,6 +167,8 @@ export function usePatch(
       patchResult.value = result
 
       if (result.success) {
+        // 标记该补丁类型已从文件应用成功，用于UI状态反馈（不复制文件到本地源目录）
+        patchAppliedFromFile.value.add(tab.patchType)
         await message('补丁应用成功！', { title: '提示', kind: 'info' })
       } else {
         alert('补丁应用完成，但有一些错误，请查看详情')
@@ -179,6 +184,22 @@ export function usePatch(
     } finally {
       applyingPatch.value = false
     }
+  }
+
+  /**
+   * 标记补丁已从用户选择的文件应用成功
+   * @param patchType 补丁类型
+   */
+  const markPatchAppliedFromFile = (patchType: number) => {
+    patchAppliedFromFile.value.add(patchType)
+  }
+
+  /**
+   * 查询某补丁类型是否已从用户选择的文件应用成功
+   * @param patchType 补丁类型
+   */
+  const isPatchAppliedFromFile = (patchType: number): boolean => {
+    return patchAppliedFromFile.value.has(patchType)
   }
 
   /**
@@ -261,12 +282,15 @@ export function usePatch(
     patchResult,
     patchReadmes,
     patchLocalStatus,
+    patchAppliedFromFile,
     
     // 方法
     checkPatchLocalStatus,
     isPatchLocalExists,
     applyPatch,
     selectAndApplyPatch,
+    markPatchAppliedFromFile,
+    isPatchAppliedFromFile,
     loadPatchReadmes,
     getPatchReadme,
     openVirtualizationTutorial,

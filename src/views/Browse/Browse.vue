@@ -9,10 +9,31 @@
     <div class="page-header">
       <div class="header-left">
         <h1 class="page-title">浏览</h1>
-        <p class="page-desc">这些是经过验证的游戏（都是豪华版），更多游戏从【工具】->【本体下载】用清单文件下载本体，去【工具】->【免Steam补丁】打启动补丁或加QQ群：1047475968 反馈</p>
+        <p class="page-desc">更多游戏从【工具】->【本体下载】用清单文件下载本体，去【工具】->【免Steam补丁】打启动补丁或加QQ群：1095428733 反馈</p>
       </div>
       <!-- 搜索栏移到标题右侧 -->
       <div class="search-section">
+        <!-- 分类选择器：单机/联机/全部，紧贴搜索栏左侧 -->
+        <div class="category-selector">
+          <button
+            class="category-btn"
+            :class="{ active: activeCategory === 'all' }"
+            @click="setCategory('all')"
+            title="显示全部游戏"
+          >全部</button>
+          <button
+            class="category-btn"
+            :class="{ active: activeCategory === 'single' }"
+            @click="setCategory('single')"
+            title="仅显示单机游戏"
+          >单机</button>
+          <button
+            class="category-btn"
+            :class="{ active: activeCategory === 'online' }"
+            @click="setCategory('online')"
+            title="仅显示联机游戏"
+          >联机</button>
+        </div>
         <div class="search-box">
           <svg class="search-icon" viewBox="0 0 24 24" fill="currentColor">
             <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
@@ -176,12 +197,15 @@
  * 使用分页加载，每页20张卡片，控制内存占用
  */
 
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter, onBeforeRouteLeave } from 'vue-router'
 import type { GameConfigData } from '../../types'
-import { loadGamesConfigFromFile } from '../../api/game.api'
-import { releaseCoverImages } from '../../services/imageCache.service'
+import { loadGamesConfigFromFile, flushGpuCache } from '../../api/game.api'
+import { isSinglePlayerPatch, isOnlinePatch } from '../../constants/game'
 import GameCard from '../../components/game/GameCard.vue'
+
+// 分类筛选类型：all=全部，single=单机，online=联机
+type BrowseCategory = 'all' | 'single' | 'online'
 
 // 路由
 const router = useRouter()
@@ -193,17 +217,9 @@ const PAGE_SIZE = 25 // 每页25张卡片，固定5列×5行
 const loading = ref(false)
 const gamesConfig = ref<GameConfigData[]>([])
 const searchKeyword = ref('')
+const activeCategory = ref<BrowseCategory>('all')
 const currentPage = ref(1)
 const jumpPageInput = ref<number | null>(null)
-
-// 上一页游戏 ID 列表，用于页码切换后延迟释放图片缓存
-const previousPageGameIds = ref<string[]>([])
-
-// 上一页图片缓存释放定时器
-let pageReleaseTimer: ReturnType<typeof setTimeout> | null = null
-
-// 上一页图片缓存释放延迟（毫秒）
-const PAGE_RELEASE_DELAY = 3000
 
 // 计算属性：跳转页码是否有效
 const isValidJumpPage = computed(() => {
@@ -215,7 +231,17 @@ const isValidJumpPage = computed(() => {
 // 计算属性
 const filteredGames = computed(() => {
   let result = gamesConfig.value
-  
+
+  // 分类筛选：单机/联机/全部
+  // 依据每个游戏的补丁标签判断其是否含单机补丁或联机补丁，
+  // 同时拥有两类补丁的游戏会同时出现在两个分类中
+  if (activeCategory.value === 'single') {
+    result = result.filter(game => game.tags.some(tag => isSinglePlayerPatch(tag.patch_type)))
+  } else if (activeCategory.value === 'online') {
+    result = result.filter(game => game.tags.some(tag => isOnlinePatch(tag.patch_type)))
+  }
+  // activeCategory === 'all' 时不筛选，保持全部显示
+
   // 搜索筛选
   if (searchKeyword.value) {
     const keyword = searchKeyword.value.toLowerCase()
@@ -314,16 +340,14 @@ onMounted(async () => {
     searchKeyword.value = savedKeyword
   }
 
-  // 恢复完页码和关键词后，确保当前页不超过总页数，防止出现空白网格
-  clampCurrentPage()
-})
-
-// 组件卸载时清理未执行的释放定时器
-onUnmounted(() => {
-  if (pageReleaseTimer) {
-    clearTimeout(pageReleaseTimer)
-    pageReleaseTimer = null
+  // 恢复分类筛选
+  const savedCategory = sessionStorage.getItem('browse_category')
+  if (savedCategory === 'single' || savedCategory === 'online' || savedCategory === 'all') {
+    activeCategory.value = savedCategory
   }
+
+  // 恢复完页码、关键词和分类后，确保当前页不超过总页数，防止出现空白网格
+  clampCurrentPage()
 })
 
 // 监听搜索变化，重置到第一页
@@ -334,35 +358,6 @@ watch(searchKeyword, () => {
 // 总页数变化时（例如搜索过滤后），自动钳制当前页码到有效范围
 watch(totalPages, () => {
   clampCurrentPage()
-})
-
-// 监听页码变化，延迟释放上一页图片缓存
-// 当用户翻页后，旧页 GameCard 组件已被销毁，但全局缓存仍持有 asset:// URL 字符串，
-// 可能导致 WebView 延迟释放 GPU 内存；3 秒后主动清除旧页缓存条目以加速回收
-watch(currentPage, (newPage, oldPage) => {
-  if (newPage === oldPage || oldPage === undefined) return
-
-  // 计算旧页游戏 ID 列表
-  const oldStart = (oldPage - 1) * PAGE_SIZE
-  const oldEnd = oldStart + PAGE_SIZE
-  previousPageGameIds.value = filteredGames.value
-    .slice(oldStart, oldEnd)
-    .map(game => game.game_id)
-
-  // 取消之前的释放定时器，防止快速连续翻页时误释放中间页
-  if (pageReleaseTimer) {
-    clearTimeout(pageReleaseTimer)
-    pageReleaseTimer = null
-  }
-
-  // 3 秒后释放旧页图片缓存
-  pageReleaseTimer = setTimeout(() => {
-    if (previousPageGameIds.value.length > 0) {
-      releaseCoverImages(previousPageGameIds.value)
-      previousPageGameIds.value = []
-    }
-    pageReleaseTimer = null
-  }, PAGE_RELEASE_DELAY)
 })
 
 /**
@@ -384,6 +379,7 @@ function clampCurrentPage() {
 onBeforeRouteLeave((_to, _from, next) => {
   sessionStorage.setItem('browse_current_page', String(currentPage.value))
   sessionStorage.setItem('browse_search_keyword', searchKeyword.value)
+  sessionStorage.setItem('browse_category', activeCategory.value)
   next()
 })
 
@@ -409,6 +405,19 @@ function clearSearch() {
   // 清空后会触发watch，自动重置到第一页
 }
 
+/**
+ * 切换分类筛选（全部/单机/联机）
+ * 切换到新分类后重置到第一页并清空跳转输入框
+ */
+function setCategory(category: BrowseCategory) {
+  if (activeCategory.value === category) return
+  activeCategory.value = category
+  currentPage.value = 1
+  jumpPageInput.value = null
+  // 分类切换会替换整个网格内容，触发一次 GPU 缓存回收
+  flushGpuCache()
+}
+
 function handleGameClick(game: GameConfigData) {
   // 跳转到游戏详情页面
   router.push(`/game/${game.game_id}`)
@@ -424,6 +433,8 @@ function goToPage(page: number) {
     if (gridElement) {
       gridElement.scrollIntoView({ behavior: 'smooth', block: 'start' })
     }
+    // 翻页后触发一次 GPU discardable 缓存回收，丢弃旧页纹理，降低 GPU 内存峰值
+    flushGpuCache()
   }
 }
 
@@ -472,11 +483,64 @@ function handleJumpToPage() {
   margin: 0;
 }
 
-/* 搜索栏 */
+/* 搜索栏与分类选择器 */
 .search-section {
   flex-shrink: 0;
-  width: 400px;
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
   margin-top: 3px;
+}
+
+/* 分类选择器：紧贴搜索栏左侧的分段按钮 */
+.category-selector {
+  display: flex;
+  flex-shrink: 0;
+}
+
+.category-btn {
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+  background: rgba(102, 192, 244, 0.1);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--steam-input-border);
+  color: var(--steam-text-secondary);
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  user-select: none;
+}
+
+/* 分段按钮：相邻按钮共享边框，形成整体 */
+.category-btn + .category-btn {
+  border-left: none;
+}
+
+.category-btn:first-child {
+  border-radius: 8px 0 0 8px;
+}
+
+.category-btn:last-child {
+  border-radius: 0 8px 8px 0;
+}
+
+.category-btn:hover {
+  background: rgba(102, 192, 244, 0.2);
+  border-color: var(--steam-accent-blue);
+  color: var(--steam-text-primary);
+}
+
+.category-btn.active {
+  background: rgba(66, 133, 244, 0.8);
+  border-color: var(--steam-accent-blue);
+  color: white;
+}
+
+.category-btn.active:hover {
+  background: rgba(66, 133, 244, 0.9);
+  color: white;
 }
 
 .search-box {
@@ -484,6 +548,8 @@ function handleJumpToPage() {
   align-items: center;
   gap: 12px;
   padding: 10px 16px;
+  width: 400px;
+  flex-shrink: 0;
   background: rgba(102, 192, 244, 0.1);
   backdrop-filter: blur(10px);
   border-radius: 8px;

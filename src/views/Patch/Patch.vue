@@ -27,103 +27,102 @@
           <h3 class="config-title">基础配置</h3>
           <!-- 右侧配置区域 -->
           <div class="config-options-wrapper">
-            <!-- 模拟器模式选择 -->
+            <!-- 模拟器联机方式选择（单机 / 局域网联机 二选一） -->
             <div class="emulator-mode-section">
               <div class="mode-label-wrapper">
-                <label class="mode-label">模拟器模式：</label>
+                <label class="mode-label">联机方式：</label>
               </div>
               <div class="mode-options">
                 <label 
                   class="mode-radio" 
-                  :class="{ active: emulatorMode === 0 }"
-                  @mouseenter="showTooltip('standard')"
+                  :class="{ active: emulatorCategory === 'single' }"
+                  @mouseenter="showTooltip('single')"
                   @mouseleave="hideTooltip"
                 >
-                  <input type="radio" v-model="emulatorMode" :value="0" class="mode-input" />
-                  <span class="mode-title">标准模式</span>
+                  <input type="radio" v-model="emulatorCategory" value="single" class="mode-input" />
+                  <span class="mode-title">单机</span>
                   <!-- 悬浮提示 -->
                   <div class="mode-tooltip">
                     <div class="tooltip-content">
+                      只自己玩，不需要联机<br>
                       替换 steam_api.dll 或 steam_api64.dll<br>
-                      适用于 90% 以上的 Steam 游戏<br>
-                      <strong>使用场景：</strong><br>
-                      • 游戏目录中有 steam_api.dll<br>
-                      • 常规 Steam 游戏<br>
-                      • 推荐首选此模式
+                      <strong>适合：</strong><br>
+                      • 想离线玩单机游戏<br>
+                      • 不需要局域网联机、不用游戏内 Overlay<br>
+                      • 兼容性最好，绝大多数游戏都能用
                     </div>
                   </div>
                 </label>
                 <label 
                   class="mode-radio" 
-                  :class="{ active: emulatorMode === 1 }"
-                  @mouseenter="showTooltip('advanced')"
+                  :class="{ active: emulatorCategory === 'lan' }"
+                  @mouseenter="showTooltip('lan')"
                   @mouseleave="hideTooltip"
                 >
-                  <input type="radio" v-model="emulatorMode" :value="1" class="mode-input" />
-                  <span class="mode-title">高级模式</span>
+                  <input type="radio" v-model="emulatorCategory" value="lan" class="mode-input" @change="onSelectLan" />
+                  <span class="mode-title">局域网联机</span>
                   <!-- 悬浮提示 -->
                   <div class="mode-tooltip">
                     <div class="tooltip-content">
-                      保留原 steam_api(64).dll 不变<br>
-                      通过 ColdClientLoader 注入 steamclient(64).dll<br>
-                      默认自动启用游戏内 Overlay（Shift+Tab）<br>
-                      <strong>使用场景：</strong><br>
-                      • 存在 steam_api64.dll，但需要注入 steamclient64.dll<br>
-                      • 游戏绕过 Steam 客户端验证才能启动<br>
-                      • 已打 CPY 等破解补丁、普通模式无法启动的游戏<br>
-                      <strong>注意：</strong>必须选择游戏主程序 .exe
+                      和朋友在同一局域网内联机<br>
+                      自动启用游戏内 Overlay（Shift+Tab）<br>
+                      <strong>适合：</strong><br>
+                      • 需要局域网多人联机<br>
+                      • 想用游戏内 Overlay（成就、好友等）<br>
+                      • 请继续选择下方的「实现方式」
                     </div>
                   </div>
                 </label>
               </div>
-            </div>
 
-            <!-- 标准模式下的 DLL 版本选择 -->
-            <div class="dll-version-section" v-if="emulatorMode === 0">
-              <div class="dll-version-label-wrapper">
-                <label class="dll-version-label">DLL 版本：</label>
-              </div>
-              <div class="dll-version-options">
-                <label 
-                  class="dll-radio" 
-                  :class="{ active: !useExperimental }"
-                  @mouseenter="showTooltip('stable')"
-                  @mouseleave="hideTooltip"
-                >
-                  <input type="radio" v-model="useExperimental" :value="false" class="dll-input" />
-                  <span class="dll-name">稳定版</span>
-                  <!-- 悬浮提示 -->
-                  <div class="dll-tooltip">
-                    <div class="tooltip-content">
-                      推荐大多数用户使用<br>
-                      <strong>特点：</strong><br>
-                      • 兼容性好，稳定性高<br>
-                      • 无 Overlay 等高级功能<br>
-                      • 游戏启动速度快<br>
-                      • 极少出现崩溃问题
+              <!-- 局域网联机 → 实现方式选择（功能版 steam_api / 注入版 steamclient 二选一） -->
+              <div class="dll-version-section" v-if="emulatorCategory === 'lan'">
+                <div class="dll-version-label-wrapper">
+                  <label class="dll-version-label">实现方式：</label>
+                </div>
+                <div class="dll-version-options">
+                  <label 
+                    class="dll-radio" 
+                    :class="{ active: lanEngine === 'experimental' }"
+                    @mouseenter="showTooltip('experimental')"
+                    @mouseleave="hideTooltip"
+                  >
+                    <input type="radio" v-model="lanEngine" value="experimental" class="dll-input" />
+                    <span class="dll-name">功能版 steam_api</span>
+                    <!-- 悬浮提示 -->
+                    <div class="dll-tooltip">
+                      <div class="tooltip-content">
+                        直接替换游戏里的 steam_api(64).dll<br>
+                        自带局域网联机和 Overlay<br>
+                        <strong>适合：</strong><br>
+                        • 最常见的联机方式<br>
+                        • 无需额外指定游戏主程序<br>
+                        <strong>推荐首选</strong>
+                      </div>
                     </div>
-                  </div>
-                </label>
-                <label 
-                  class="dll-radio" 
-                  :class="{ active: useExperimental }"
-                  @mouseenter="showTooltip('feature')"
-                  @mouseleave="hideTooltip"
-                >
-                  <input type="radio" v-model="useExperimental" :value="true" class="dll-input" />
-                  <span class="dll-name">功能版</span>
-                  <!-- 悬浮提示 -->
-                  <div class="dll-tooltip">
-                    <div class="tooltip-content">
-                      包含更多高级功能<br>
-                      <strong>特点：</strong><br>
-                      • 支持游戏内 Overlay（Shift+Tab）<br>
-                      • 可查看成就、好友、联机状态<br>
-                      • 支持更完整的 Steam 功能模拟<br>
-                      • 部分游戏可能出现兼容性问题
+                  </label>
+                  <label 
+                    class="dll-radio" 
+                    :class="{ active: lanEngine === 'steamclient' }"
+                    @mouseenter="showTooltip('steamclient')"
+                    @mouseleave="hideTooltip"
+                  >
+                    <input type="radio" v-model="lanEngine" value="steamclient" class="dll-input" />
+                    <span class="dll-name">注入版 steamclient</span>
+                    <!-- 悬浮提示 -->
+                    <div class="dll-tooltip">
+                      <div class="tooltip-content">
+                        保留原 steam_api(64).dll 不变<br>
+                        由 ColdClientLoader 额外注入 steamclient(64).dll<br>
+                        同样支持局域网联机和 Overlay<br>
+                        <strong>适合：</strong><br>
+                        • 功能版 steam_api 无法正常启动的游戏<br>
+                        • 游戏绕过 Steam 客户端验证才能启动<br>
+                        <strong>注意：</strong>必须指定游戏主程序 .exe
+                      </div>
                     </div>
-                  </div>
-                </label>
+                  </label>
+                </div>
               </div>
             </div>
           </div>
@@ -138,17 +137,16 @@
                 <line x1="12" y1="9" x2="12" y2="13"/>
                 <line x1="12" y1="17" x2="12.01" y2="17"/>
               </svg>
-              <h4>功能版使用警告</h4>
+              <h4>局域网联机模式警告</h4>
             </div>
             <div class="modal-body">
-              <p>功能版包含以下高级功能，但可能存在稳定性问题：</p>
+              <p>局域网联机依赖实验性构建（功能版 steam_api / 注入版 steamclient），可能不稳定：</p>
               <ul>
-                <li>Steam 客户端模拟（steamclient.dll）</li>
-                <li>游戏内 Overlay（Shift+Tab）</li>
-                <li>高级联机功能</li>
-                <li>控制器支持增强</li>
+                <li>默认自动启用游戏内 Overlay（Shift+Tab）</li>
+                <li>可进行局域网多人联机</li>
+                <li>可能会触发杀毒软件误报</li>
               </ul>
-              <p class="warning-text">⚠️ 某些游戏可能无法正常运行，建议先尝试常规版。</p>
+              <p class="warning-text">⚠️ 个别游戏可能出现崩溃或兼容性问题；如果只想单机游玩，请切换回「单机」模式。</p>
             </div>
             <div class="modal-footer">
               <button class="btn-secondary" @click="showExperimentalWarning = false">我知道了</button>
@@ -164,26 +162,26 @@
               type="text" 
               v-model="gamePath" 
               class="path-input" 
-              :placeholder="emulatorMode === 0 ? '请选择包含 steam_api.dll 或 steam_api64.dll 的文件夹...' : '请选择包含 steam_api.dll 或 steam_api64.dll 的文件夹（高级模式保留原 DLL）...'" 
+              :placeholder="isSteamClient ? '请选择包含 steam_api.dll 或 steam_api64.dll 的文件夹（注入版保留原 DLL）...' : '请选择包含 steam_api.dll 或 steam_api64.dll 的文件夹...'" 
               readonly 
             />
             <button class="browse-btn" @click="selectGameFolder">浏览</button>
           </div>
           <p class="config-hint">
-            {{ emulatorMode === 0 ? '选择包含 steam_api.dll 或 steam_api64.dll 的游戏文件夹' : '选择包含 steam_api.dll 或 steam_api64.dll 的游戏文件夹；高级模式保留原 DLL，并通过 ColdClientLoader 注入 steamclient(64).dll' }}
+            {{ isSteamClient ? '选择包含 steam_api.dll 或 steam_api64.dll 的游戏文件夹（注入版保留原 DLL，并通过 ColdClientLoader 注入 steamclient(64).dll）' : '选择包含 steam_api.dll 或 steam_api64.dll 的游戏文件夹' }}
           </p>
         </div>
 
         <!-- 游戏主程序路径配置 -->
         <div class="config-group">
-          <label class="config-label">游戏主程序 <span :class="emulatorMode === 0 ? 'optional' : 'required'">{{ emulatorMode === 0 ? '(可选)' : '*' }}</span></label>
+          <label class="config-label">游戏主程序 <span :class="isSteamClient ? 'required' : 'optional'">{{ isSteamClient ? '*' : '(可选)' }}</span></label>
           <div class="path-input-group">
             <input type="text" v-model="gameExePath" class="path-input" placeholder="请选择游戏主程序 .exe 文件..." readonly />
             <button class="browse-btn" @click="selectGameExe">浏览</button>
             <button v-if="gameExePath" class="clear-btn" @click="gameExePath = ''">清除</button>
           </div>
           <p class="config-hint">
-            {{ emulatorMode === 0 ? '选择游戏主程序 exe 文件，用于 Steam 脱壳（某些游戏需要先脱壳）' : '选择游戏主程序 exe 文件，高级模式必需，ColdClientLoader 将据此启动并注入 steamclient(64).dll' }}
+            {{ isSteamClient ? '注入版 steamclient 必需：ColdClientLoader 将据此启动并注入 steamclient(64).dll' : '选择游戏主程序 exe 文件，用于 Steam 脱壳（某些游戏需要先脱壳）' }}
           </p>
         </div>
 
@@ -300,8 +298,8 @@
             </div>
             <h4 class="feature-title">局域网联机</h4>
             <p class="feature-desc">配置局域网多人游戏，自定义广播IP</p>
-            <span class="feature-status" :class="{ configured: configStatus.lanMultiplayer }">
-              {{ configStatus.lanMultiplayer ? '已配置' : '未配置' }}
+            <span class="feature-status" :class="{ configured: configStatus.lanMultiplayer, disabled: isSinglePlayer }">
+              {{ isSinglePlayer ? '需局域网联机模式' : (configStatus.lanMultiplayer ? '已配置' : '未配置') }}
             </span>
           </div>
 
@@ -315,9 +313,9 @@
               </svg>
             </div>
             <h4 class="feature-title">游戏内 Overlay</h4>
-            <p class="feature-desc">启用 Shift+Tab 游戏内覆盖界面（功能版）</p>
-            <span class="feature-status" :class="{ configured: configStatus.overlay, disabled: !useExperimental }">
-              {{ !useExperimental ? '需要功能版' : configStatus.overlay ? '已配置' : '未配置' }}
+            <p class="feature-desc">启用 Shift+Tab 游戏内覆盖界面（联机模式自动开启）</p>
+            <span class="feature-status" :class="{ configured: configStatus.overlay, disabled: isSinglePlayer }">
+              {{ isSinglePlayer ? '需局域网联机模式' : (configStatus.overlay ? '已配置' : '未配置') }}
             </span>
           </div>
 
@@ -530,7 +528,7 @@
       v-if="showOverlayModal"
       :game-path="gamePath"
       :game-id="steamAppId"
-      :is-experimental="useExperimental"
+      :is-experimental="isOverlayCapable"
       @close="showOverlayModal = false"
       @saved="onConfigSaved('overlay')"
     />
@@ -635,7 +633,7 @@
       v-if="showCompleteConfigManager"
       :game-path="gamePath"
       :game-id="steamAppId"
-      :use-experimental="useExperimental"
+      :mode="emulatorMode"
       @close="showCompleteConfigManager = false"
     />
   </div>
@@ -668,10 +666,28 @@ import CompleteConfigManager from '../../components/steam-patch/CompleteConfigMa
 // 状态
 // ============================================
 
-/** 模拟器模式：0=标准模式(替换 steam_api.dll), 1=高级模式(ColdClientLoader 注入 steamclient.dll) */
-const emulatorMode = ref(0)
-/** 是否使用功能版DLL（仅在标准模式下有效） */
-const useExperimental = ref(false)
+/**
+ * 模拟器模式总分类：
+ * - `single`：单机（仅替换 steam_api(64).dll，不支持 Overlay / 局域网联机）
+ * - `lan`：局域网联机（需要 Overlay，因此必须从两个支持联机的子引擎中二选一）
+ */
+const emulatorCategory = ref<'single' | 'lan'>('single')
+/**
+ * 局域网联机的实现方式（仅在 emulatorCategory === 'lan' 时生效）：
+ * - `experimental`：功能版 steam_api（experimental 构建，直接替换 steam_api(64).dll）
+ * - `steamclient`：注入版 steamclient（保留原 steam_api.dll，由 ColdClientLoader 注入 steamclient）
+ */
+const lanEngine = ref<'experimental' | 'steamclient'>('experimental')
+/** 计算当前引擎模式字符串（与后端约定：regular / experimental / steamclient） */
+const emulatorMode = computed<string>(() => {
+  return emulatorCategory.value === 'single' ? 'regular' : lanEngine.value
+})
+/** 是否单机模式（仅 regular，不支持 Overlay） */
+const isSinglePlayer = computed(() => emulatorCategory.value === 'single')
+/** 是否局域网联机模式（experimental / steamclient 均支持 Overlay 与局域网联机） */
+const isOverlayCapable = computed(() => emulatorCategory.value === 'lan')
+/** 是否注入版 steamclient（必须指定游戏主程序） */
+const isSteamClient = computed(() => lanEngine.value === 'steamclient')
 /** 是否显示功能版警告 */
 const showExperimentalWarning = ref(false)
 /** 游戏文件夹路径（steam_api.dll 所在文件夹） */
@@ -861,9 +877,9 @@ const applyBasicConfig = async () => {
     return
   }
 
-  // 高级模式必须指定游戏主程序路径
-  if (emulatorMode.value === 1 && !gameExePath.value) {
-    alert('高级模式（ColdClientLoader）必须选择游戏主程序 .exe 文件，请填写后重试。')
+  // 注入版 steamclient 必须指定游戏主程序路径
+  if (isSteamClient.value && !gameExePath.value) {
+    alert('注入版 steamclient（ColdClientLoader）必须选择游戏主程序 .exe 文件，请填写后重试。')
     return
   }
 
@@ -875,17 +891,19 @@ const applyBasicConfig = async () => {
       gamePath: gamePath.value,
       gameId: '',
       steamAppId: steamAppId.value,
-      useExperimental: useExperimental.value,
-      emulatorMode: emulatorMode.value,
+      mode: emulatorMode.value,
       gameExePath: gameExePath.value || null
     })
 
     if (result.success) {
       basicConfigApplied.value = true
-      // 基础配置已包含 custom_broadcasts.txt，自动标记局域网联机为已配置
-      configStatus.value.lanMultiplayer = true
-      // 高级模式已生成 ColdClientLoader.ini，标记为已配置
-      if (emulatorMode.value === 1) {
+      if (isOverlayCapable.value) {
+        // 局域网联机模式：基础配置已生成 overlay + custom_broadcasts.txt，自动标记已配置
+        configStatus.value.lanMultiplayer = true
+        configStatus.value.overlay = true
+      }
+      // 注入版 steamclient 已生成 ColdClientLoader.ini，标记为已配置
+      if (isSteamClient.value) {
         configStatus.value.coldclient = true
       }
       alert('基础配置已应用成功！')
@@ -945,12 +963,16 @@ const onConfigSaved = (type: keyof typeof configStatus.value) => {
 // ============================================
 
 const openLanMultiplayerConfig = () => {
+  if (isSinglePlayer.value) {
+    alert('局域网联机功能需要「局域网联机」模式（支持 Overlay）才能使用，请先在基础配置中切换到局域网联机模式。')
+    return
+  }
   showLanMultiplayerModal.value = true
 }
 
 const openOverlayConfig = () => {
-  if (!useExperimental.value) {
-    alert('Overlay 功能需要启用功能版才能使用')
+  if (isSinglePlayer.value) {
+    alert('游戏内 Overlay 需要「局域网联机」模式（experimental / steamclient 构建）才能使用，请先在基础配置中切换到局域网联机模式。')
     return
   }
   showOverlayModal.value = true
@@ -1058,16 +1080,27 @@ const restoreGameFiles = async () => {
 const loadPatchState = async () => {
   try {
     const state = await invoke<{
-      emulatorMode?: number
-      useExperimental?: boolean
+      emulatorMode?: string | number
       gamePath?: string
       gameExePath?: string
       steamAppId?: string
       basicConfigApplied?: boolean
     }>('load_patch_state')
 
-    if (state.emulatorMode !== undefined) emulatorMode.value = state.emulatorMode
-    if (state.useExperimental !== undefined) useExperimental.value = state.useExperimental
+    // 恢复模式分类（兼容旧版数字格式：0=单机，1=注入版 steamclient）
+    if (typeof state.emulatorMode === 'string') {
+      if (state.emulatorMode === 'regular') emulatorCategory.value = 'single'
+      else if (state.emulatorMode === 'experimental') {
+        emulatorCategory.value = 'lan'
+        lanEngine.value = 'experimental'
+      } else if (state.emulatorMode === 'steamclient') {
+        emulatorCategory.value = 'lan'
+        lanEngine.value = 'steamclient'
+      }
+    } else if (typeof state.emulatorMode === 'number') {
+      emulatorCategory.value = state.emulatorMode === 1 ? 'lan' : 'single'
+      if (emulatorCategory.value === 'lan') lanEngine.value = 'steamclient'
+    }
     if (state.gamePath !== undefined) gamePath.value = state.gamePath
     if (state.gameExePath !== undefined) gameExePath.value = state.gameExePath
     if (state.steamAppId !== undefined) steamAppId.value = state.steamAppId
@@ -1086,7 +1119,6 @@ const savePatchState = async () => {
     await invoke('save_patch_state', {
       state: {
         emulatorMode: emulatorMode.value,
-        useExperimental: useExperimental.value,
         gamePath: gamePath.value,
         gameExePath: gameExePath.value,
         steamAppId: steamAppId.value,
@@ -1154,8 +1186,8 @@ function onConfigSavedEvent(event: Event) {
 
 // 监听关键状态变化，自动持久化 Patch 页面状态
 watch([
-  emulatorMode,
-  useExperimental,
+  emulatorCategory,
+  lanEngine,
   gamePath,
   gameExePath,
   steamAppId,
@@ -1191,6 +1223,16 @@ const showTooltip = (type: string) => {
 
 const hideTooltip = () => {
   activeTooltip.value = ''
+}
+
+/**
+ * 用户主动切换为「局域网联机」时的处理
+ * 弹出实验性构建警告，帮助新手了解潜在兼容性风险
+ */
+const onSelectLan = () => {
+  if (emulatorCategory.value === 'lan') {
+    showExperimentalWarning.value = true
+  }
 }
 </script>
 

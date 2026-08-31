@@ -362,6 +362,7 @@ import { useRouter } from 'vue-router'
 import { invoke } from '@tauri-apps/api/core'
 import {
   getAllGamesData,
+  resetMissingInstalledGames,
   importCustomGame,
   launchGameWithTracking,
   closeGameProcess,
@@ -371,7 +372,6 @@ import {
   checkGameProcessStatus,
   formatPlayTime,
   formatDate,
-  deleteGameLogCache,
   type GameData
 } from '../../api/gameData.api'
 import { formatDurationCN } from '../../utils/date'
@@ -404,7 +404,7 @@ const runningGameId = ref<string | null>(null)
 const gameStartTime = ref<Date | null>(null)
 const currentPlayTime = ref(0)
 let gameMonitorInterval: number | null = null
-let displayFrameId: number | null = null
+let playTimeInterval: number | null = null
 
 // 导入表单
 const importForm = ref({
@@ -566,44 +566,11 @@ const loadGames = async () => {
   try {
     games.value = await getAllGamesData()
 
-    // 检查已安装游戏的目录是否存在，不存在则重置状态
-    const gamesToReset: GameData[] = []
-    for (const game of games.value) {
-      if (game.is_installed && game.install_path) {
-        try {
-          const exists = await invoke<boolean>('check_directory_exists', {
-            path: game.install_path
-          })
-          if (!exists) {
-            gamesToReset.push(game)
-          }
-        } catch {
-          gamesToReset.push(game)
-        }
-      }
-    }
-
-    // 重置目录不存在的游戏状态，并清理对应的下载日志缓存
-    for (const game of gamesToReset) {
-      const resetGame: GameData = {
-        ...game,
-        is_installed: false,
-        install_path: '',
-        exe_path: '',
-        download_status: '',
-        download_progress: 0
-      }
-      await upsertGameData(resetGame)
-      // 删除该游戏的下载日志缓存目录
-      try {
-        await deleteGameLogCache(game.game_id)
-      } catch {
-        // 缓存删除失败不影响主流程
-      }
-      const index = games.value.findIndex(g => g.game_id === game.game_id)
-      if (index !== -1) {
-        games.value[index] = resetGame
-      }
+    // 检查已安装游戏目录，目录缺失的游戏由后端一次性重置（消除 N 次 IPC 往返）
+    const resetGames = await resetMissingInstalledGames()
+    if (resetGames.length > 0) {
+      const resetMap = new Map(resetGames.map(g => [g.game_id, g]))
+      games.value = games.value.map(game => resetMap.get(game.game_id) ?? game)
     }
 
     await loadGameCovers()
@@ -617,9 +584,9 @@ const loadGames = async () => {
   }
 }
 
-// 加载游戏封面 - 使用全局缓存服务，避免资源竞争
+// 加载游戏封面 - 使用全局缓存服务，避免资源竞争，并发加载避免串行等待
 const loadGameCovers = async () => {
-  for (const game of games.value) {
+  await Promise.all(games.value.map(async (game) => {
     try {
       // 1. 优先使用 steam_game_id 查找图片，如果没有则使用 game_id
       // 注意：steam_game_id 可能是 null 或 undefined，需要处理
@@ -632,7 +599,7 @@ const loadGameCovers = async () => {
 
       if (libraryUrl) {
         gameCovers.value[game.game_id] = libraryUrl
-        continue
+        return
       }
 
       // 2. 库目录不存在，尝试使用 Game_Cover 目录的图片
@@ -640,20 +607,19 @@ const loadGameCovers = async () => {
 
       if (coverUrl) {
         gameCovers.value[game.game_id] = coverUrl
-        continue
+        return
       }
 
       // 3. 默认路径都不存在，使用用户设置的封面路径
       if (game.cover_path) {
         gameCovers.value[game.game_id] = game.cover_path
-        continue
       }
 
       // 4. 都没有，标记为无封面
     } catch (err) {
       // 加载封面失败时静默处理
     }
-  }
+  }))
 }
 
 // 选择游戏
@@ -688,39 +654,28 @@ const launchGame = async () => {
 // 监控游戏状态 - 定期检查进程是否还在运行
 const startGameMonitoring = () => {
   if (gameMonitorInterval) clearInterval(gameMonitorInterval)
-  
-  // 使用 requestAnimationFrame 进行高效的UI更新（仅更新显示，不执行逻辑）
-  let lastDisplayUpdate = 0
-  const updateDisplay = (timestamp: number) => {
-    if (!isGameRunning.value || !gameStartTime.value) return
-    
-    // 每500ms更新一次显示（足够流畅且性能开销极小）
-    if (timestamp - lastDisplayUpdate >= 500) {
-      const elapsedSecs = Math.floor((Date.now() - gameStartTime.value.getTime()) / 1000)
-      currentPlayTime.value = elapsedSecs
-      lastDisplayUpdate = timestamp
+  if (playTimeInterval) clearInterval(playTimeInterval)
+
+  // 每1秒更新一次当前会话时长显示，替代原先 60fps 的 requestAnimationFrame，显著降低前台 CPU 占用
+  playTimeInterval = window.setInterval(() => {
+    if (isGameRunning.value && gameStartTime.value) {
+      currentPlayTime.value = Math.floor((Date.now() - gameStartTime.value.getTime()) / 1000)
     }
-    
-    displayFrameId = requestAnimationFrame(updateDisplay)
-  }
-  
-  // 启动显示更新循环
-  let displayFrameId = requestAnimationFrame(updateDisplay)
-  
+  }, 1000)
+
   // 每10秒检查一次进程状态（降低频率减少性能影响）
   gameMonitorInterval = window.setInterval(async () => {
     if (!isGameRunning.value || !runningGameId.value) return
-    
+
     try {
       const elapsedSecs = Math.floor((Date.now() - gameStartTime.value!.getTime()) / 1000)
       const [isRunning, _minutes] = await checkGameProcessStatus(
         runningGameId.value,
         elapsedSecs
       )
-      
+
       if (!isRunning) {
         // 游戏进程已结束，停止监控并保存时长
-        cancelAnimationFrame(displayFrameId)
         await stopGameMonitoring()
         // 重新加载游戏数据以显示更新后的时长
         await loadGames()
@@ -737,10 +692,10 @@ const stopGameMonitoring = async () => {
     gameMonitorInterval = null
   }
 
-  // 取消动画帧
-  if (displayFrameId) {
-    cancelAnimationFrame(displayFrameId)
-    displayFrameId = null
+  // 取消时长更新定时器
+  if (playTimeInterval) {
+    clearInterval(playTimeInterval)
+    playTimeInterval = null
   }
 
   // 重置状态
@@ -836,7 +791,7 @@ const confirmImport = async () => {
 }
 
 onMounted(() => loadGames())
-onUnmounted(() => { if (gameMonitorInterval) clearInterval(gameMonitorInterval) })
+onUnmounted(() => { if (gameMonitorInterval) clearInterval(gameMonitorInterval); if (playTimeInterval) clearInterval(playTimeInterval) })
 </script>
 
 <style scoped>
@@ -859,8 +814,7 @@ onUnmounted(() => { if (gameMonitorInterval) clearInterval(gameMonitorInterval) 
 .library-sidebar {
   width: 280px;
   min-width: 280px;
-  background: rgba(23, 26, 33, 0.55);
-  backdrop-filter: blur(40px) saturate(140%);
+  background: rgba(var(--steam-bg-primary-rgb), 0.55);
   border-right: 1px solid rgba(255, 255, 255, 0.08);
   display: flex;
   flex-direction: column;
@@ -875,7 +829,7 @@ onUnmounted(() => { if (gameMonitorInterval) clearInterval(gameMonitorInterval) 
   gap: 8px;
   padding: 12px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(23, 26, 33, 0.4);
+  background: rgba(var(--steam-bg-primary-rgb), 0.4);
 }
 
 .search-box {
@@ -1089,7 +1043,6 @@ onUnmounted(() => { if (gameMonitorInterval) clearInterval(gameMonitorInterval) 
 .context-menu {
   position: fixed;
   background: var(--steam-bg-primary);
-  backdrop-filter: blur(30px) saturate(200%);
   border: 1px solid var(--steam-border);
   border-radius: 10px;
   padding: 6px;
@@ -1269,8 +1222,7 @@ onUnmounted(() => { if (gameMonitorInterval) clearInterval(gameMonitorInterval) 
   align-items: center;
   gap: 6px;
   padding: 6px 12px;
-  background: rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(10px) saturate(140%);
+  background: rgba(var(--steam-bg-tertiary-rgb), 0.4);
   border-radius: 20px;
   font-size: 12px;
   font-weight: 500;
@@ -1283,7 +1235,7 @@ onUnmounted(() => { if (gameMonitorInterval) clearInterval(gameMonitorInterval) 
 
 .platform-tag.date {
   color: var(--steam-text-muted);
-  background: rgba(0, 0, 0, 0.35);
+  background: rgba(var(--steam-bg-tertiary-rgb), 0.35);
 }
 
 .platform-tag svg {
@@ -1379,8 +1331,7 @@ onUnmounted(() => { if (gameMonitorInterval) clearInterval(gameMonitorInterval) 
   justify-content: center;
   width: 48px;
   height: 48px;
-  background: rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(10px) saturate(140%);
+  background: rgba(var(--steam-bg-tertiary-rgb), 0.4);
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 12px;
   color: var(--steam-text-secondary);
@@ -1389,7 +1340,7 @@ onUnmounted(() => { if (gameMonitorInterval) clearInterval(gameMonitorInterval) 
 }
 
 .action-btn:hover {
-  background: rgba(0, 0, 0, 0.55);
+  background: rgba(var(--steam-bg-tertiary-rgb), 0.55);
   border-color: rgba(255, 255, 255, 0.2);
   transform: translateY(-2px);
 }
@@ -1429,8 +1380,7 @@ onUnmounted(() => { if (gameMonitorInterval) clearInterval(gameMonitorInterval) 
   align-items: flex-start;
   gap: 14px;
   padding: 20px;
-  background: rgba(0, 0, 0, 0.35);
-  backdrop-filter: blur(18px) saturate(140%);
+  background: rgba(var(--steam-bg-tertiary-rgb), 0.35);
   border-radius: 14px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   transition: all 0.25s ease;
@@ -1448,7 +1398,7 @@ onUnmounted(() => { if (gameMonitorInterval) clearInterval(gameMonitorInterval) 
 }
 
 .info-card:hover {
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(var(--steam-bg-tertiary-rgb), 0.5);
   border-color: rgba(255, 255, 255, 0.15);
   transform: translateY(-2px);
 }
@@ -1540,11 +1490,10 @@ onUnmounted(() => { if (gameMonitorInterval) clearInterval(gameMonitorInterval) 
 
 /* 额外信息区域 */
 .extra-info {
-  background: rgba(0, 0, 0, 0.3);
+  background: rgba(var(--steam-bg-tertiary-rgb), 0.3);
   border-radius: 14px;
   padding: 24px;
   border: 1px solid rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(12px) saturate(140%);
 }
 
 .info-block h4 {

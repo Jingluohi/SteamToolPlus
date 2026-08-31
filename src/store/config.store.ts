@@ -59,7 +59,7 @@ export const useConfigStore = defineStore('config', () => {
   /**
    * 更新配置（部分更新）
    */
-  async function updateConfig(partialConfig: Partial<AppConfig>) {
+  async function updateConfig(partialConfig: Partial<AppConfig>): Promise<AppConfig> {
     loading.value = true
     error.value = null
     try {
@@ -70,6 +70,7 @@ export const useConfigStore = defineStore('config', () => {
       // 使用 API 更新配置，让后端合并
       const result = await configApi.updateConfig(partialConfig)
       config.value = result
+      return result
     } catch (err) {
       error.value = err instanceof Error ? err.message : '更新配置失败'
       throw err

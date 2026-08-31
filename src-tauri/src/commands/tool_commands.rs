@@ -4,6 +4,7 @@
  */
 use std::fs;
 use std::path::Path;
+use std::sync::OnceLock;
 use regex::Regex;
 
 /// 最大递归扫描深度限制，防止无限递归或目录层级过深
@@ -111,8 +112,11 @@ pub fn convert_lua_to_vdf(file_path: String) -> Result<serde_json::Value, String
 fn parse_lua_content(content: &str) -> Vec<(String, String)> {
     let mut depots = Vec::new();
     
-    // 正则匹配 addappid(depot_id, 1, "decryption_key") 格式
-    let re = Regex::new(r#"addappid\s*\(\s*(\d+)\s*,\s*\d+\s*,\s*"([a-fA-F0-9]+)"\s*\)"#).unwrap();
+    // 正则静态化，编译一次复用，避免每次调用重复编译
+    static RE: OnceLock<Regex> = OnceLock::new();
+    let re = RE.get_or_init(|| {
+        Regex::new(r#"addappid\s*\(\s*(\d+)\s*,\s*\d+\s*,\s*"([a-fA-F0-9]+)"\s*\)"#).unwrap()
+    });
     
     for cap in re.captures_iter(content) {
         let depot_id = cap[1].to_string();
@@ -229,8 +233,9 @@ pub fn convert_vdf_to_lua(file_path: String) -> Result<serde_json::Value, String
 fn parse_vdf_content(content: &str) -> Vec<(String, String)> {
     let mut depots = Vec::new();
     let mut current_depot: Option<String> = None;
-    // 将正则表达式移到循环外部，避免每次迭代都重新编译
-    let re = Regex::new(r#""DecryptionKey"\s+"([a-fA-F0-9]+)""#).unwrap();
+    // 正则静态化，编译一次复用，避免每次调用重复编译
+    static RE: OnceLock<Regex> = OnceLock::new();
+    let re = RE.get_or_init(|| Regex::new(r#""DecryptionKey"\s+"([a-fA-F0-9]+)""#).unwrap());
 
     // 按行解析VDF
     for line in content.lines() {

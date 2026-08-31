@@ -110,7 +110,7 @@ import { invoke } from '@tauri-apps/api/core'
 import { useWindowStore } from './store/window.store'
 import { useThemeStore } from './store/theme.store'
 import { useConfigStore } from './store/config.store'
-import { clearAllImageCaches, triggerImageRefresh } from './services/imageCache.service'
+import { clearAllImageCaches, triggerImageRefresh, triggerImageRelease } from './services/imageCache.service'
 import TitleBar from './components/layout/TitleBar.vue'
 import BackgroundSlideshow from './components/background/BackgroundSlideshow.vue'
 import type { PageType } from './types/background.types'
@@ -148,6 +148,21 @@ let unlistenResourceUpdate: (() => void) | null = null
 let unlistenDownloadProgress: UnlistenFn | null = null
 let unlistenUpdateFinished: UnlistenFn | null = null
 let unlistenUpdateError: UnlistenFn | null = null
+
+// --- GPU 显存空闲回收 ---
+// 用户长时间无操作时，结束 WebView2 GPU 进程释放显存（GPU 进程由 Chromium 自动重启）
+// 避免翻页浏览大量封面后 GPU 显存持续累积
+const IDLE_TIMEOUT_MS = 8 * 60 * 1000 // 空闲 8 分钟触发
+let lastActivityTime = Date.now()
+let idleCheckTimer: ReturnType<typeof setInterval> | null = null
+
+// 重置空闲计时（用户有操作时调用）
+function resetIdleTimer() {
+  lastActivityTime = Date.now()
+}
+
+// 需要监听的用户操作事件
+const idleEvents = ['pointermove', 'pointerdown', 'keydown', 'wheel', 'touchstart'] as const
 
 // 启动时自动更新弹窗状态
 const showUpdateModal = ref(false)
@@ -328,18 +343,22 @@ onMounted(async () => {
 
   // 监听窗口获得焦点事件：从托盘恢复时刷新背景图片
   unlistenFocused = await listen('window-focused', () => {
+    // 窗口仍处于隐藏状态时跳过刷新，避免无谓重载
+    if (document.hidden) return
     backgroundRef.value?.refreshItems()
     // 触发所有游戏封面和库背景图片重新加载
     triggerImageRefresh()
   })
 
   // 监听窗口隐藏事件（仅在隐藏到托盘时由 Rust 端触发）
-  // 清空图片缓存，确保窗口显示时重新加载
+  // 隐藏时彻底清空图片资源以释放显存，等待窗口恢复时再重新加载
   unlistenBlurred = await listen('window-blurred', () => {
     // 清空图片缓存，释放内存
     clearAllImageCaches()
-    // 清空游戏封面的 coverUrl，强制重新获取 asset:// URL
-    triggerImageRefresh()
+    // 停止背景轮播并释放背景图片资源
+    backgroundRef.value?.releaseImages()
+    // 触发释放信号，清空所有游戏封面的 coverUrl（不重新加载）
+    triggerImageRelease()
   })
 
   // 监听来自新实例的重启请求
@@ -394,6 +413,17 @@ onMounted(async () => {
   // 启动时立即检查更新（轮询后端预检查结果，无需等待）
   // 不延迟，确保更新弹窗在第一时间弹出
   checkUpdateOnStartup()
+
+  // --- 启动 GPU 显存空闲回收 ---
+  // 监听用户操作，空闲超时后结束 GPU 进程释放显存
+  idleEvents.forEach((evt) => window.addEventListener(evt, resetIdleTimer))
+  idleCheckTimer = setInterval(() => {
+    if (Date.now() - lastActivityTime >= IDLE_TIMEOUT_MS) {
+      // 重置空闲计时，避免每个检查周期重复触发
+      lastActivityTime = Date.now()
+      invoke('kill_gpu_process')
+    }
+  }, 30000)
 })
 
 // 组件卸载时清理事件监听器
@@ -405,6 +435,13 @@ onUnmounted(() => {
   unlistenDownloadProgress?.()
   unlistenUpdateFinished?.()
   unlistenUpdateError?.()
+
+  // 清理 GPU 空闲回收监听
+  if (idleCheckTimer !== null) {
+    clearInterval(idleCheckTimer)
+    idleCheckTimer = null
+  }
+  idleEvents.forEach((evt) => window.removeEventListener(evt, resetIdleTimer))
 })
 </script>
 

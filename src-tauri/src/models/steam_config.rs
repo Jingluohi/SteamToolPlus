@@ -1006,17 +1006,6 @@ pub struct AchievementsConfig {
     pub achievements: Vec<Achievement>,
 }
 
-impl AchievementsConfig {
-    #[allow(dead_code)]
-    pub fn default_config() -> Self {
-        Self {
-            enabled: true,
-            show_notifications: true,
-            achievements: vec![],
-        }
-    }
-}
-
 // ============================================
 // 3. 统计数据配置
 // ============================================
@@ -1041,16 +1030,6 @@ pub struct StatItem {
 pub struct StatsConfig {
     pub enabled: bool,
     pub stats: Vec<StatItem>,
-}
-
-impl StatsConfig {
-    #[allow(dead_code)]
-    pub fn default_config() -> Self {
-        Self {
-            enabled: true,
-            stats: vec![],
-        }
-    }
 }
 
 // ============================================
@@ -1094,17 +1073,6 @@ pub struct ItemsConfig {
     pub initial_items: Vec<GameItem>,
 }
 
-impl ItemsConfig {
-    #[allow(dead_code)]
-    pub fn default_config() -> Self {
-        Self {
-            enabled: true,
-            item_definitions: vec![],
-            initial_items: vec![],
-        }
-    }
-}
-
 // ============================================
 // 5. 创意工坊模组配置
 // ============================================
@@ -1145,17 +1113,6 @@ pub struct ModsConfig {
     pub subscribed_mods: Vec<WorkshopMod>,
     #[serde(rename = "autoUpdate")]
     pub auto_update: bool,
-}
-
-impl ModsConfig {
-    #[allow(dead_code)]
-    pub fn default_config() -> Self {
-        Self {
-            enabled: true,
-            subscribed_mods: vec![],
-            auto_update: false,
-        }
-    }
 }
 
 // ============================================
@@ -1494,44 +1451,4 @@ reconnect_interval = {}
     }
 }
 
-// ============================================
-// 10. 完整配置集合（简化版）
-// ============================================
 
-/// 完整的Steam设置配置
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
-#[allow(dead_code)]
-pub struct CompleteSteamSettings {
-    pub main: MainConfig,
-    pub user: UserConfig,
-    pub app: SteamAppConfig,
-    pub overlay: OverlayConfig,
-    pub achievements: AchievementsConfig,
-    pub stats: StatsConfig,
-    pub items: ItemsConfig,
-    pub mods: ModsConfig,
-    pub leaderboards: LeaderboardsConfig,
-    pub controller: ControllerConfig,
-    pub cold_client_loader: ColdClientLoaderConfig,
-    pub lobby_connect: LobbyConnectConfig,
-}
-
-impl CompleteSteamSettings {
-    #[allow(dead_code)]
-    pub fn default_config() -> Self {
-        Self {
-            main: MainConfig::default_config(),
-            user: UserConfig::default_config(),
-            app: SteamAppConfig::default_config(),
-            overlay: OverlayConfig::default_config(),
-            achievements: AchievementsConfig::default_config(),
-            stats: StatsConfig::default_config(),
-            items: ItemsConfig::default_config(),
-            mods: ModsConfig::default_config(),
-            leaderboards: LeaderboardsConfig::default_config(),
-            controller: ControllerConfig::default(),
-            cold_client_loader: ColdClientLoaderConfig::default_config(),
-            lobby_connect: LobbyConnectConfig::default_config(),
-        }
-    }
-}

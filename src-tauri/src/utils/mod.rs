@@ -3,5 +3,7 @@
 
 pub mod config_path_utils;
 pub mod file_utils;
+pub mod gpu_process;
 pub mod log_utils;
 pub mod resource_utils;
+pub mod webview2_memory;

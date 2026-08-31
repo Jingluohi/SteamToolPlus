@@ -20,30 +20,10 @@ const EXPERIMENTAL_DIR: &str = "experimental";
 const REGULAR_DIR: &str = "regular";
 /// 64 位子目录
 const X64_DIR: &str = "x64";
-/// 32 位子目录
-const X32_DIR: &str = "x32";
+/// 32 位子目录（磁盘目录实际命名为 x86）
+const X86_DIR: &str = "x86";
 /// steamclient 实验版目录
 const STEAMCLIENT_EXPERIMENTAL_DIR: &str = "steamclient_experimental";
-
-/// 标准模式 64 位 steam_api64.dll 资源路径
-fn regular_x64_steam_api_dll() -> String {
-    format!("{}/{}/{}/steam_api64.dll", GBE_FORK_DIR, REGULAR_DIR, X64_DIR)
-}
-
-/// 标准模式 32 位 steam_api.dll 资源路径
-fn regular_x32_steam_api_dll() -> String {
-    format!("{}/{}/{}/steam_api.dll", GBE_FORK_DIR, REGULAR_DIR, X32_DIR)
-}
-
-/// 实验版 64 位 steam_api64.dll 资源路径
-fn experimental_x64_steam_api_dll() -> String {
-    format!("{}/{}/{}/steam_api64.dll", GBE_FORK_DIR, EXPERIMENTAL_DIR, X64_DIR)
-}
-
-/// 实验版 32 位 steam_api.dll 资源路径
-fn experimental_x32_steam_api_dll() -> String {
-    format!("{}/{}/{}/steam_api.dll", GBE_FORK_DIR, EXPERIMENTAL_DIR, X32_DIR)
-}
 
 /// 高级模式 64 位 steamclient64.dll 资源路径
 fn steamclient_experimental_x64_dll() -> String {
@@ -84,18 +64,20 @@ fn get_steamclient_loader_exe_path(is_64bit: bool) -> String {
     }
 }
 
-/// 根据架构获取标准模式 steam_api DLL 资源路径
-fn get_standard_mode_api_dll_path(is_64bit: bool, use_experimental: bool) -> String {
-    if is_64bit {
-        if use_experimental {
-            experimental_x64_steam_api_dll()
-        } else {
-            regular_x64_steam_api_dll()
-        }
-    } else if use_experimental {
-        experimental_x32_steam_api_dll()
+/// 根据引擎模式获取 steam_api DLL 资源路径
+/// mode 取值：
+/// - `regular`：单机（regular/x64|x86 构建）
+/// - `experimental`：局域网联机 - 功能版 steam_api（experimental build，支持 Overlay/局域网）
+fn get_steam_api_dll_path(mode: &str, is_64bit: bool) -> String {
+    let dll_dir = if mode == "experimental" {
+        EXPERIMENTAL_DIR
     } else {
-        regular_x32_steam_api_dll()
+        REGULAR_DIR
+    };
+    if is_64bit {
+        format!("{}/{}/{}/steam_api64.dll", GBE_FORK_DIR, dll_dir, X64_DIR)
+    } else {
+        format!("{}/{}/{}/steam_api.dll", GBE_FORK_DIR, dll_dir, X86_DIR)
     }
 }
 
@@ -160,22 +142,22 @@ impl serde::Serialize for CheckDllResult {
 /// 这是补丁注入的核心函数，执行以下操作：
 /// 1. 复制 steam_settings.EXAMPLE 文件夹并重命名示例文件
 /// 2. 判断游戏架构（32位/64位）
-/// 3. 根据模式（标准/高级）处理 DLL 文件
-///    - 标准模式：替换 steam_api.dll
-///    - 高级模式：保留原 steam_api.dll，通过 ColdClientLoader 注入 steamclient.dll
-/// 4. 生成 steam_interfaces.txt（标准模式下）
+/// 3. 根据引擎模式（mode）处理 DLL 文件
+///    - `regular`：单机，替换 steam_api(64).dll 为 regular 构建
+///    - `experimental`：局域网联机（功能版 steam_api），替换 steam_api(64).dll 为 experimental 构建
+///    - `steamclient`：局域网联机，保留原 steam_api.dll，通过 ColdClientLoader 注入 steamclient(!64).dll
+/// 4. 生成 steam_interfaces.txt（regular / experimental 模式）
 /// 5. 写入 steam_appid.txt 到双路径
 /// 6. 写入基础配置文件（main、user、app、overlay）
 /// 7. 写入 custom_broadcasts.txt
-/// 8. 高级模式复制 ColdClientLoader 相关文件并生成 ColdClientLoader.ini
+/// 8. steamclient 模式复制 ColdClientLoader 相关文件并生成 ColdClientLoader.ini
 #[tauri::command]
 pub async fn apply_steam_patch_basic(
     app: AppHandle,
     game_path: String,
     _game_id: String,
     steam_app_id: String,
-    use_experimental: bool,
-    emulator_mode: Option<i32>,
+    mode: String,
     game_exe_path: Option<String>,
 ) -> Result<super::common::BasicConfigResult, String> {
     use super::common::{get_resource_dir, BasicConfigResult};
@@ -191,7 +173,6 @@ pub async fn apply_steam_patch_basic(
     }
 
     let steam_settings_dir = game_dir.join("steam_settings");
-    let mode = emulator_mode.unwrap_or(0);
 
     // 第1步: 复制 steam_settings.EXAMPLE 文件夹
     let example_dir = Path::new(&resource_dir).join(GBE_FORK_DIR).join(STEAM_SETTINGS_EXAMPLE_DIR);
@@ -237,15 +218,22 @@ pub async fn apply_steam_patch_basic(
             })
     };
 
-    // 第3步: 根据模式处理 DLL
-    if mode == 0 {
-        // 标准模式: 替换 steam_api.dll
+    // 第3步: 根据引擎模式处理 DLL
+    if mode == "steamclient" {
+        // 局域网联机 - ColdClientLoader：保留原 steam_api.dll，注入 steamclient(64).dll
+        let exe_path = game_exe_path.ok_or(
+            "「局域网联机（注入玩法）」需要指定游戏主程序路径（.exe），请在选择游戏文件夹后，再选择游戏主程序。".to_string(),
+        )?;
+
+        setup_coldclient_loader(&resource_dir, game_dir, &steam_app_id, &exe_path, is_64bit).await?;
+    } else {
+        // 单机（regular）或局域网联机-功能版 steam_api（experimental）：替换 steam_api.dll
         let api_dll_name = if is_64bit { "steam_api64.dll" } else { "steam_api.dll" };
         let original_api_path = game_dir.join(api_dll_name);
 
         if !original_api_path.exists() {
             return Err(format!(
-                "未找到 {}！\n\n可能原因：\n1. 选择的游戏目录不正确\n2. 游戏使用 steamclient.dll 而非 steam_api.dll\n3. 请先尝试「高级模式】",
+                "未找到 {}！\n\n可能原因：\n1. 选择的游戏目录不正确\n2. 游戏使用 steamclient.dll 而非 steam_api.dll\n3. 请先尝试「局域网联机（注入玩法）」",
                 api_dll_name
             ));
         }
@@ -262,7 +250,7 @@ pub async fn apply_steam_patch_basic(
         super::tools::generate_interfaces(&resource_dir, &original_api_path, game_dir, &steam_settings_dir).await?;
 
         // 替换 steam_api.dll
-        let source_dll = get_standard_mode_api_dll_path(is_64bit, use_experimental);
+        let source_dll = get_steam_api_dll_path(&mode, is_64bit);
         let source_path = Path::new(&resource_dir).join(&source_dll);
         if source_path.exists() {
             fs::copy(&source_path, &original_api_path)
@@ -271,13 +259,6 @@ pub async fn apply_steam_patch_basic(
         } else {
             return Err(format!("源 DLL 文件不存在: {}", source_path.display()));
         }
-    } else {
-        // 高级模式: 保留原 steam_api.dll，通过 ColdClientLoader 注入 steamclient.dll
-        let exe_path = game_exe_path.ok_or(
-            "高级模式需要指定游戏主程序路径（.exe），请在选择游戏文件夹后，再选择游戏主程序。".to_string(),
-        )?;
-
-        setup_coldclient_loader(&resource_dir, game_dir, &steam_app_id, &exe_path, is_64bit).await?;
     }
 
     // 第4步: 双路径写入 steam_appid.txt
@@ -341,10 +322,11 @@ pub async fn apply_steam_patch_basic(
 
     // 写入 configs.overlay.ini
     // 基础配置应用时使用程序默认值，避免示例目录中的示例值被保留
-    // 高级模式（ColdClientLoader）已复制并注入 GameOverlayRenderer，默认启用 Overlay
+    // 仅局域网联机模式（experimental 功能版 / steamclient 注入版）支持 Overlay，默认启用；
+    // 单机（regular）构建不支持 Overlay，保持关闭
     let overlay_config_path = steam_settings_dir.join("configs.overlay.ini");
     let mut overlay_config = OverlayConfig::default_config();
-    if mode == 1 {
+    if mode == "experimental" || mode == "steamclient" {
         overlay_config.enable_experimental_overlay = true;
     }
     let overlay_config_content = overlay_config.to_ini();
@@ -372,11 +354,11 @@ pub async fn apply_steam_patch_basic(
 }
 
 // ============================================
-// ColdClientLoader 高级模式 setup
+// 局域网联机 - ColdClientLoader setup（steamclient 模式）
 // 保留原 steam_api.dll，复制 steamclient/overlay/loader 并生成 ColdClientLoader.ini
 // ============================================
 
-/// 高级模式：设置 ColdClientLoader
+/// 局域网联机（注入玩法）：设置 ColdClientLoader
 /// 1. 校验原 steam_api.dll 存在（这是该模式的前提）
 /// 2. 复制 steamclient.dll / steamclient64.dll（推荐同时保留两种架构）
 /// 3. 复制 GameOverlayRenderer.dll / GameOverlayRenderer64.dll

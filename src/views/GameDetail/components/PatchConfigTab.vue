@@ -8,8 +8,8 @@
   >
     <h3 class="panel-title">{{ tab.name }}</h3>
 
-    <!-- 补丁操作详细说明（仅当本地不存在补丁且存在下载链接时显示） -->
-    <div v-if="!isPatchLocalExists(tab.patchType) && tab.downloadUrls && tab.downloadUrls.length > 0" class="patch-guide-box">
+    <!-- 补丁操作详细说明（仅当本地不存在补丁且未从文件应用成功时显示） -->
+    <div v-if="!isPatchReady(tab.patchType) && tab.downloadUrls && tab.downloadUrls.length > 0" class="patch-guide-box">
       <h4 class="guide-title">本地补丁不存在，请操作：</h4>
       <ol class="guide-steps">
         <li><strong>第一步：</strong>去下方的网盘下载按钮下载补丁，</li>
@@ -24,9 +24,9 @@
 
     <div class="patch-info">
       <!-- 本地补丁状态 -->
-      <div class="patch-status" :class="{ 'local-exists': isPatchLocalExists(tab.patchType) }">
+      <div class="patch-status" :class="{ 'local-exists': isPatchReady(tab.patchType) }">
         <span class="status-icon">
-          <svg v-if="isPatchLocalExists(tab.patchType)" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <svg v-if="isPatchReady(tab.patchType)" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
             <polyline points="22 4 12 14.01 9 11.01"/>
           </svg>
@@ -37,12 +37,12 @@
           </svg>
         </span>
         <span class="status-text">
-          {{ isPatchLocalExists(tab.patchType) ? '本地补丁已存在' : '本地补丁未下载' }}
+          {{ getPatchStatusText(tab.patchType) }}
         </span>
       </div>
 
-      <!-- 下载补丁区域（当本地不存在且有下载链接时显示） -->
-      <div v-if="!isPatchLocalExists(tab.patchType) && tab.downloadUrls && tab.downloadUrls.length > 0" class="download-section">
+      <!-- 下载补丁区域（当本地不存在且未从文件应用成功且有下载链接时显示） -->
+      <div v-if="!isPatchReady(tab.patchType) && tab.downloadUrls && tab.downloadUrls.length > 0" class="download-section">
         <p class="download-section-title">下载补丁：</p>
         <div class="download-buttons">
           <div
@@ -76,9 +76,9 @@
         请先选择游戏路径
       </p>
 
-      <!-- 选择补丁文件并应用按钮（当本地不存在时显示） -->
+      <!-- 选择补丁文件并应用按钮（当本地不存在且未从文件应用成功时显示） -->
       <button
-        v-if="!isPatchLocalExists(tab.patchType)"
+        v-if="!isPatchReady(tab.patchType)"
         class="select-and-apply-btn"
         @click="emit('selectAndApplyPatch', tab)"
         :disabled="!gamePath || applyingPatch"
@@ -204,6 +204,8 @@ interface Props {
   } | null
   /** 本地补丁文件存在状态缓存 */
   patchLocalStatus: Map<number, boolean>
+  /** 已从用户选择的7z文件应用成功的补丁类型集合（会话内存态） */
+  patchAppliedFromFile: Set<number>
   /** 补丁说明缓存 */
   patchReadmes: Map<number, string>
 }
@@ -232,6 +234,30 @@ const emit = defineEmits<Emits>()
  */
 function isPatchLocalExists(patchType: number): boolean {
   return props.patchLocalStatus.get(patchType) || false
+}
+
+/**
+ * 是否已从用户选择的7z文件应用成功（会话内存态）
+ */
+function isPatchAppliedFromFile(patchType: number): boolean {
+  return props.patchAppliedFromFile.has(patchType)
+}
+
+/**
+ * 补丁是否已就绪（本地源存在 或 已从文件应用成功）
+ * 就绪后不再显示"下载/选择补丁"引导
+ */
+function isPatchReady(patchType: number): boolean {
+  return isPatchLocalExists(patchType) || isPatchAppliedFromFile(patchType)
+}
+
+/**
+ * 获取补丁状态显示文本
+ */
+function getPatchStatusText(patchType: number): string {
+  if (isPatchLocalExists(patchType)) return '本地补丁已存在'
+  if (isPatchAppliedFromFile(patchType)) return '补丁已应用'
+  return '本地补丁未下载'
 }
 
 /**

@@ -54,7 +54,7 @@
 
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import type { GameConfigData } from '../../types'
-import { getCachedCoverImage, imageRefreshSignal } from '../../services/imageCache.service'
+import { getCachedCoverImage, imageRefreshSignal, imageReleaseSignal } from '../../services/imageCache.service'
 
 /**
  * 组件属性定义
@@ -140,19 +140,16 @@ const loadCover = async () => {
   }
 }
 
-// 释放图片内存
-const releaseCover = () => {
-  // 先标记为未加载，让 img 元素从 DOM 中移除
+// 清空封面引用，图片离屏后由浏览器自动回收解码位图
+const clearCover = () => {
   imageLoaded.value = false
+  coverUrl.value = ''
+  isVisible.value = false
+}
 
-  // 使用 nextTick 确保 DOM 更新后再清除 URL
-  nextTick(() => {
-    // 清除 URL 引用
-    if (coverUrl.value) {
-      coverUrl.value = ''
-    }
-    isVisible.value = false
-  })
+// 释放图片内存（卡片滚出视口时调用）
+const releaseCover = () => {
+  clearCover()
 }
 
 // 处理图片加载错误
@@ -212,15 +209,21 @@ const setupIntersectionObserver = () => {
 }
 
 // 监听全局图片刷新信号
-// 当窗口从隐藏恢复时，清除旧的 asset:// URL 并重新加载
+// 当窗口从隐藏恢复时，清空旧封面（revoke blob）并重新加载
 watch(imageRefreshSignal, () => {
-  if (coverUrl.value) {
-    imageLoaded.value = false
-    coverUrl.value = ''
-    nextTick(() => {
-      loadCover()
-    })
-  }
+  clearCover()
+  // 标记可见并重新加载封面（组件仍在 DOM 中）
+  isVisible.value = true
+  nextTick(() => {
+    loadCover()
+  })
+})
+
+// 监听全局图片释放信号
+// 当窗口隐藏到托盘时触发，清空封面（revoke blob）且不重新加载，
+// 避免隐藏时反而重新解码图片占用显存
+watch(imageReleaseSignal, () => {
+  clearCover()
 })
 
 // 组件挂载
@@ -245,21 +248,17 @@ onUnmounted(() => {
     observer = null
   }
 
-  // 组件已销毁，DOM 中的 img 元素即将被移除，立即释放本地图片引用
-  // 不依赖 releaseCover 中的 nextTick，避免卸载阶段响应式更新不可靠导致 URL 残留
-  imageLoaded.value = false
-  coverUrl.value = ''
-  isVisible.value = false
+  // 组件销毁时清空封面并 revoke blob，释放图片字节
+  clearCover()
 })
 
 /**
  * 重置图片状态
- * 当窗口从隐藏恢复时调用，清除旧的 asset:// URL 并重新加载
+ * 当窗口从隐藏恢复时调用，清空旧封面（revoke blob）并重新加载
  */
 function resetImage() {
-  imageLoaded.value = false
-  coverUrl.value = ''
-  // 使用 nextTick 确保 DOM 更新后再重新加载
+  clearCover()
+  isVisible.value = true
   nextTick(() => {
     loadCover()
   })

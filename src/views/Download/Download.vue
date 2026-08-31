@@ -1194,18 +1194,13 @@ const waitForGameDownload = async (_game: BatchGame): Promise<void> => {
 }
 
 /**
- * 扫描进度文件（委托给 store）并处理页面级完成逻辑
+ * 下载完成处理（由全局 store 的完成回调触发）
  */
-const scanProgressFiles = async () => {
-  const result = await downloadManagerStore.scanProgressFiles(currentGameId.value)
-  if (!result.hasChanges) return
-
-  if (result.isComplete) {
-    stopProgressMonitoring()
-    addLog('所有depot下载完成！', 'success')
-    // 删除所有进度 JSON 文件
-    await deleteProgressFiles()
-  }
+const handleDownloadComplete = async () => {
+  stopProgressMonitoring()
+  addLog('所有depot下载完成！', 'success')
+  // 删除所有进度 JSON 文件
+  await deleteProgressFiles()
 }
 
 /**
@@ -1237,7 +1232,7 @@ const deleteProgressFiles = async () => {
 
 /**
  * 开始监控下载进度
- * 使用全局 store 管理定时器，支持多实例并行下载
+ * 使用全局 store 的统一定时器，支持多实例并行下载
  */
 const startProgressMonitoring = async () => {
   if (isMonitoring.value) return
@@ -1250,12 +1245,14 @@ const startProgressMonitoring = async () => {
   downloadManagerStore.initDepots(currentGameId.value, depotIds)
   addLog(`检测到 ${depotIds.length} 个depot`, 'info')
 
-  await scanProgressFiles()
+  // 注册下载完成回调
+  downloadManagerStore.onComplete(currentGameId.value, handleDownloadComplete)
 
-  const timerId = window.setInterval(() => {
-    scanProgressFiles()
-  }, 2000)
-  downloadManagerStore.registerMonitorTimer(currentGameId.value, timerId)
+  // 立即扫描一次
+  await downloadManagerStore.scanProgressFiles(currentGameId.value)
+
+  // 加入统一轮询
+  downloadManagerStore.startMonitoring(currentGameId.value)
 }
 
 /**

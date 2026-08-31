@@ -53,6 +53,14 @@ export async function getAllGamesData(): Promise<GameData[]> {
 }
 
 /**
+ * 检查所有已安装游戏目录，将目录缺失的游戏重置为未安装
+ * 返回被重置的游戏列表
+ */
+export async function resetMissingInstalledGames(): Promise<GameData[]> {
+  return invoke<GameData[]>('reset_missing_installed_games')
+}
+
+/**
  * 获取单个游戏数据
  */
 export async function getGameData(gameId: string): Promise<GameData | null> {
