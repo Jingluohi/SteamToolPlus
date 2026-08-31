@@ -1,14 +1,14 @@
 # Steam Tool Plus 使用教程
 
-> **当前版本**：v1.31.0
+> **当前版本**：v1.31.1
 >
 > **更新日期**：2026-08-25
 >
 > **💬 工具、游戏交流群**：1095428733、1047475968
 >
-> **📥 百度网盘**：https://pan.baidu.com/s/1EMDn8l2d198Q6Lp3pVTzMQ?pwd=vtbe
+> **📥 百度网盘**：https://pan.baidu.com/s/1NWMw1IyRi7N7vDy27BZjXg?pwd=sfcb
 >
-> 提取码：**vtbe**
+> 提取码：**sfcb**
 >
 > **📥 迅雷网盘**：https://pan.xunlei.com/s/VOrkq4Tq0c0Sootmhpp4433yA1?pwd=2tmn#
 >
@@ -631,7 +631,7 @@
 
 ## 十三、版本信息与免责声明
 
-- **当前版本**：v1.31.0
+- **当前版本**：v1.31.1
 - **更新日期**：2026-08-25
 - **运行环境**：Windows 10/11
 - **版权所有**：© 2026 Steam Tool Plus
