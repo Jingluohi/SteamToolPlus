@@ -67,11 +67,29 @@ fn default_true() -> bool {
     true
 }
 
+/// 已完成下载历史条目（下载记录页"已完成"Tab，持久化在 game.json，
+/// 清理系统缓存不影响；字段名与前端 not serialize 一致）
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DownloadHistoryEntry {
+    /// 游戏 ID
+    pub game_id: String,
+    /// 游戏名（中文 + 英文，前端写入）
+    pub game_name: String,
+    /// 完成时间戳（毫秒）
+    pub completed_at: i64,
+    /// 本次下载总字节数
+    pub total_bytes: u64,
+}
+
 /// 游戏数据集合
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GameDataCollection {
     /// 游戏数据映射
     pub games: HashMap<String, GameData>,
+    /// 已完成下载历史（下载记录页"已完成"Tab；不随系统缓存清理而丢失）
+    #[serde(default)]
+    pub download_history: Vec<DownloadHistoryEntry>,
     /// 最后更新时间
     pub last_updated: String,
 }
@@ -80,6 +98,7 @@ impl Default for GameDataCollection {
     fn default() -> Self {
         Self {
             games: HashMap::new(),
+            download_history: Vec::new(),
             last_updated: chrono::Local::now().to_rfc3339(),
         }
     }
@@ -256,6 +275,42 @@ pub async fn get_all_games(_app: AppHandle) -> Result<Vec<GameData>, String> {
     Ok(cache.games.values().cloned().collect())
 }
 
+/// 获取已完成下载历史
+pub fn get_download_history() -> Result<Vec<DownloadHistoryEntry>, String> {
+    let cache = GAME_DATA_CACHE.read().unwrap();
+    Ok(cache.download_history.clone())
+}
+
+/// 追加（去重后置顶）已完成下载历史，保留最近 50 条
+pub fn append_download_history(entries: Vec<DownloadHistoryEntry>) -> Result<(), String> {
+    let mut cache = GAME_DATA_CACHE.write().unwrap();
+    for entry in entries {
+        cache
+            .download_history
+            .retain(|e| e.game_id != entry.game_id);
+        cache.download_history.insert(0, entry);
+    }
+    if cache.download_history.len() > 50 {
+        cache.download_history.truncate(50);
+    }
+    cache.last_updated = chrono::Local::now().to_rfc3339();
+    drop(cache);
+    mark_dirty();
+    Ok(())
+}
+
+/// 移除指定游戏 ID 的已完成下载历史
+pub fn remove_download_history(game_ids: &[String]) -> Result<(), String> {
+    let mut cache = GAME_DATA_CACHE.write().unwrap();
+    cache
+        .download_history
+        .retain(|e| !game_ids.contains(&e.game_id));
+    cache.last_updated = chrono::Local::now().to_rfc3339();
+    drop(cache);
+    mark_dirty();
+    Ok(())
+}
+
 /// 获取单个游戏数据
 pub async fn get_game(_app: AppHandle, game_id: String) -> Result<Option<GameData>, String> {
     let cache = GAME_DATA_CACHE.read().unwrap();
@@ -381,6 +436,9 @@ pub async fn finalize_download(_app: AppHandle, game_id: String) -> Result<GameD
         if let Some(game) = cache.games.get_mut(&game_id) {
             game.download_status = "completed".to_string();
             game.download_progress = 100;
+            // 下载完成才算"已下载"（game_type 此前在下载开始阶段不标注，
+            // 避免没下完/暂停/失败时游戏库误显示"已下载"）
+            game.game_type = "downloaded".to_string();
 
             if let Some((exe_path, _exe_dir)) = best_exe {
                 game.exe_path = exe_path;

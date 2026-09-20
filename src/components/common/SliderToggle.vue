@@ -4,7 +4,7 @@
     左标签 = modelValue 为 false 时的状态
     右标签 = modelValue 为 true 时的状态
   -->
-  <div class="slider-toggle-wrapper">
+  <div class="slider-toggle-wrapper" :class="{ disabled }">
     <span
       class="slider-toggle-label"
       :class="{ active: !modelValue, inactive: modelValue }"
@@ -14,6 +14,7 @@
     <button
       class="slider-toggle"
       :class="{ checked: modelValue }"
+      :disabled="disabled"
       :aria-checked="modelValue"
       role="switch"
       @click="toggle"
@@ -46,6 +47,8 @@ interface Props {
   leftLabel: string
   /** 右侧标签 */
   rightLabel: string
+  /** 是否禁用（禁用后固定当前状态，不可切换） */
+  disabled?: boolean
 }
 
 const props = defineProps<Props>()
@@ -59,8 +62,12 @@ const emit = defineEmits<{
 
 /**
  * 切换开关状态
+ * 禁用状态下不可切换，保持当前状态
  */
 function toggle() {
+  if (props.disabled) {
+    return
+  }
   emit('update:modelValue', !props.modelValue)
 }
 </script>
@@ -127,5 +134,15 @@ function toggle() {
 
 .slider-toggle.checked .slider-toggle-thumb {
   transform: translateX(22px);
+}
+
+/* 禁用态：整体降低透明度并取消点击交互 */
+.slider-toggle-wrapper.disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.slider-toggle-wrapper.disabled .slider-toggle {
+  cursor: not-allowed;
 }
 </style>

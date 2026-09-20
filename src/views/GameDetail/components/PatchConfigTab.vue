@@ -51,7 +51,7 @@
             class="download-btn-wrapper"
           >
             <button
-              class="download-patch-btn"
+              class="download-patch-btn ui-btn ui-btn-md ui-btn-primary"
               @click="emit('openDownloadUrl', item.url)"
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -79,7 +79,7 @@
       <!-- 选择补丁文件并应用按钮（当本地不存在且未从文件应用成功时显示） -->
       <button
         v-if="!isPatchReady(tab.patchType)"
-        class="select-and-apply-btn"
+        class="select-and-apply-btn ui-btn ui-btn-md ui-btn-primary"
         @click="emit('selectAndApplyPatch', tab)"
         :disabled="!gamePath || applyingPatch"
       >
@@ -102,7 +102,7 @@
 
       <!-- 应用补丁按钮 -->
       <button
-        class="apply-patch-btn"
+        class="apply-patch-btn ui-btn ui-btn-md ui-btn-success"
         @click="emit('applyPatch', tab)"
         :disabled="!gamePath || applyingPatch || !isPatchLocalExists(tab.patchType)"
       >
@@ -113,7 +113,7 @@
       <!-- D加密虚拟机类型显示虚拟化环境配置教程按钮 -->
       <button
         v-if="tab.patchType === 3"
-        class="tutorial-btn"
+        class="tutorial-btn ui-btn ui-btn-sm ui-btn-ghost"
         @click="emit('openVirtualizationTutorial')"
       >
         虚拟化环境配置教程
@@ -390,31 +390,6 @@ function getFileName(path: string): string {
   gap: 7px;
 }
 
-.download-patch-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 10px 24px;
-  border: none;
-  border-radius: 8px;
-  background-color: #3b82f6;
-  color: white;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background-color 0.15s ease;
-}
-
-.download-patch-btn:hover {
-  background-color: #2563eb;
-}
-
-.download-patch-btn svg {
-  width: 18px;
-  height: 18px;
-}
-
 .pwd-hint {
   font-size: 12px;
   color: var(--steam-text-secondary);
@@ -428,37 +403,9 @@ function getFileName(path: string): string {
   font-style: italic;
 }
 
-/* 选择补丁文件并应用按钮 */
+/* 选择补丁文件并应用按钮 - 保留垂直间距 */
 .select-and-apply-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 10px 24px;
-  background-color: #8b5cf6;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background-color 0.15s ease;
   margin-bottom: 7px;
-}
-
-.select-and-apply-btn:hover:not(:disabled) {
-  background-color: #7c3aed;
-}
-
-.select-and-apply-btn:disabled {
-  background-color: var(--steam-text-secondary);
-  cursor: not-allowed;
-  opacity: 0.5;
-}
-
-.select-and-apply-btn svg {
-  width: 18px;
-  height: 18px;
 }
 
 .patch-path {
@@ -478,54 +425,14 @@ function getFileName(path: string): string {
   font-weight: 500;
 }
 
-/* 应用补丁按钮 */
+/* 应用补丁按钮 - 保留垂直间距 */
 .apply-patch-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 10px 24px;
-  background-color: var(--steam-accent-blue);
-  color: white;
-  border: none;
-  border-radius: 4px;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background-color 0.15s ease;
   margin-bottom: 7px;
 }
 
-.apply-patch-btn:hover:not(:disabled) {
-  background-color: var(--steam-bg-hover);
-}
-
-.apply-patch-btn:disabled {
-  background-color: var(--steam-text-secondary);
-  cursor: not-allowed;
-  opacity: 0.5;
-}
-
-/* 虚拟化环境配置教程按钮 */
+/* 虚拟化环境配置教程按钮 - 保留垂直间距 */
 .tutorial-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 8px 16px;
-  background-color: rgba(156, 39, 176, 0.3);
-  color: var(--steam-text-primary);
-  border: 1px solid rgba(156, 39, 176, 0.7);
-  border-radius: 4px;
-  font-size: 12px;
-  cursor: pointer;
-  transition: background-color 0.15s ease;
   margin-bottom: 10px;
-}
-
-.tutorial-btn:hover {
-  background: rgba(156, 39, 176, 0.4);
-  border-color: rgba(156, 39, 176, 0.8);
 }
 
 /* 补丁说明 */

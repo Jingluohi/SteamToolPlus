@@ -5,15 +5,15 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod commands;
+mod engine;
 mod models;
 mod services;
 mod update_manager;
 mod utils;
 
-use commands::{background_commands, cache_commands, config_commands, denuvo_commands, download_commands, fake_imported_commands, game_commands, game_data_commands, help_commands, log_commands, manifest_commands, opensteamtool_commands, patch_commands, window_commands};
+use commands::{background_commands, cache_commands, config_commands, denuvo_commands, download_commands, extract_play_commands, fake_imported_commands, game_commands, game_data_commands, help_commands, log_commands, manifest_commands, opensteamtool_commands, patch_commands, window_commands};
 use once_cell::sync::Lazy;
 use services::{CacheService, CacheServiceTrait, ConfigService, ConfigServiceTrait, GameService, GameServiceTrait, opensteamtool_service};
-use std::collections::HashSet;
 use std::sync::{Arc, Mutex};
 use tauri::{Manager, Emitter};
 use tauri::tray::{TrayIconBuilder, TrayIconEvent, MouseButton};
@@ -110,6 +110,34 @@ async fn get_pending_startup_update() -> Result<Option<UpdateCheckResult>, Strin
     Ok(result)
 }
 
+/// 重置启动时更新检查的缓存结果
+/// 资源更新成功且磁盘 version.json 已写入新版本后调用：
+/// 将 PENDING_STARTUP_UPDATE 置为「已完成、无更新」状态，并重新从磁盘读取本地资源版本。
+///
+/// 为什么需要：前端在资源更新完成后会执行 window.location.reload()，但 Rust 进程并未重启，
+/// PENDING_STARTUP_UPDATE 仍是启动时基于旧 version.json 计算的「有更新」结果。
+/// 若不重置，刷新页面后前端轮询又会拿到该旧缓存，反复弹出显示旧版本号的更新弹窗。
+fn reset_pending_startup_update() {
+    if let Ok(mut pending) = PENDING_STARTUP_UPDATE.lock() {
+        // 一次性读取磁盘 version.json，同时取版本号与「公告」说明，避免重复读盘
+        let local = update_manager::read_local_resource_version();
+        *pending = Some(UpdateCheckResult {
+            has_update: false,
+            local_app_version: env!("CARGO_PKG_VERSION").to_string(),
+            local_resource_version: local
+                .as_ref()
+                .map(|v| v.version.clone())
+                .unwrap_or_default(),
+            remote_resource_version: String::new(),
+            remote_description: None,
+            has_exe_update: false,
+            patch_url: String::new(),
+            // 磁盘最新说明即本次更新写入的说明，作为后续启动「公告板」的展示内容
+            local_description: local.as_ref().and_then(|v| v.description.clone()),
+        });
+    }
+}
+
 /// 重启应用程序
 #[tauri::command]
 async fn restart_app(app_handle: tauri::AppHandle) -> Result<(), String> {
@@ -125,30 +153,10 @@ async fn exit_app(app_handle: tauri::AppHandle, exit_code: i32) {
     app_handle.exit(exit_code);
 }
 
-/// 用户主动停止的下载游戏ID集合
-/// 用于防止暂停下载后监控线程自动重启 ddv20.exe
-static STOPPED_DOWNLOADS: Lazy<Mutex<HashSet<String>>> =
-    Lazy::new(|| Mutex::new(HashSet::new()));
-
-/// 标记指定游戏ID为用户主动停止
-pub fn mark_download_stopped(game_id: &str) {
-    if let Ok(mut set) = STOPPED_DOWNLOADS.lock() {
-        set.insert(game_id.to_string());
-    }
-}
-
-/// 检查并移除指定游戏ID的停止标记
-/// 返回是否曾被标记为用户主动停止
-pub fn take_download_stopped(game_id: &str) -> bool {
-    if let Ok(mut set) = STOPPED_DOWNLOADS.lock() {
-        set.remove(game_id)
-    } else {
-        false
-    }
-}
-
-/// 重置所有正在下载的游戏状态
-/// 在程序关闭时调用，将 download_status 从 "downloading" 重置为 "idle"
+/// 重置所有正在下载的游戏状态为「暂停」
+/// - 退出（托盘关闭）前调用：把 downloading → paused，记录"下载中被打断"；
+/// - 启动时调用：把上次异常退出（含任务管理器强杀）遗留的 downloading 一并转
+///   paused，前端据此在下载记录页展示"已暂停"并可断点续传。
 fn reset_downloading_games() -> Result<(), String> {
     // 先将内存缓存中的最新游戏数据强制落盘，确保读取到的是最新状态
     crate::services::game_data_service::flush_now();
@@ -176,13 +184,13 @@ fn reset_downloading_games() -> Result<(), String> {
     let mut collection: GameDataCollection = serde_json::from_str(&content)
         .map_err(|e| format!("解析游戏数据失败: {}", e))?;
     
-    // 找到所有正在下载的游戏并重置状态
+    // 找到所有正在下载的游戏并标记为「暂停」（保留进度，供断点续传）
     let mut has_changes = false;
     for (game_id, game) in collection.games.iter_mut() {
         if game.download_status == "downloading" {
-            log::info!("重置游戏 {} 的下载状态", game_id);
-            game.download_status = "idle".to_string();
-            game.download_progress = 0;
+            log::info!("标记游戏 {} 的下载状态为暂停", game_id);
+            game.download_status = "paused".to_string();
+            // 保留 download_progress：暂停后可如上继续下载
             has_changes = true;
         }
     }
@@ -204,16 +212,82 @@ fn reset_downloading_games() -> Result<(), String> {
         fs::write(&data_path, content)
             .map_err(|e| format!("写入游戏数据文件失败: {}", e))?;
         
-        log::info!("已重置所有正在下载的游戏状态");
+        log::info!("已将异常中断的下载标记为暂停");
     }
     
     Ok(())
 }
 
+/// 初始化文件日志写入 `%APPDATA%/SteamToolPlus/download.log`。
+///
+/// 程序打包后无终端，env_logger 默认输出会全部丢失（此前引擎的"换服务器/超时/
+/// 使用 CDN 主机"等排查信息无处可看）。改为写文件后：
+/// - 所有 log::*（info 及以上；含引擎「开始使用 CDN 服务器」）进入该文件；
+/// - 滚动保留：启动时把旧 download.log 重命名为 download.log.1（覆盖更旧），
+///   避免单文件无限增长；
+/// - 目录/文件不可用（如权限异常）时降级 stderr，不阻塞程序启动。
+fn init_file_logger() {
+    use env_logger::{Builder, Env, Target};
+
+    // 目标目录 %APPDATA%/SteamToolPlus（与程序配置目录一致）
+    let appdata = match utils::config_path_utils::get_appdata_dir() {
+        Ok(dir) => dir,
+        Err(e) => {
+            eprintln!("日志目录不可用（{e}），回退 stderr");
+            Builder::from_env(Env::default().default_filter_or("info")).init();
+            return;
+        }
+    };
+    if let Err(e) = std::fs::create_dir_all(&appdata) {
+        eprintln!("创建日志目录失败（{e}），回退 stderr");
+        Builder::from_env(Env::default().default_filter_or("info")).init();
+        return;
+    }
+
+    // 滚动：上次文件 → download.log.1（先删更旧的一份）
+    let path = appdata.join("download.log");
+    let prev = appdata.join("download.log.1");
+    if path.exists() {
+        let _ = std::fs::remove_file(&prev);
+        let _ = std::fs::rename(&path, &prev);
+    }
+
+    let file = match std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&path)
+    {
+        Ok(f) => f,
+        Err(e) => {
+            eprintln!("打开日志文件失败（{e}），回退 stderr");
+            Builder::from_env(Env::default().default_filter_or("info")).init();
+            return;
+        }
+    };
+
+    Builder::from_env(Env::default().default_filter_or("info"))
+        .target(Target::Pipe(Box::new(file)))
+        // 自定义格式：时间用本地时区（用户所在时区，如北京时间 UTC+8），
+        // 不使用默认的 UTC（Z 后缀）时间戳，方便按本地时间对照下载过程
+        .format(|buf, record| {
+            use std::io::Write;
+            let ts = chrono::Local::now().format("%Y-%m-%d %H:%M:%S");
+            writeln!(
+                buf,
+                "[{ts} {:<5} {}] {}",
+                record.level(),
+                record.target(),
+                record.args()
+            )
+        })
+        .init();
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 fn main() {
-    // 初始化日志
-    env_logger::init();
+    // 初始化日志：写文件到 %APPDATA%/SteamToolPlus/download.log（无终端时也能排查，
+    // 引擎进度/换服务器/超时等 log::* 均入此文件；保留最近 2 份滚动防无限增长）
+    init_file_logger();
 
     // 在 Tauri 启动前处理实例冲突
     // 如果检测到同名进程但路径不同，请求旧进程退出并等待其结束
@@ -275,6 +349,12 @@ fn main() {
             // 启动实例冲突监听器
             update_manager::spawn_instance_control_watcher(app.handle().clone());
 
+            // 启动恢复：把上次异常退出（含任务管理器强杀）遗留的 downloading 标记为暂停，
+            // 前端据此在下载记录页展示"已暂停"并可断点续传
+            if let Err(e) = reset_downloading_games() {
+                log::warn!("启动时标记异常下载为暂停失败: {}", e);
+            }
+
             // 获取主窗口并设置窗口属性
             let window = app.get_webview_window("main").unwrap();
             let _ = window.set_decorations(false);
@@ -295,19 +375,12 @@ fn main() {
                         }
                         log::info!("检测到可用更新，前端轮询后会自动弹出提示");
                     }
-                    Ok(_) => {
-                        // 没有更新，存入空结果（表示检查已完成但没有更新）
+                    Ok(result) => {
+                        // 没有更新：直接存入完整检查结果（has_update=false 且包含本地更新说明），
+                        // 前端据此判断是否需要展示「公告板」（无更新时展示上次更新的说明），
+                        // 同时非 None 表示检查已完成，避免前端无限轮询
                         if let Ok(mut pending) = PENDING_STARTUP_UPDATE.lock() {
-                            // 使用一个特殊标记表示检查已完成
-                            *pending = Some(update_manager::UpdateCheckResult {
-                                has_update: false,
-                                local_app_version: String::new(),
-                                local_resource_version: String::new(),
-                                remote_resource_version: String::new(),
-                                remote_description: None,
-                                has_exe_update: false,
-                                patch_url: String::new(),
-                            });
+                            *pending = Some(result);
                         }
                         log::info!("当前已是最新版本");
                     }
@@ -323,6 +396,7 @@ fn main() {
                                 remote_description: None,
                                 has_exe_update: false,
                                 patch_url: String::new(),
+                                local_description: None,
                             });
                         }
                     }
@@ -580,8 +654,6 @@ fn main() {
             window_commands::close_window,
             window_commands::toggle_fullscreen,
             window_commands::set_window_size,
-            window_commands::open_help_window,
-            window_commands::close_help_window,
             // 工具命令
             commands::tool_commands::read_file_content,
             commands::tool_commands::check_file_exists,
@@ -598,8 +670,9 @@ fn main() {
             download_commands::read_json_file,
             download_commands::get_available_drive,
             download_commands::get_manifest_path,
-            download_commands::start_game_download,
             download_commands::get_download_progress_files,
+            download_commands::start_game_download,
+            download_commands::get_download_status,
             download_commands::read_directory,
             download_commands::delete_file,
             download_commands::delete_game_manifest_folder,
@@ -697,6 +770,9 @@ fn main() {
             // 游戏数据管理命令
             game_data_commands::get_all_games_data,
             game_data_commands::get_game_data,
+            game_data_commands::get_download_history,
+            game_data_commands::append_download_history,
+            game_data_commands::remove_download_history,
             game_data_commands::upsert_game_data,
             game_data_commands::remove_game_data,
             game_data_commands::update_game_download_status,
@@ -713,9 +789,9 @@ fn main() {
             game_data_commands::delete_game_directory,
             game_data_commands::delete_game_log_cache,
             game_data_commands::open_game_directory,
+            // 解压即玩图片命令
+            extract_play_commands::get_extract_play_image,
             // 帮助命令
-            help_commands::read_readme_file,
-            help_commands::check_readme_exists,
             help_commands::get_weixin_image_base64,
             help_commands::get_alipay_image_base64,
             help_commands::get_qingdan_image_base64,
@@ -738,6 +814,8 @@ fn main() {
             update_manager::get_app_versions,
             update_manager::check_for_update,
             update_manager::apply_update,
+            // 启动时公告板命令（无更新时读取 resources/announcement/announcement.md）
+            update_manager::get_announcement,
             // 启动时更新检查命令
             get_pending_startup_update,
             // 清单入库命令
@@ -778,6 +856,14 @@ fn main() {
             denuvo_commands::delete_denuvo_auth_backup,
             denuvo_commands::apply_denuvo_auth_backup,
         ])
-        .run(tauri::generate_context!())
-        .expect("应用程序启动失败");
+        .build(tauri::generate_context!())
+        .expect("应用程序启动失败")
+        .run(|_app_handle, event| {
+            // 程序事件循环结束（真正退出）时清理解压即玩图片的本地临时缓存
+            if let tauri::RunEvent::Exit = event {
+                if let Err(e) = extract_play_commands::clear_extract_play_cache() {
+                    log::warn!("清理解压即玩图片缓存失败: {}", e);
+                }
+            }
+        });
 }

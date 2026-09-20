@@ -26,8 +26,8 @@ pub fn add_fake_imported_game_command(app_id: u32) -> Result<serde_json::Value, 
 
 /// 移除假入库游戏
 /// 安全策略：
-/// 1. 检查 Steam 库中是否存在 appmanifest_{app_id}.acf（正版购买记录）
-/// 2. 如果存在，拒绝删除并提示用户
+/// 1. 检查 Steam 库中是否存在 appmanifest_{app_id}.acf（该游戏当前已安装，可能为假入库安装产生）
+/// 2. 如果存在，拒绝删除并提示用户先在 Steam 中卸载
 /// 3. 如果不存在，删除 OpenSteamTool 写入的 Lua 和 manifest 文件，并从记录中移除
 #[tauri::command]
 pub fn remove_fake_imported_game_command(
@@ -42,11 +42,16 @@ pub fn remove_fake_imported_game_command(
         }
     };
 
-    // 2. 安全检查：是否存在正版购买记录
+    // 2. 安全检查：Steam 库中是否仍存在该游戏的安装记录
+    // 假入库游戏在 Steam 中安装后同样会生成 appmanifest_{app_id}.acf，
+    // 此时若删除入库文件，游戏会变为「未购买」且无法游玩，因此必须让用户先卸载
     if has_real_steam_ownership(&steam_path, app_id) {
         return Ok(serde_json::json!({
             "success": false,
-            "message": format!("无法删除 AppID {}：检测到正版购买记录（appmanifest_{}.acf），为避免误删正版游戏，仅支持手动从 Steam 库中移除", app_id, app_id),
+            "message": format!(
+                "无法删除 AppID {}：该游戏当前已在 Steam 库中安装。若删除入库，游戏将显示为「未购买」且无法游玩。如确需删除入库，请先在 Steam 库中卸载该游戏，卸载后即可删除",
+                app_id
+            ),
             "hasRealOwnership": true
         }));
     }

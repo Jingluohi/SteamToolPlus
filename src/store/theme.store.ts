@@ -119,7 +119,7 @@ export const useThemeStore = defineStore('theme', () => {
       html.style.setProperty('--app-bg-color', solidBgColor.value)
     } else {
       // 图片模式下使用主题主背景色兜底
-      html.style.setProperty('--app-bg-color', isDark.value ? '#363636' : '#f8f9fa')
+      html.style.setProperty('--app-bg-color', isDark.value ? '#1c2230' : '#f8f9fa')
     }
 
     // 清理已应用但已被移除的自定义变量，避免重置后旧颜色残留

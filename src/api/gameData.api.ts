@@ -15,8 +15,8 @@ export interface GameData {
   game_name: string
   /** 游戏中文名 */
   chinese_name: string
-  /** 游戏类型：downloaded(下载的) 或 imported(导入的) */
-  game_type: 'downloaded' | 'imported'
+  /** 游戏类型：downloaded(下载完成) / imported(导入的) / 空(未完成，如下载中/暂停/失败) */
+  game_type: 'downloaded' | 'imported' | ''
   /** 游戏安装路径 */
   install_path: string
   /** 游戏主程序exe路径 */

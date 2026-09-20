@@ -14,34 +14,36 @@
  * Steam风格灰黑色调 - 多层次配色
  */
 :root {
-  /* 深色主题 - 深灰色调 */
-  --steam-bg-primary: #363636;
-  --steam-bg-primary-rgb: 54, 54, 54;
-  --steam-bg-secondary: #404040;
-  --steam-bg-secondary-rgb: 64, 64, 64;
-  --steam-bg-tertiary: #4a4a4a;
-  --steam-bg-tertiary-rgb: 74, 74, 74;
-  --steam-bg-quaternary: #545454;
-  --steam-bg-quaternary-rgb: 84, 84, 84;
-  --steam-bg-card: #5e5e5e;
-  --steam-bg-hover: #686868;
+  /* 深色主题 - 冷调蓝黑（Steam 现代风格）
+     从冷调深蓝黑到明度递进的蓝灰阶梯，取代扁平纯灰，营造高级层次感 */
+  --steam-bg-primary: #1c2230;
+  --steam-bg-primary-rgb: 28, 34, 48;
+  --steam-bg-secondary: #262e44;
+  --steam-bg-secondary-rgb: 38, 46, 68;
+  --steam-bg-tertiary: #303a54;
+  --steam-bg-tertiary-rgb: 48, 58, 84;
+  --steam-bg-quaternary: #3c4666;
+  --steam-bg-quaternary-rgb: 60, 70, 102;
+  --steam-bg-card: #2a3147;
+  --steam-bg-hover: #3a4462;
   --steam-accent-hover: rgba(255, 255, 255, 0.12);
 
-  /* 输入框和表单元素 - 深灰色 */
-  --steam-input-bg: #4a4a4a;
-  --steam-input-border: #5c5c5c;
-  --steam-input-focus: #6c6c6c;
+  /* 输入框和表单元素 - 蓝灰 */
+  --steam-input-bg: #303a54;
+  --steam-input-border: #424e70;
+  --steam-input-focus: #546397;
 
-  /* 卡片和容器 - 深灰色 */
-  --steam-card-bg: #434343;
-  --steam-card-border: #545454;
-  --steam-panel-bg: #3d3d3d;
-  --steam-panel-border: #4e4e4e;
-  
+  /* 卡片和容器 - 蓝灰 */
+  --steam-card-bg: #2a3147;
+  --steam-card-border: #3d4765;
+  --steam-panel-bg: #232b3f;
+  --steam-panel-border: #37415d;
+
+  /* 文本 - 带蓝调的白灰，增强深色下的阅读质感 */
   --steam-text-primary: #ffffff;
-  --steam-text-secondary: #d0d4da;
-  --steam-text-muted: #9ca3af;
-  --steam-text-subtle: #6b7280;
+  --steam-text-secondary: #d7dde8;
+  --steam-text-muted: #a6b0c6;
+  --steam-text-subtle: #6f7b96;
   --steam-text-outline: rgba(0, 0, 0, 0.8);
   
   /* 强调色 - 更鲜明的配色 */
@@ -73,17 +75,24 @@
   --steam-border-light: rgba(255, 255, 255, 0.15);
   --steam-border-subtle: rgba(255, 255, 255, 0.08);
   
-  /* 玻璃态效果 - 深色主题使用深色系 */
-  --glass-bg: rgba(18, 20, 26, 0.82);
-  --glass-bg-hover: rgba(22, 32, 46, 0.9);
-  --glass-border: rgba(255, 255, 255, 0.08);
-  --glass-backdrop: blur(20px) saturate(160%);
+  /* 玻璃态效果 - 深色主题使用冷调半透明玻璃：
+     半透明冷蓝底 + 高模糊，营造高级冰晶质感 */
+  --glass-bg: rgba(22, 28, 44, 0.66);
+  --glass-bg-hover: rgba(34, 44, 69, 0.82);
+  --glass-border: rgba(255, 255, 255, 0.07);
+  --glass-border-strong: rgba(255, 255, 255, 0.14);
+  --glass-backdrop: blur(24px) saturate(150%);
+
+  /* 玻璃水晶高光 - 模拟光线在玻璃切面边缘的折射反光 */
+  --glass-highlight: linear-gradient(180deg, rgba(255, 255, 255, 0.045) 0%, rgba(255, 255, 255, 0) 14%);
+  /* 玻璃水晶氛围光 - 右上方淡蓝辉光，让纯色/无图背景也透出高级感 */
+  --glass-sheen: radial-gradient(120% 90% at 88% -8%, rgba(87, 140, 220, 0.10) 0%, transparent 55%);
 
   /* 配置弹窗玻璃态 - 与主程序同色系，透明度减半 */
-  --config-modal-bg: rgba(18, 20, 26, 0.41);
-  --config-modal-bg-hover: rgba(22, 32, 46, 0.55);
+  --config-modal-bg: rgba(22, 28, 44, 0.41);
+  --config-modal-bg-hover: rgba(34, 44, 69, 0.55);
   --config-modal-border: rgba(255, 255, 255, 0.08);
-  --config-modal-backdrop: blur(20px) saturate(160%);
+  --config-modal-backdrop: blur(20px) saturate(150%);
   
   /* 圆角 */
   --radius-sm: 6px;
@@ -104,7 +113,7 @@
   --transition-slow: 350ms cubic-bezier(0.4, 0, 0.2, 1);
 
   /* 应用程序背景兜底色（由 JS 根据主题模式动态设置） */
-  --app-bg-color: #363636;
+  --app-bg-color: #1c2230;
   --app-solid-black: #28324a;
   --app-solid-white: #f2f2f2;
 }
@@ -158,11 +167,12 @@
   --steam-border: rgba(0, 0, 0, 0.08);
   --steam-border-light: rgba(0, 0, 0, 0.12);
   --steam-border-subtle: rgba(0, 0, 0, 0.05);
-  
+
   /* 玻璃态效果 - 浅色主题使用浅灰色系 */
   --glass-bg: rgba(248, 249, 250, 0.75);
   --glass-bg-hover: rgba(255, 255, 255, 0.9);
   --glass-border: rgba(0, 0, 0, 0.08);
+  --glass-border-strong: rgba(0, 0, 0, 0.16);
   --glass-backdrop: blur(20px) saturate(180%);
 
   /* 配置弹窗玻璃态 - 与主程序同色系，透明度减半 */
@@ -305,6 +315,187 @@ ol {
 .glass-hover:hover {
   background: var(--glass-bg-hover);
   border-color: var(--steam-border-light);
+}
+
+/**
+ * ============================================
+ * 按钮设计系统（全应用统一）
+ * 目的：所有按钮——包括 Button.vue 组件与各页面遗留的原生 <button>——
+ *       共用同一套 字体/字号/字重/圆角/高度/内边距(文字与按钮框占比)/
+ *       悬停光晕/按下回弹 反馈，杜绝“每个按钮长得不一样”。
+ * 不同功能仅通过【变体】着色区分。
+ * ============================================
+ */
+
+/* ---- 设计令牌 ---- */
+:root {
+  /* 基础 */
+  --btn-radius: 8px; /* 统一圆角 */
+  --btn-fw: 600;     /* 统一字重 */
+  --btn-transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.12s ease;
+
+  /* 尺寸档：高度 / 字号 / 横向内边距 / 图标尺寸 */
+  --btn-h-sm: 32px; --btn-fs-sm: 13px; --btn-px-sm: 14px; --btn-ic-sm: 14px;
+  --btn-h-md: 40px; --btn-fs-md: 14px; --btn-px-md: 18px; --btn-ic-md: 16px;
+  --btn-h-lg: 48px; --btn-fs-lg: 15px; --btn-px-lg: 26px; --btn-ic-lg: 18px;
+
+  /* 悬停光晕（与各自品牌色一致的柔和外发光） */
+  --btn-glow-primary: 0 4px 16px rgba(var(--steam-accent-blue-rgb), 0.35);
+  --btn-glow-success: 0 4px 16px rgba(var(--steam-accent-green-rgb), 0.35);
+  --btn-glow-danger: 0 4px 16px rgba(229, 57, 53, 0.35);
+  --btn-glow-warning: 0 4px 16px rgba(var(--steam-warning-rgb), 0.35);
+
+  /* 描边按钮：半透明玻璃底 + 明确可见的描边（按钮框与背景区分开） */
+  --btn-outline-bg: rgba(var(--steam-bg-secondary-rgb), 0.6);
+  --btn-outline-bg-hover: rgba(var(--steam-bg-secondary-rgb), 0.85);
+}
+
+/* ---- 通用按钮基类：默认中等尺寸 ---- */
+.ui-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: var(--btn-h-md);
+  padding: 0 var(--btn-px-md);
+  font-size: var(--btn-fs-md);
+  font-weight: var(--btn-fw);
+  font-family: inherit;
+  border: 1px solid transparent;
+  border-radius: var(--btn-radius);
+  cursor: pointer;
+  white-space: nowrap;
+  user-select: none;
+  transition: var(--btn-transition);
+}
+
+/* 悬停上浮 + 按下回弹：全按钮统一的质感反馈 */
+.ui-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.ui-btn:active:not(:disabled) {
+  transform: translateY(0) scale(0.97);
+}
+
+/* 禁用态统一：降低透明度 + 禁止反馈动画 */
+.ui-btn:disabled,
+.ui-btn.disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+.ui-btn.loading {
+  cursor: wait;
+}
+
+/* 图标统一（按钮内 svg 随尺寸档变化） */
+.ui-btn svg {
+  width: var(--btn-ic-md);
+  height: var(--btn-ic-md);
+  flex-shrink: 0;
+}
+
+/* ---- 尺寸档 ---- */
+.ui-btn-sm {
+  height: var(--btn-h-sm);
+  padding: 0 var(--btn-px-sm);
+  font-size: var(--btn-fs-sm);
+}
+
+.ui-btn-sm svg {
+  width: var(--btn-ic-sm);
+  height: var(--btn-ic-sm);
+}
+
+.ui-btn-lg {
+  height: var(--btn-h-lg);
+  padding: 0 var(--btn-px-lg);
+  font-size: var(--btn-fs-lg);
+}
+
+.ui-btn-lg svg {
+  width: var(--btn-ic-lg);
+  height: var(--btn-ic-lg);
+}
+
+/* ---- 变体（按功能着色） ---- */
+
+/* 主操作：蓝色实底，悬停提亮 + 蓝色光晕 */
+.ui-btn-primary {
+  background: var(--steam-accent-blue);
+  border-color: transparent;
+  color: #fff;
+}
+
+.ui-btn-primary:hover:not(:disabled) {
+  background: var(--steam-accent-blue-hover);
+  box-shadow: var(--btn-glow-primary);
+}
+
+/* 成功：绿色实底 */
+.ui-btn-success {
+  background: var(--steam-accent-green);
+  border-color: transparent;
+  color: #fff;
+}
+
+.ui-btn-success:hover:not(:disabled) {
+  background: var(--steam-accent-green-hover);
+  box-shadow: var(--btn-glow-success);
+}
+
+/* 危险：红色实底 */
+.ui-btn-danger {
+  background: var(--steam-error);
+  border-color: transparent;
+  color: #fff;
+}
+
+.ui-btn-danger:hover:not(:disabled) {
+  background: var(--steam-error-hover);
+  box-shadow: var(--btn-glow-danger);
+}
+
+/* 警示：琥珀实底 */
+.ui-btn-warning {
+  background: var(--steam-warning);
+  border-color: transparent;
+  color: #fff;
+}
+
+.ui-btn-warning:hover:not(:disabled) {
+  background: var(--steam-warning-hover);
+  box-shadow: var(--btn-glow-warning);
+}
+
+/* 描边：玻璃半透明 + 清晰描边（按钮框一目了然）
+   悬停时边框与文字映射品牌蓝 —— 即“更新游戏”按钮的质感：
+   柔和、有反馈、不刺眼 */
+.ui-btn-outline {
+  background: var(--btn-outline-bg);
+  border-color: var(--glass-border-strong);
+  color: var(--steam-text-primary);
+}
+
+.ui-btn-outline:hover:not(:disabled) {
+  background: var(--btn-outline-bg-hover);
+  border-color: var(--steam-accent-blue);
+  color: var(--steam-accent-blue);
+}
+
+/* 幽灵：纯文字弱操作 */
+.ui-btn-ghost {
+  background: transparent;
+  border-color: transparent;
+  color: var(--steam-text-secondary);
+}
+
+.ui-btn-ghost:hover:not(:disabled) {
+  background: var(--steam-accent-hover);
+  color: var(--steam-text-primary);
 }
 
 /**

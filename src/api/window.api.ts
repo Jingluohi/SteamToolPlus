@@ -26,20 +26,6 @@ export async function closeWindow(): Promise<void> {
 }
 
 /**
- * 打开帮助窗口
- */
-export async function openHelpWindow(): Promise<void> {
-  return invoke<void>('open_help_window')
-}
-
-/**
- * 关闭帮助窗口
- */
-export async function closeHelpWindow(): Promise<void> {
-  return invoke<void>('close_help_window')
-}
-
-/**
  * 切换全屏模式
  */
 export async function toggleFullscreen(): Promise<void> {

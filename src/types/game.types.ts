@@ -210,6 +210,8 @@ export interface GameConfigData {
   downloadable: boolean
   /** 是否有解压即玩版本（夸克网盘二维码） */
   has_extract_play?: boolean
+  /** 是否有Steam入库功能（缺省为true以兼容旧版配置，控制游戏详情页"入库Steam"标签页是否显示） */
+  has_steam_import?: boolean
   /** 修改器配置 */
   trainer?: TrainerConfig
   /** 补丁标签列表 */

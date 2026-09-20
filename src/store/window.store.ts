@@ -74,28 +74,6 @@ export const useWindowStore = defineStore('window', () => {
     }
   }
 
-  /**
-   * 打开帮助窗口
-   */
-  async function openHelp() {
-    try {
-      await windowApi.openHelpWindow()
-    } catch (err) {
-      // 打开帮助窗口失败时静默处理
-    }
-  }
-
-  /**
-   * 关闭帮助窗口
-   */
-  async function closeHelp() {
-    try {
-      await windowApi.closeHelpWindow()
-    } catch (err) {
-      // 关闭帮助窗口失败时静默处理
-    }
-  }
-
   // 返回所有状态和方法
   return {
     // State
@@ -108,8 +86,6 @@ export const useWindowStore = defineStore('window', () => {
     minimize,
     maximize,
     close,
-    toggleFullscreen,
-    openHelp,
-    closeHelp
+    toggleFullscreen
   }
 })

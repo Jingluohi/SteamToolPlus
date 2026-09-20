@@ -257,6 +257,16 @@
             </svg>
             {{ isRestoring ? '还原中...' : '还原文件' }}
           </button>
+
+          <!-- 使用 Steam 存档路径复选框 -->
+          <label
+            class="steam-save-checkbox"
+            :class="{ active: useSteamSavePath }"
+            title="未勾选：存档保存到 %appdata%\GSE Saves（默认，无需 Steam）；勾选后：存档保存到 Steam 的 userdata 目录（<Steam>\userdata\<账户ID>\<AppID>\remote），与 Steam 云端存档位置完全一致，需已安装并登录 Steam"
+          >
+            <input type="checkbox" v-model="useSteamSavePath" class="steam-save-input" />
+            <span class="steam-save-label">使用steam存档路径</span>
+          </label>
         </div>
       </div>
     </div>
@@ -744,6 +754,8 @@ const showCompleteConfigManager = ref(false)
 
 /** 是否正在还原文件 */
 const isRestoring = ref(false)
+/** 是否使用 Steam 存档路径（默认不勾选，保持 %appdata%\GSE Saves 存档位置） */
+const useSteamSavePath = ref(false)
 
 // ============================================
 // 计算属性
@@ -892,7 +904,8 @@ const applyBasicConfig = async () => {
       gameId: '',
       steamAppId: steamAppId.value,
       mode: emulatorMode.value,
-      gameExePath: gameExePath.value || null
+      gameExePath: gameExePath.value || null,
+      useSteamSavePath: useSteamSavePath.value
     })
 
     if (result.success) {
@@ -1085,6 +1098,7 @@ const loadPatchState = async () => {
       gameExePath?: string
       steamAppId?: string
       basicConfigApplied?: boolean
+      useSteamSavePath?: boolean
     }>('load_patch_state')
 
     // 恢复模式分类（兼容旧版数字格式：0=单机，1=注入版 steamclient）
@@ -1105,6 +1119,7 @@ const loadPatchState = async () => {
     if (state.gameExePath !== undefined) gameExePath.value = state.gameExePath
     if (state.steamAppId !== undefined) steamAppId.value = state.steamAppId
     if (state.basicConfigApplied !== undefined) basicConfigApplied.value = state.basicConfigApplied
+    if (state.useSteamSavePath !== undefined) useSteamSavePath.value = state.useSteamSavePath
   } catch {
     // 加载失败时使用默认值
   }
@@ -1123,6 +1138,7 @@ const savePatchState = async () => {
         gameExePath: gameExePath.value,
         steamAppId: steamAppId.value,
         basicConfigApplied: basicConfigApplied.value,
+        useSteamSavePath: useSteamSavePath.value,
       }
     })
   } catch {
@@ -1191,7 +1207,8 @@ watch([
   gamePath,
   gameExePath,
   steamAppId,
-  basicConfigApplied
+  basicConfigApplied,
+  useSteamSavePath
 ], () => {
   savePatchState()
 }, { deep: true })
@@ -1735,6 +1752,45 @@ const onSelectLan = () => {
   margin-top: 15px;
   padding-top: 13px;
   border-top: 1px solid var(--steam-border);
+}
+
+/* 使用 Steam 存档路径复选框（右对齐，与操作按钮同行） */
+.steam-save-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  padding: 6px 12px;
+  border: 1px solid var(--steam-border);
+  border-radius: 8px;
+  background-color: rgba(var(--steam-bg-tertiary-rgb), 0.2);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.steam-save-checkbox:hover {
+  border-color: var(--steam-accent-blue);
+}
+
+.steam-save-checkbox.active {
+  border-color: var(--steam-accent-blue);
+  background-color: rgba(59, 130, 246, 0.1);
+}
+
+.steam-save-input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--steam-accent-blue);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.steam-save-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--steam-text-primary);
+  white-space: nowrap;
 }
 
 .btn-primary,

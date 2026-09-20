@@ -159,6 +159,7 @@ pub async fn apply_steam_patch_basic(
     steam_app_id: String,
     mode: String,
     game_exe_path: Option<String>,
+    use_steam_save_path: bool,
 ) -> Result<super::common::BasicConfigResult, String> {
     use super::common::{get_resource_dir, BasicConfigResult};
     use super::file_ops::{copy_dir_recursive, rename_example_files};
@@ -170,6 +171,21 @@ pub async fn apply_steam_patch_basic(
 
     if !game_dir.exists() {
         return Err(format!("游戏路径不存在: {}", game_path));
+    }
+
+    // 第0步: 若勾选「使用 Steam 存档路径」，在修改任何文件前先解析当前 Steam 登录账号
+    // 解析失败（未安装/未登录 Steam）时直接中止，避免留下半成品补丁
+    // 解析成功后，将 local_save_path 指向 <Steam>\userdata\<账户ID>，
+    // 模拟器会写入 <Steam>\userdata\<账户ID>\<AppID>\remote，与 Steam 云端存档目录完全一致
+    let mut steam_save_override: Option<(String, String)> = None;
+    if use_steam_save_path {
+        let (steam_path, account_id, steamid64) =
+            crate::services::opensteamtool_service::resolve_steam_account_id()
+                .map_err(|e| format!("使用 Steam 存档路径失败：{}", e))?;
+        let save_path = Path::new(&steam_path)
+            .join("userdata")
+            .join(account_id.to_string());
+        steam_save_override = Some((save_path.to_string_lossy().to_string(), steamid64.to_string()));
     }
 
     let steam_settings_dir = game_dir.join("steam_settings");
@@ -296,8 +312,15 @@ pub async fn apply_steam_patch_basic(
 
     // 写入 configs.user.ini
     // 基础配置应用时使用程序默认值，避免示例目录中的示例值被保留
+    // 勾选「使用 Steam 存档路径」时：local_save_path 指向 Steam 的 userdata\<账户ID> 目录，
+    // 并写入真实 SteamID64（account_steamid），使游戏内身份与 Steam 账号一致；
+    // 未勾选时保持默认（不写 local_save_path，使用 %appdata%\GSE Saves）
     let user_config_path = steam_settings_dir.join("configs.user.ini");
-    let user_config = UserConfig::default_config();
+    let mut user_config = UserConfig::default_config();
+    if let Some((save_path, steamid64)) = &steam_save_override {
+        user_config.local_save_path = Some(save_path.clone());
+        user_config.account_steamid = Some(steamid64.clone());
+    }
     let user_config_content = user_config.to_ini();
 
     let mut user_file = fs::File::create(&user_config_path)

@@ -1,6 +1,7 @@
 // OpenSteamTool 内核服务
 // 提供Steam路径检测、内核DLL安装卸载、Lua生成、manifest复制、Steam重启等功能
 
+use std::collections::HashSet;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -45,7 +46,7 @@ pub struct OpenSteamToolImportOptions {
     /// OpenSteamTool 会加载 config/lua 目录下的所有 .lua，
     /// 因此清单包内的主游戏、每个DLC、创意工坊depot各自独立写入，全部保留
     pub additional_lua_files: Vec<(u32, String)>,
-    /// 需一并复制到 Steam/config/depotcache/ 的清单文件路径（锁定版本时必须有本地 manifest，
+    /// 需一并复制到 Steam/depotcache/（Steam 安装根目录）的清单文件路径（锁定版本时必须有本地 manifest，
     /// 否则 OpenSteamTool 只能从远程 manifest 服务取请求码，取不到就回退到最新版）
     pub manifest_files: Vec<String>,
     /// 是否自动安装内核DLL（首次使用）
@@ -189,6 +190,152 @@ fn read_steam_path_from_registry() -> Result<String, String> {
 #[cfg(not(target_os = "windows"))]
 fn read_steam_path_from_registry() -> Result<String, String> {
     Err("非Windows系统不支持从注册表读取Steam路径".to_string())
+}
+
+// ============================================
+// 当前 Steam 登录账号解析（用于「使用 Steam 存档路径」功能）
+// 与 OpenSteamTool 的 Denuvo 授权使用同一套账号提取机制：
+//   1. 优先读取注册表 HKCU\Software\Valve\Steam\ActiveProcess\ActiveUser（当前活动账号）
+//   2. 失败则解析 <Steam>\config\loginusers.vdf 中 mostrecent=1 的最近登录账号
+// Steam 云端存档目录为 <Steam>\userdata\<32位账号ID>\<AppID>\remote
+// ============================================
+
+/// Steam 活动进程注册表键路径（Steam 客户端运行时/关闭后均可能残留，读取需容错）
+#[cfg(target_os = "windows")]
+const STEAM_ACTIVE_PROCESS_KEY: &str = r"Software\Valve\Steam\ActiveProcess";
+
+/// 解析当前 Steam 登录账号
+/// 返回 (Steam安装路径, 32位账号ID, SteamID64)
+pub fn resolve_steam_account_id() -> Result<(String, u32, u64), String> {
+    let steam_path = detect_steam_path(None)?;
+
+    // 1. 首选：注册表 ActiveProcess\ActiveUser（Steam 当前活动账号）
+    #[cfg(target_os = "windows")]
+    {
+        if let Some(account_id) = read_active_process_user()? {
+            let universe = read_active_process_universe().unwrap_or(1u64);
+            let steamid64 = (universe << 56) | (1u64 << 52) | (account_id as u64);
+            log::info!("从注册表 ActiveProcess 解析到当前账号: account_id={}, steamid64={}", account_id, steamid64);
+            return Ok((steam_path, account_id, steamid64));
+        }
+    }
+
+    // 2. 兜底：解析 loginusers.vdf 的最近登录账号
+    let (account_id, steamid64) = resolve_account_from_loginusers(&steam_path)?;
+    log::info!("从 loginusers.vdf 解析到最近登录账号: account_id={}, steamid64={}", account_id, steamid64);
+    Ok((steam_path, account_id, steamid64))
+}
+
+/// 从注册表读取 Steam 当前活动账号（32位账号ID），无记录时返回 None
+#[cfg(target_os = "windows")]
+fn read_active_process_user() -> Result<Option<u32>, String> {
+    use winreg::enums::HKEY_CURRENT_USER;
+    use winreg::RegKey;
+
+    let hkcu = RegKey::predef(HKEY_CURRENT_USER);
+    let active_key = match hkcu.open_subkey(STEAM_ACTIVE_PROCESS_KEY) {
+        Ok(key) => key,
+        Err(_) => return Ok(None),
+    };
+
+    match active_key.get_value::<u32, _>("ActiveUser") {
+        Ok(value) if value != 0 => Ok(Some(value)),
+        _ => Ok(None),
+    }
+}
+
+#[cfg(not(target_os = "windows"))]
+fn read_active_process_user() -> Result<Option<u32>, String> {
+    Ok(None)
+}
+
+/// 从注册表读取 Steam 活动账号所属的 universe（默认公网 universe=1）
+#[cfg(target_os = "windows")]
+fn read_active_process_universe() -> Option<u64> {
+    use winreg::enums::HKEY_CURRENT_USER;
+    use winreg::RegKey;
+
+    let hkcu = RegKey::predef(HKEY_CURRENT_USER);
+    let active_key = hkcu.open_subkey(STEAM_ACTIVE_PROCESS_KEY).ok()?;
+    let value: String = active_key.get_value("Universe").ok()?;
+    value.trim().parse().ok()
+}
+
+#[cfg(not(target_os = "windows"))]
+fn read_active_process_universe() -> Option<u64> {
+    None
+}
+
+/// 从 loginusers.vdf 解析最近登录（mostrecent=1）的账号
+/// 返回 (32位账号ID, SteamID64)
+fn resolve_account_from_loginusers(steam_path: &str) -> Result<(u32, u64), String> {
+    let vdf_path = Path::new(steam_path).join("config").join("loginusers.vdf");
+    let content = fs::read_to_string(&vdf_path)
+        .map_err(|_| "未找到 loginusers.vdf，请先在 Steam 客户端登录一次账号".to_string())?;
+
+    // 简单 VDF 解析：记录花括号深度，账号块位于深度 1~2
+    // 深度 1 的键行为账号 SteamID64，深度 2 的键行为账号属性
+    let mut depth: usize = 0;
+    let mut current_steamid: Option<u64> = None;
+    let mut current_account_id: Option<u32> = None;
+    let mut current_most_recent = false;
+
+    for line in content.lines() {
+        let trimmed = line.trim();
+        if trimmed.contains('{') {
+            depth += 1;
+            continue;
+        }
+        if trimmed.contains('}') {
+            // 结束一个账号块：mostrecent=1 即最近登录账号
+            if depth == 2 && current_most_recent {
+                if let Some(steamid64) = current_steamid {
+                    // AccountID 字段缺失时用 steamid64 低 32 位换算
+                    let account_id = current_account_id.unwrap_or((steamid64 & 0xFFFF_FFFF) as u32);
+                    return Ok((account_id, steamid64));
+                }
+            }
+            current_steamid = None;
+            current_account_id = None;
+            current_most_recent = false;
+            depth = depth.saturating_sub(1);
+            continue;
+        }
+
+        let Some((key, value)) = extract_vdf_pair(trimmed) else { continue };
+        if depth == 1 && value.is_none()
+            && key.chars().all(|c| c.is_ascii_digit())
+            && key.len() >= 14
+        {
+            // 账号块键：SteamID64
+            if let Ok(id) = key.parse::<u64>() {
+                current_steamid = Some(id);
+            }
+        } else if depth == 2 {
+            match key.as_str() {
+                "mostrecent" => current_most_recent = value.as_deref() == Some("1"),
+                "AccountID" => {
+                    if let Some(v) = value.as_deref().and_then(|v| v.parse::<u32>().ok()) {
+                        current_account_id = Some(v);
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+
+    Err("loginusers.vdf 中未找到最近登录的账号，请先在 Steam 客户端登录账号".to_string())
+}
+
+/// 提取 VDF 行中的键值对，格式 `"key" "value"`；键行（无值）时 value 为 None
+fn extract_vdf_pair(line: &str) -> Option<(String, Option<String>)> {
+    if !line.starts_with('"') {
+        return None;
+    }
+    let mut parts = line.split('"').filter(|s| !s.is_empty());
+    let key = parts.next()?.to_string();
+    let value = parts.next().map(|s| s.to_string());
+    Some((key, value))
 }
 
 /// 检查内核DLL是否已安装到Steam目录
@@ -558,6 +705,7 @@ pub fn import_with_opensteamtool(
             game_dirs: None,
             launch: None,
             opensteamtool: Some(current_config.opensteamtool),
+            record_button: None,
         });
     }
 
@@ -600,18 +748,52 @@ pub fn import_with_opensteamtool(
         }
     }
 
-    // 4. 复制清单(.manifest)文件到 Steam/config/depotcache/
+    // 4. 复制清单(.manifest)文件到 Steam/depotcache/（Steam 安装根目录，不是 config/depotcache）
     // setManifestid 只是把 depot 的 GID 补丁为锁定值，Steam 之后仍需要清单的实际内容。
     // OpenSteamTool 会向远程 manifest 服务(http/manifest.opensteamtool.com 等)取请求码，
     // 若该服务不可达或不认识该 GID，请求码为 0，Steam 会回退到最新版。
     // 因此必须在 depotcache 里放一份本地 {depotId}_{manifestId}.manifest，让 Steam 直接读本地清单，
     // 锁定版本才能真正生效。
+    // Steam 的 depot manifest 缓存目录位于安装根目录的 depotcache/：Steam 在下载/校验游戏时
+    // 会从该目录读取 {depotId}_{manifestId}.manifest。放在 config/depotcache 下 Steam 读不到，
+    // 会转而向远程请求锁定 GID 的清单，接口加密后必然失败（表现为"无互联网连接"）。
     let mut manifest_copied = 0usize;
     if !options.manifest_files.is_empty() {
-        let depotcache_dir = Path::new(&steam_path).join("config").join("depotcache");
+        let depotcache_dir = Path::new(&steam_path).join("depotcache");
         fs::create_dir_all(&depotcache_dir).map_err(|e| {
             format!("创建 depotcache 目录失败: {}", e)
         })?;
+
+        // 清理同一批 depot 的旧清单：用户替换清单后，depotcache 里可能残留旧 manifestId 的
+        // {depotId}_*.manifest。depotcache 是 Steam 共享缓存（含其它游戏清单），不能整体清空，
+        // 因此只删除本次入库 depot 对应的旧文件，再写入新清单，避免过期清单堆积。
+        let new_depot_ids: HashSet<String> = options
+            .manifest_files
+            .iter()
+            .filter_map(|f| {
+                Path::new(f)
+                    .file_stem()
+                    .and_then(|s| s.to_str())
+                    .and_then(|name| name.split('_').next().map(|id| id.to_string()))
+            })
+            .collect();
+
+        if let Ok(entries) = fs::read_dir(&depotcache_dir) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if path.extension().and_then(|e| e.to_str()) != Some("manifest") {
+                    continue;
+                }
+                let Some(file_name) = path.file_stem().and_then(|s| s.to_str()) else { continue };
+                let Some(depot_id) = file_name.split('_').next() else { continue };
+                if new_depot_ids.contains(depot_id) {
+                    match fs::remove_file(&path) {
+                        Ok(_) => log::info!("已清理旧清单文件: {}", path.display()),
+                        Err(e) => log::warn!("清理旧清单文件失败 {}: {}", path.display(), e),
+                    }
+                }
+            }
+        }
 
         for manifest_file in &options.manifest_files {
             let src = PathBuf::from(manifest_file);

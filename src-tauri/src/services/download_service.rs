@@ -26,7 +26,18 @@ pub struct DownloadResult {
     pub process_id: Option<u32>,
 }
 
-/// 进度文件信息
+/// 目录项信息
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct DirEntry {
+    pub name: String,
+    pub path: String,
+    #[serde(rename = "is_dir")]
+    pub is_dir: bool,
+    pub size: Option<u64>,
+}
+
+/// 下载进度文件信息（ddv20.exe 模式）
+/// 对应 log/{game_id}/ 目录下 "{百分比}% - {depotId}.json" 进度文件
 #[derive(Debug, Clone, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ProgressFileInfo {
@@ -38,16 +49,6 @@ pub struct ProgressFileInfo {
     pub depot_id: String,
     /// 所属游戏 ID
     pub game_id: String,
-}
-
-/// 目录项信息
-#[derive(Debug, Clone, serde::Serialize)]
-pub struct DirEntry {
-    pub name: String,
-    pub path: String,
-    #[serde(rename = "is_dir")]
-    pub is_dir: bool,
-    pub size: Option<u64>,
 }
 
 /// 下载服务接口
@@ -62,7 +63,7 @@ pub trait DownloadServiceTrait: Send + Sync {
     fn get_available_drive(&self) -> Result<String, String>;
     /// 获取清单路径
     fn get_manifest_path(&self, app: &AppHandle, game_id: &str) -> Result<String, String>;
-    /// 启动游戏下载
+    /// 启动 ddv20.exe 外部下载进程（ddv20 模式专用）
     /// 返回下载结果和 ddv20.exe 子进程句柄
     fn start_game_download(
         &self,
@@ -71,7 +72,7 @@ pub trait DownloadServiceTrait: Send + Sync {
         download_path: &str,
         game_id: &str,
     ) -> Result<(DownloadResult, std::process::Child), String>;
-    /// 获取下载进度文件
+    /// 获取下载进度文件（ddv20 模式专用）
     /// 如果提供了 game_id，则只扫描该游戏对应的 log 目录
     fn get_download_progress_files(&self, game_id: Option<&str>) -> Result<Vec<ProgressFileInfo>, String>;
     /// 读取目录
@@ -82,10 +83,10 @@ pub trait DownloadServiceTrait: Send + Sync {
     fn shutdown_system(&self) -> Result<(), String>;
     /// 获取游戏的 depot 列表
     fn get_game_depots(&self, app: &AppHandle, game_id: &str) -> Result<Vec<String>, String>;
-    /// 检查并清理已完成的下载
+    /// 检查并清理已完成的下载（ddv20 模式专用）
     /// 当游戏的所有 depot 都下载完成后，静默删除对应的进度 JSON 文件
     fn check_and_cleanup_completed_downloads(&self, app: &AppHandle, game_id: Option<&str>) -> Result<(), String>;
-    /// 检查游戏的所有 depot 是否都已完成下载
+    /// 检查游戏的所有 depot 是否都已完成下载（ddv20 模式专用）
     fn check_all_depots_completed(&self, app: &AppHandle, game_id: &str) -> Result<bool, String>;
 }
 
@@ -98,7 +99,13 @@ impl DownloadService {
         Self
     }
 
-    /// 解析进度文件名
+    /// 获取资源目录路径
+    fn get_resource_dir(&self, app: &AppHandle) -> Result<std::path::PathBuf, String> {
+        // 使用公共的资源目录工具函数
+        get_resource_dir(app)
+    }
+
+    /// 解析 ddv20 进度文件名
     /// 格式: "{百分比}% - {depotId}.json"
     /// 返回: (进度百分比, depot ID)
     fn parse_progress_filename(file_name: &str) -> (u32, String) {
@@ -119,21 +126,13 @@ impl DownloadService {
         (0, String::new())
     }
 
-    /// 获取资源目录路径
-    fn get_resource_dir(&self, app: &AppHandle) -> Result<std::path::PathBuf, String> {
-        // 使用公共的资源目录工具函数
-        get_resource_dir(app)
-    }
-
-    /// 获取游戏的 log 目录路径
+    /// 获取游戏的 log 目录路径（ddv20 进度 JSON 存放处）
     /// 格式: %APPDATA%/SteamToolPlus/log/{game_id}/
     /// 使用用户级目录，无需管理员权限
     fn get_game_log_dir(&self, game_id: &str) -> Result<std::path::PathBuf, String> {
-        // 使用 config_path_utils 获取 %APPDATA%/SteamToolPlus 目录
         let app_data_dir = crate::utils::config_path_utils::get_appdata_dir()?
             .join("log")
             .join(game_id);
-        
         Ok(app_data_dir)
     }
 
@@ -147,7 +146,7 @@ impl DownloadService {
         Ok(log_dir)
     }
 
-    /// 扫描指定目录中的进度文件
+    /// 扫描指定目录中的 ddv20 进度文件
     fn scan_progress_files_in_dir(
         &self,
         dir: &Path,
@@ -182,7 +181,7 @@ impl DownloadService {
         Ok(())
     }
 
-    /// 清理指定游戏的进度文件
+    /// 清理指定游戏的 ddv20 进度文件（游戏全部 depot 完成时调用）
     fn cleanup_game_progress_files(
         &self,
         app: &AppHandle,
@@ -194,7 +193,7 @@ impl DownloadService {
             Ok(d) => d,
             Err(_) => return Ok(()),
         };
-        
+
         if depots.is_empty() {
             return Ok(());
         }
@@ -319,124 +318,6 @@ impl DownloadServiceTrait for DownloadService {
         Ok(manifest_dir.to_string_lossy().to_string())
     }
 
-    /// 启动游戏下载
-    /// 在 log/{game_id}/ 目录下运行 ddv20.exe，使 JSON 进度文件有序存放
-    /// 直接启动 ddv20.exe 并创建新控制台窗口，返回子进程句柄以便按 PID 管理
-    fn start_game_download(
-        &self,
-        app: &AppHandle,
-        manifest_path: &str,
-        download_path: &str,
-        game_id: &str,
-    ) -> Result<(DownloadResult, std::process::Child), String> {
-        let resource_dir = self.get_resource_dir(app)?;
-        let ddv20_path = resource_dir.join("ddv20.exe");
-
-        if !ddv20_path.exists() {
-            return Err(format!("ddv20.exe 不存在: {}", ddv20_path.display()));
-        }
-
-        // 检查下载路径的父目录是否存在，不存在则创建
-        let download_dir = Path::new(download_path);
-        if let Some(parent) = download_dir.parent() {
-            if !parent.exists() {
-                std::fs::create_dir_all(parent)
-                    .map_err(|e| format!("创建下载目录失败: {}", e))?;
-            }
-        }
-
-        // 创建游戏的 log 目录
-        let game_log_dir = self.create_game_log_dir(game_id)?;
-
-        // 在 Windows 上直接启动 ddv20.exe，并创建新控制台窗口显示下载日志
-        // 工作目录设置为 log/{game_id}/，这样 JSON 文件会生成在该目录下
-        #[cfg(target_os = "windows")]
-        {
-            use std::process::Command;
-            use std::os::windows::process::CommandExt;
-
-            // CREATE_NEW_CONSOLE: 为新进程创建一个新的控制台窗口
-            const CREATE_NEW_CONSOLE: u32 = 0x00000010;
-
-            // 使用原始路径（反斜杠），通过参数方式传递避免转义问题
-            let ddv20_path_str = ddv20_path.to_string_lossy().to_string();
-            let download_path_str = download_path.to_string();
-            let manifest_path_str = manifest_path.to_string();
-
-            // 直接启动 ddv20.exe，获取真实子进程句柄（PID）
-            let child = Command::new(&ddv20_path_str)
-                .arg("-lu")
-                .arg("China")
-                .arg("--use-http")
-                .arg("-o")
-                .arg(&download_path_str)
-                .arg("app")
-                .arg("-p")
-                .arg(&manifest_path_str)
-                .current_dir(&game_log_dir)
-                .creation_flags(CREATE_NEW_CONSOLE)
-                .spawn()
-                .map_err(|e| format!("启动下载进程失败: {}", e))?;
-
-            let process_id = child.id();
-            let result = DownloadResult {
-                success: true,
-                message: format!("下载进程已启动 (PID: {})", process_id),
-                process_id: Some(process_id),
-            };
-
-            Ok((result, child))
-        }
-
-        #[cfg(not(target_os = "windows"))]
-        {
-            Err("当前仅支持 Windows 系统".to_string())
-        }
-    }
-
-    /// 获取下载进度文件列表
-    /// 如果提供了 game_id，扫描 log/{game_id}/ 目录
-    /// 否则扫描所有 log/*/ 子目录
-    fn get_download_progress_files(&self, game_id: Option<&str>) -> Result<Vec<ProgressFileInfo>, String> {
-        let mut progress_files = Vec::new();
-
-        if let Some(gid) = game_id {
-            // 扫描指定游戏的 log 目录
-            let game_log_dir = self.get_game_log_dir(gid)?;
-            if game_log_dir.exists() {
-                self.scan_progress_files_in_dir(&game_log_dir, gid, &mut progress_files)?;
-            }
-        } else {
-            // 扫描所有游戏的 log 目录
-            // 从 %APPDATA%/SteamToolPlus/log/ 扫描
-            let log_dir = crate::utils::config_path_utils::get_appdata_dir()?
-                .join("log");
-            
-            if log_dir.exists() {
-                let entries = std::fs::read_dir(&log_dir)
-                    .map_err(|e| format!("读取 log 目录失败: {}", e))?;
-                
-                for entry in entries {
-                    let entry = entry.map_err(|e| format!("读取目录条目失败: {}", e))?;
-                    let game_dir = entry.path();
-                    if game_dir.is_dir() {
-                        // 使用子目录名作为 game_id
-                        let gid = game_dir
-                            .file_name()
-                            .and_then(|n| n.to_str())
-                            .unwrap_or("");
-                        if gid.is_empty() {
-                            continue;
-                        }
-                        self.scan_progress_files_in_dir(&game_dir, gid, &mut progress_files)?;
-                    }
-                }
-            }
-        }
-
-        Ok(progress_files)
-    }
-
     /// 读取目录内容
     fn read_directory(&self, path: &str) -> Result<Vec<DirEntry>, String> {
         let dir_path = Path::new(path);
@@ -546,13 +427,131 @@ impl DownloadServiceTrait for DownloadService {
         Ok(depots)
     }
 
-    /// 检查并清理已完成的下载
+    /// 启动 ddv20.exe 外部下载进程（ddv20 模式专用）
+    /// 在 log/{game_id}/ 目录下运行 ddv20.exe，使 JSON 进度文件有序存放
+    /// 直接启动 ddv20.exe 并创建新控制台窗口，返回子进程句柄以便按 PID 管理
+    fn start_game_download(
+        &self,
+        app: &AppHandle,
+        manifest_path: &str,
+        download_path: &str,
+        game_id: &str,
+    ) -> Result<(DownloadResult, std::process::Child), String> {
+        let resource_dir = self.get_resource_dir(app)?;
+        let ddv20_path = resource_dir.join("ddv20.exe");
+
+        if !ddv20_path.exists() {
+            return Err(format!("ddv20.exe 不存在: {}", ddv20_path.display()));
+        }
+
+        // 检查下载路径的父目录是否存在，不存在则创建
+        let download_dir = Path::new(download_path);
+        if let Some(parent) = download_dir.parent() {
+            if !parent.exists() {
+                std::fs::create_dir_all(parent)
+                    .map_err(|e| format!("创建下载目录失败: {}", e))?;
+            }
+        }
+
+        // 创建游戏的 log 目录
+        let game_log_dir = self.create_game_log_dir(game_id)?;
+
+        // 在 Windows 上直接启动 ddv20.exe，并创建新控制台窗口显示下载日志
+        // 工作目录设置为 log/{game_id}/，这样 JSON 文件会生成在该目录下
+        #[cfg(target_os = "windows")]
+        {
+            use std::process::Command;
+            use std::os::windows::process::CommandExt;
+
+            // CREATE_NEW_CONSOLE: 为新进程创建一个新的控制台窗口
+            const CREATE_NEW_CONSOLE: u32 = 0x00000010;
+
+            // 使用原始路径（反斜杠），通过参数方式传递避免转义问题
+            let ddv20_path_str = ddv20_path.to_string_lossy().to_string();
+            let download_path_str = download_path.to_string();
+            let manifest_path_str = manifest_path.to_string();
+
+            // 直接启动 ddv20.exe，获取真实子进程句柄（PID）
+            let child = Command::new(&ddv20_path_str)
+                .arg("-lu")
+                .arg("China")
+                .arg("--use-http")
+                .arg("-o")
+                .arg(&download_path_str)
+                .arg("app")
+                .arg("-p")
+                .arg(&manifest_path_str)
+                .current_dir(&game_log_dir)
+                .creation_flags(CREATE_NEW_CONSOLE)
+                .spawn()
+                .map_err(|e| format!("启动下载进程失败: {}", e))?;
+
+            let process_id = child.id();
+            let result = DownloadResult {
+                success: true,
+                message: format!("下载进程已启动 (PID: {})", process_id),
+                process_id: Some(process_id),
+            };
+
+            Ok((result, child))
+        }
+
+        #[cfg(not(target_os = "windows"))]
+        {
+            Err("当前仅支持 Windows 系统".to_string())
+        }
+    }
+
+    /// 获取下载进度文件列表（ddv20 模式专用）
+    /// 如果提供了 game_id，扫描 log/{game_id}/ 目录
+    /// 否则扫描所有 log/*/ 子目录
+    fn get_download_progress_files(&self, game_id: Option<&str>) -> Result<Vec<ProgressFileInfo>, String> {
+        let mut progress_files = Vec::new();
+
+        if let Some(gid) = game_id {
+            // 扫描指定游戏的 log 目录
+            let game_log_dir = self.get_game_log_dir(gid)?;
+            if game_log_dir.exists() {
+                self.scan_progress_files_in_dir(&game_log_dir, gid, &mut progress_files)?;
+            }
+        } else {
+            // 扫描所有游戏的 log 目录
+            // 从 %APPDATA%/SteamToolPlus/log/ 扫描
+            let log_dir = crate::utils::config_path_utils::get_appdata_dir()?
+                .join("log");
+
+            if log_dir.exists() {
+                let entries = std::fs::read_dir(&log_dir)
+                    .map_err(|e| format!("读取 log 目录失败: {}", e))?;
+
+                for entry in entries {
+                    let entry = entry.map_err(|e| format!("读取目录条目失败: {}", e))?;
+                    let game_dir = entry.path();
+                    if game_dir.is_dir() {
+                        // 使用子目录名作为 game_id
+                        let gid = game_dir
+                            .file_name()
+                            .and_then(|n| n.to_str())
+                            .unwrap_or("");
+                        if gid.is_empty() {
+                            continue;
+                        }
+                        self.scan_progress_files_in_dir(&game_dir, gid, &mut progress_files)?;
+                    }
+                }
+            }
+        }
+
+        Ok(progress_files)
+    }
+
+    /// 检查并清理已完成的下载（ddv20 模式专用）
     /// 当游戏的所有 depot 都下载完成后（进度为 100%），静默删除对应的进度 JSON 文件
     /// 如果提供了 game_id，只检查该游戏；否则检查所有游戏
     fn check_and_cleanup_completed_downloads(&self, app: &AppHandle, game_id: Option<&str>) -> Result<(), String> {
         // 获取所有进度文件
         let progress_files = self.get_download_progress_files(game_id)?;
-        
+
         if progress_files.is_empty() {
             return Ok(());
         }
@@ -564,7 +563,7 @@ impl DownloadServiceTrait for DownloadService {
             // 检查所有游戏
             let resource_dir = self.get_resource_dir(app)?;
             let manifest_dir = resource_dir.join("manifest");
-            
+
             if !manifest_dir.exists() || !manifest_dir.is_dir() {
                 return Ok(());
             }
@@ -598,18 +597,18 @@ impl DownloadServiceTrait for DownloadService {
         Ok(())
     }
 
-    /// 检查游戏的所有 depot 是否都已完成下载
+    /// 检查游戏的所有 depot 是否都已完成下载（ddv20 模式专用）
     fn check_all_depots_completed(&self, app: &AppHandle, game_id: &str) -> Result<bool, String> {
         // 获取该游戏的所有 depot
         let depots = self.get_game_depots(app, game_id)?;
-        
+
         if depots.is_empty() {
             return Ok(false);
         }
 
         // 获取该游戏的进度文件
         let progress_files = self.get_download_progress_files(Some(game_id))?;
-        
+
         if progress_files.is_empty() {
             return Ok(false);
         }
@@ -618,7 +617,7 @@ impl DownloadServiceTrait for DownloadService {
         for depot_id in &depots {
             let depot_completed = progress_files.iter()
                 .any(|p| p.depot_id == *depot_id && p.progress == 100);
-            
+
             if !depot_completed {
                 return Ok(false);
             }

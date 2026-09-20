@@ -84,6 +84,86 @@
             <Toggle v-model="settings.hideToTrayOnClose" />
           </div>
         </div>
+
+        <div class="setting-item">
+          <div class="setting-info">
+            <h3 class="setting-name">新下载引擎 <span class="engine-badge">不稳定，容易出错</span></h3>
+            <p class="setting-desc">默认使用 ddv20.exe 外部下载（稳定）。开启后改用进程内 Rust 下载引擎，速度更快但更容易出错，仅建议测试体验</p>
+          </div>
+          <div class="setting-control">
+            <Toggle v-model="settings.useNewEngine" />
+          </div>
+        </div>
+
+        <!-- 下载引擎参数（仅新引擎生效；每行单行布局：名称+功能+调大/调小+下拉框最右） -->
+        <div class="engine-params-block" :class="{ 'engine-params-disabled': !settings.useNewEngine }">
+          <div class="engine-params-title">下载引擎参数</div>
+          <div class="engine-params-tip">仅在使用「新下载引擎」时生效，修改后下次下载生效</div>
+
+          <div class="setting-item engine-param-row">
+            <div class="setting-info engine-param-info">
+              <h3 class="setting-name">分块并发数</h3>
+              <p class="setting-desc">同时下载的数据块数量，决定带宽和CPU</p>
+            </div>
+            <div class="engine-param-effects">
+              <span class="engine-param-effect up">调大：速度更快</span>
+              <span class="engine-param-effect down">调小：更稳定省资源</span>
+            </div>
+            <div class="setting-control">
+              <select v-model="settings.chunkConcurrency" class="engine-param-select" :disabled="!settings.useNewEngine">
+                <option v-for="v in [4, 8, 12, 16, 24, 32, 48]" :key="v" :value="v">{{ v === 32 ? '32（推荐）' : v }}</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="setting-item engine-param-row">
+            <div class="setting-info engine-param-info">
+              <h3 class="setting-name">全局并发上限</h3>
+              <p class="setting-desc">所有任务总在途封顶</p>
+            </div>
+            <div class="engine-param-effects">
+              <span class="engine-param-effect up">调大：多任务更宽裕</span>
+              <span class="engine-param-effect down">调小：更保守</span>
+            </div>
+            <div class="setting-control">
+              <select v-model="settings.globalConcurrency" class="engine-param-select" :disabled="!settings.useNewEngine">
+                <option v-for="v in [64, 72, 96, 128]" :key="v" :value="v">{{ v === 96 ? '96（推荐）' : v }}</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="setting-item engine-param-row">
+            <div class="setting-info engine-param-info">
+              <h3 class="setting-name">并发 depot 数</h3>
+              <p class="setting-desc">同时下载的depot数</p>
+            </div>
+            <div class="engine-param-effects">
+              <span class="engine-param-effect up">调大：大文件更快</span>
+              <span class="engine-param-effect down">调小：小文件写盘更集中</span>
+            </div>
+            <div class="setting-control">
+              <select v-model="settings.concurrentDepots" class="engine-param-select" :disabled="!settings.useNewEngine">
+                <option v-for="v in [1, 2, 3, 4, 5]" :key="v" :value="v">{{ v === 2 ? '2（推荐）' : v }}</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="setting-item engine-param-row">
+            <div class="setting-info engine-param-info">
+              <h3 class="setting-name">文件句柄缓存上限</h3>
+              <p class="setting-desc">写盘保留的已打开文件数</p>
+            </div>
+            <div class="engine-param-effects">
+              <span class="engine-param-effect up">调大：小文件更顺</span>
+              <span class="engine-param-effect down">调小：省句柄</span>
+            </div>
+            <div class="setting-control">
+              <select v-model="settings.fileHandleCache" class="engine-param-select" :disabled="!settings.useNewEngine">
+                <option v-for="v in [256, 512, 1024]" :key="v" :value="v">{{ v === 512 ? '512（推荐）' : v }}</option>
+              </select>
+            </div>
+          </div>
+        </div>
       </section>
 
       <!-- OpenSteamTool内核设置 -->
@@ -301,6 +381,12 @@ const settings = ref({
   defaultDownloadPath: '',
   startMinimizedToTray: false,
   hideToTrayOnClose: true,
+  useNewEngine: false,
+  // 新下载引擎可调参数（默认与 Rust 侧推荐值一致）
+  chunkConcurrency: 32,
+  globalConcurrency: 96,
+  concurrentDepots: 2,
+  fileHandleCache: 512,
   openSteamToolAdvancedMode: false,
   openSteamToolHotReload: true
 })
@@ -388,6 +474,12 @@ function loadSettings() {
     settings.value.defaultDownloadPath = config.gameDirs.defaultDownloadPath || ''
     settings.value.startMinimizedToTray = config.launch.startMinimizedToTray ?? false
     settings.value.hideToTrayOnClose = config.launch.hideToTrayOnClose ?? true
+    settings.value.useNewEngine = config.launch.useNewEngine ?? false
+    // 新引擎参数：旧配置缺少字段时回落到推荐默认值
+    settings.value.chunkConcurrency = config.launch.chunkConcurrency ?? 32
+    settings.value.globalConcurrency = config.launch.globalConcurrency ?? 96
+    settings.value.concurrentDepots = config.launch.concurrentDepots ?? 2
+    settings.value.fileHandleCache = config.launch.fileHandleCache ?? 512
     settings.value.openSteamToolAdvancedMode = config.opensteamtool?.advancedMode ?? false
     settings.value.openSteamToolHotReload = config.opensteamtool?.hotReload ?? true
   }
@@ -631,6 +723,20 @@ async function saveSettings() {
       return
     }
 
+    // 联动校验：分块并发数 × 并发 depot 数 ≤ 全局并发上限（仅新引擎生效）
+    if (settings.value.useNewEngine) {
+      const chunk = Number(settings.value.chunkConcurrency)
+      const depots = Number(settings.value.concurrentDepots)
+      const global = Number(settings.value.globalConcurrency)
+      if (chunk * depots > global) {
+        alert(
+          `参数组合无效：分块并发数（${chunk}）× 并发 depot 数（${depots}）= ${chunk * depots}，` +
+          `超过全局并发上限（${global}）。请调大全局并发上限，或调小分块并发数/并发 depot 数。`
+        )
+        return
+      }
+    }
+
     // 保存前先验证 Steam 路径是否有效
     // 验证通过后会使用后端返回的规范化路径，避免路径格式不一致
     const validatedSteamPath = await validateSteamPath(settings.value.steamPath)
@@ -653,8 +759,14 @@ async function saveSettings() {
       launch: {
         startMinimizedToTray: settings.value.startMinimizedToTray,
         hideToTrayOnClose: settings.value.hideToTrayOnClose,
+        useNewEngine: settings.value.useNewEngine,
         verifyBeforeLaunch: currentConfig.launch.verifyBeforeLaunch || false,
-        manifestImportInitialized: currentConfig.launch.manifestImportInitialized || false
+        manifestImportInitialized: currentConfig.launch.manifestImportInitialized || false,
+        // 新引擎可调参数（下次下载生效）
+        chunkConcurrency: Number(settings.value.chunkConcurrency) || 32,
+        globalConcurrency: Number(settings.value.globalConcurrency) || 96,
+        concurrentDepots: Number(settings.value.concurrentDepots) || 2,
+        fileHandleCache: Number(settings.value.fileHandleCache) || 512
       },
       opensteamtool: {
         kernelInstalled: currentConfig.opensteamtool?.kernelInstalled ?? kernelStatus.value.installed,
@@ -784,6 +896,19 @@ async function clearDownloadLogCache() {
 </script>
 
 <style scoped>
+/* 悬浮球大小滑块 */
+.range-input {
+  width: 140px;
+  accent-color: var(--steam-accent-blue);
+}
+
+.range-value {
+  min-width: 52px;
+  font-size: 13px;
+  color: var(--steam-text-secondary);
+  text-align: right;
+}
+
 .settings-page {
   height: 100%;
   overflow-y: auto;
@@ -939,5 +1064,123 @@ async function clearDownloadLogCache() {
   padding-top: 12px;
   margin-top: 8px;
   border-top: 1px solid var(--steam-border);
+}
+
+/* 新下载引擎开关的"不稳定"角标 */
+.engine-badge {
+  display: inline-block;
+  padding: 0 6px;
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--steam-orange, #e0933a);
+  border: 1px solid var(--steam-orange, #e0933a);
+  border-radius: 4px;
+  vertical-align: middle;
+}
+
+/* ==================== 下载引擎参数板块 ==================== */
+
+/* 参数板块容器：浅色描边卡片，与设置区块风格统一 */
+.engine-params-block {
+  margin-top: 4px;
+  padding: 12px 16px 4px;
+  border: 1px solid var(--steam-border);
+  border-radius: 8px;
+  background: rgba(var(--steam-bg-primary-rgb), 0.5);
+}
+
+/* 板块标题 */
+.engine-params-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--steam-text-primary);
+  margin-bottom: 2px;
+}
+
+/* 板块提示（仅新引擎生效） */
+.engine-params-tip {
+  font-size: 12px;
+  color: var(--steam-text-muted);
+  margin-bottom: 4px;
+}
+
+/* 未启用新引擎时整体置灰（禁止修改） */
+.engine-params-disabled {
+  opacity: 0.5;
+}
+
+/* 参数行：单行布局 = 名称+功能 | 调大/调小 | 下拉框最右 */
+.engine-param-row {
+  align-items: center;
+}
+
+/* 名称+功能说明列：不再占满整行，让出中间效果区与右侧下拉框 */
+.engine-param-row .engine-param-info {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding-right: 12px;
+}
+
+/* 调大/调小效果区：单行内并排展示 */
+.engine-param-effects {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 0 0 auto;
+  padding-right: 12px;
+}
+
+/* 单条效果文案（12px，满足最小字号约束） */
+.engine-param-effect {
+  font-size: 12px;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+/* 调大：绿色系；调小：橙色系（深浅主题均保持可读性） */
+.engine-param-effect.up {
+  color: var(--steam-accent-green, #8bd450);
+}
+
+.engine-param-effect.down {
+  color: var(--steam-accent-orange, #e0933a);
+}
+
+/* 下拉框：仿 Steam 风格，深/浅主题用 CSS 变量 */
+.engine-param-select {
+  width: 120px;
+  height: 30px;
+  padding: 0 8px;
+  background: var(--steam-bg-tertiary);
+  border: 1px solid var(--steam-border);
+  border-radius: 6px;
+  color: var(--steam-text-primary);
+  font-size: 13px;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+
+.engine-param-select:focus {
+  outline: none;
+  border-color: var(--steam-accent);
+}
+
+.engine-param-select:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.engine-param-select option {
+  background: var(--steam-bg-primary);
+  color: var(--steam-text-primary);
+}
+
+/* 窄屏下效果区允许换行，避免挤压右侧下拉框 */
+@media (max-width: 1000px) {
+  .engine-param-effects {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 4px 12px;
+  }
 }
 </style>

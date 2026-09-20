@@ -1,7 +1,21 @@
 <template>
   <!-- 入库Steam标签页 -->
   <div v-if="currentTab === 'import'" class="tab-panel">
-    <h3 class="panel-title">入库Steam</h3>
+    <!-- 顶部操作栏 -->
+    <div class="import-tab-header">
+      <h3 class="panel-title">入库Steam</h3>
+      <button
+        v-if="manifestCheckStatus === 'found'"
+        class="replace-manifest-btn ui-btn ui-btn-sm ui-btn-warning"
+        @click="handleReplaceManifest"
+        title="删除本地清单文件夹，重新导入或下载清单"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+        </svg>
+        <span>替换清单</span>
+      </button>
+    </div>
     <div class="import-steam-content">
       <!-- 入库说明 -->
       <div class="import-description">
@@ -11,16 +25,17 @@
 
       <!-- OpenSteamTool高级选项 -->
       <div class="opensteamtool-options">
-        <Tooltip text="滑到左侧允许Steam自动更新，滑到右侧锁定当前清单版本" position="top">
+        <Tooltip text="Steam已加密内容接口，仅支持锁定清单版本入库，无法跟随更新" position="top">
           <div class="option-item">
             <label class="option-label">是否更新</label>
             <SliderToggle
               :model-value="lockVersion"
+              disabled
               left-label="跟随更新"
               right-label="锁定版本"
               @update:model-value="emit('update:lockVersion', $event)"
             />
-            <p class="option-hint">左侧：允许Steam自动更新；右侧：锁定当前清单版本，防止更新破坏补丁兼容性</p>
+            <p class="option-hint">Steam 已加密内容接口，只能通过本地清单（manifest）连接下载，入库固定为锁定版本；未提供清单的 depot 仅解锁不锁定</p>
           </div>
         </Tooltip>
       </div>
@@ -29,7 +44,7 @@
       <div class="import-btn-group">
         <!-- OpenSteamTool内核入库按钮（推荐） -->
         <button
-          class="import-opensteamtool-btn-large"
+          class="import-opensteamtool-btn-large ui-btn ui-btn-lg ui-btn-success"
           :class="{ disabled: !canImportToSteam, loading: isImporting }"
           :disabled="!canImportToSteam || isImporting"
           @click="handleImportWithOpenSteamTool"
@@ -45,7 +60,7 @@
 
         <!-- 重启Steam按钮 -->
         <button
-          class="restart-steam-btn"
+          class="restart-steam-btn ui-btn ui-btn-lg ui-btn-warning"
           @click="handleRestartSteam"
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -61,7 +76,7 @@
       <div v-if="importSourceReady" class="import-source-info">
         <span class="source-label">当前使用自定义清单源:</span>
         <span class="source-path" :title="selectedImportPath">{{ selectedImportPath }}</span>
-        <button class="clear-source-btn" @click="handleClearImportSource">清除</button>
+        <button class="clear-source-btn ui-btn ui-btn-sm ui-btn-ghost" @click="handleClearImportSource">清除</button>
       </div>
 
       <!-- 没有vdf/lua时显示下载引导和文件选择 -->
@@ -77,7 +92,7 @@
           <div class="download-buttons">
             <div class="download-btn-wrapper">
               <button
-                class="download-patch-btn"
+                class="download-patch-btn ui-btn ui-btn-md ui-btn-primary"
                 @click="openQingdanQRCode"
               >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -91,7 +106,7 @@
             <div class="backup-label">备用（容易和谐）：</div>
             <div class="download-btn-wrapper">
               <button
-                class="download-patch-btn"
+                class="download-patch-btn ui-btn ui-btn-md ui-btn-primary"
                 @click="openDownloadUrl('https://pan.xunlei.com/s/VOw3jTAGHqYFsm49n2t_AeVGA1?pwd=3r6n')"
               >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -105,7 +120,7 @@
             </div>
             <div class="download-btn-wrapper">
               <button
-                class="download-patch-btn"
+                class="download-patch-btn ui-btn ui-btn-md ui-btn-primary"
                 @click="openDownloadUrl('https://pan.baidu.com/s/1FTZyknIObyzMuLAJC-Uj9g?pwd=8uwx')"
               >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -150,7 +165,7 @@
           <div class="source-select-actions">
             <button
               v-if="importSourceMode === '7z'"
-              class="select-source-btn"
+              class="select-source-btn ui-btn ui-btn-sm ui-btn-outline"
               :disabled="isPreparingImport"
               @click="handleSelectImportArchive"
             >
@@ -161,7 +176,7 @@
             </button>
             <button
               v-else
-              class="select-source-btn"
+              class="select-source-btn ui-btn ui-btn-sm ui-btn-outline"
               :disabled="isPreparingImport"
               @click="handleSelectImportFolder"
             >
@@ -212,6 +227,8 @@ const props = defineProps<{
   importSourceReady: boolean
   /** 锁定版本 */
   lockVersion: boolean
+  /** 清单检查状态（用于显示替换清单按钮） */
+  manifestCheckStatus: 'checking' | 'found' | 'not_found'
   /** 自定义清单源模式 */
   importSourceMode: '7z' | 'folder'
   /** 选中的导入路径 */
@@ -235,6 +252,8 @@ const emit = defineEmits<{
   (e: 'update:lockVersion', value: boolean): void
   /** 更新导入源模式 */
   (e: 'update:importSourceMode', value: '7z' | 'folder'): void
+  /** 替换清单：删除本地清单文件夹 */
+  (e: 'replace-manifest'): void
   /** 打开清单下载二维码 */
   (e: 'open-qingdan-qr-code'): void
   /** 打开下载链接 */
@@ -263,6 +282,10 @@ function handleClearImportSource() {
   emit('clearImportSource')
 }
 
+function handleReplaceManifest() {
+  emit('replace-manifest')
+}
+
 function openQingdanQRCode() {
   emit('open-qingdan-qr-code')
 }
@@ -273,6 +296,34 @@ function openDownloadUrl(url: string) {
 </script>
 
 <style scoped>
+/* 入库标签页顶部操作栏 */
+.import-tab-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 5px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--steam-border);
+}
+
+.import-tab-header .panel-title {
+  margin: 0;
+  font-size: 16px;
+  color: var(--steam-text-primary);
+}
+
+/* 替换清单按钮 */
+.replace-manifest-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.replace-manifest-btn svg {
+  width: 14px;
+  height: 14px;
+}
+
 /* 入库Steam标签页样式 */
 .import-steam-content {
   display: flex;
@@ -381,66 +432,6 @@ function openDownloadUrl(url: string) {
   }
 }
 
-.import-opensteamtool-btn-large {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 12px 26px;
-  border: none;
-  border-radius: 8px;
-  background-color: #10b981;
-  color: white;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background-color 0.15s ease;
-}
-
-.import-opensteamtool-btn-large:hover:not(.disabled) {
-  background-color: #059669;
-}
-
-.import-opensteamtool-btn-large.disabled {
-  background-color: var(--steam-text-secondary);
-  cursor: not-allowed;
-  opacity: 0.5;
-}
-
-.import-opensteamtool-btn-large.loading {
-  cursor: wait;
-}
-
-.import-opensteamtool-btn-large svg {
-  width: 16px;
-  height: 16px;
-}
-
-.restart-steam-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 13px 26px;
-  border: none;
-  border-radius: 8px;
-  background-color: #64748b;
-  color: white;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background-color 0.15s ease;
-}
-
-.restart-steam-btn:hover {
-  background-color: #475569;
-}
-
-.restart-steam-btn svg {
-  width: 16px;
-  height: 16px;
-}
-
 .import-error {
   color: #ef4444;
   font-size: 14px;
@@ -547,31 +538,6 @@ function openDownloadUrl(url: string) {
   gap: 7px;
 }
 
-.download-patch-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 10px 18px;
-  border: none;
-  border-radius: 8px;
-  background-color: var(--steam-accent-blue);
-  color: white;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background-color 0.15s ease;
-}
-
-.download-patch-btn:hover {
-  background-color: #2563eb;
-}
-
-.download-patch-btn svg {
-  width: 18px;
-  height: 18px;
-}
-
 .pwd-hint {
   font-size: 12px;
   color: var(--steam-text-secondary);
@@ -617,37 +583,6 @@ function openDownloadUrl(url: string) {
   display: flex;
   gap: 7px;
   align-items: center;
-}
-
-.select-source-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 10px 20px;
-  border: none;
-  border-radius: 8px;
-  background-color: var(--steam-accent-blue);
-  color: white;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background-color 0.15s ease;
-}
-
-.select-source-btn:hover:not(:disabled) {
-  background-color: var(--steam-accent-hover);
-}
-
-.select-source-btn:disabled {
-  background-color: var(--steam-text-secondary);
-  cursor: not-allowed;
-  opacity: 0.5;
-}
-
-.select-source-btn svg {
-  width: 16px;
-  height: 16px;
 }
 
 .source-select-error {

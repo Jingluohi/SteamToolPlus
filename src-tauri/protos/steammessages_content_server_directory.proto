@@ -1,0 +1,60 @@
+// ContentServerDirectory 服务的 protobuf 消息定义
+// 来源：Steam 官方 protos（SteamKit2 经 protobuf-net 生成的内部类型）
+// 字段编号经反射 SteamKit2.dll（3.3.1）逐一核对，与线上协议一致：
+//
+//   服务调用方式（CM 通道，匿名会话亦可用，对标 SteamKit SteamUnifiedMessages）：
+//     - 请求：EMsg.ServiceMethodCallFromClient(151)（登录后；登录前为
+//       NonAuthed=9804），头 CMsgProtoBufHeader.target_job_name =
+//       "ContentServerDirectory.方法名#1"，体 = 下述 *Request 消息
+//     - 应答：EMsg.ServiceMethodResponse(147)，体 = 下述 *Response 消息
+//   （编号来源：SteamKit Resources/SteamLanguage/emsg.steamd 现行枚举）
+//
+//   用途（本引擎 CDN 模块 cdn.rs）：
+//     - GetServersForSteamPipe：CDN 内容服务器列表（含 host/vhost/https 支持/权重）
+//     - GetCDNAuthToken：为指定 (app, depot, host) 申请 CDN 授权令牌
+//       （令牌作为 CDN 请求 URL 的 query 字符串，对标 SteamKit CDN Client.BuildCommand）
+//
+// 字段号说明：以下编号是权威来源（SteamKit2 生成代码），不可臆改。
+// 其中 ServerInfo 的 14 号字段未使用（官方 proto 中为预留），15/16 号继续使用。
+
+option optimize_for = SPEED;
+option cc_generic_services = false;
+
+message CContentServerDirectory_GetServersForSteamPipe_Request {
+	optional uint32 cell_id = 1;
+	optional uint32 max_servers = 2;
+}
+
+message CContentServerDirectory_ServerInfo {
+	optional string type = 1;
+	optional int32 source_id = 2;
+	optional uint32 cell_id = 3;
+	optional int32 load = 4;
+	optional float weighted_load = 5;
+	optional int32 num_entries_in_client_list = 6;
+	optional bool steam_china_only = 7;
+	optional string host = 8;
+	optional string vhost = 9;
+	optional bool use_as_proxy = 10;
+	optional string proxy_request_path_template = 11;
+	optional string https_support = 12;
+	repeated uint32 allowed_app_ids = 13;
+	optional int32 priority_class = 15;
+	repeated string bypass_proxies_of_type = 16;
+}
+
+message CContentServerDirectory_GetServersForSteamPipe_Response {
+	repeated CContentServerDirectory_ServerInfo servers = 1;
+	optional bool no_change = 2;
+}
+
+message CContentServerDirectory_GetCDNAuthToken_Request {
+	optional uint32 depot_id = 1;
+	optional string host_name = 2;
+	optional uint32 app_id = 3;
+}
+
+message CContentServerDirectory_GetCDNAuthToken_Response {
+	optional string token = 1;
+	optional uint32 expiration_time = 2;
+}

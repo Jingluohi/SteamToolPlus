@@ -20,7 +20,7 @@
 </template>
 
 <script setup lang="ts">
-import { open } from '@tauri-apps/plugin-shell'
+import { openExternalUrl } from '../../utils/externalLink'
 import Button from '../../components/common/Button.vue'
 
 /**
@@ -28,7 +28,7 @@ import Button from '../../components/common/Button.vue'
  */
 async function openXunleiLink() {
   try {
-    await open('https://pan.xunlei.com/s/VOvTQBOnWZWdlDxvsE2z5ODFA1?pwd=4a4p')
+    await openExternalUrl('https://pan.xunlei.com/s/VOvTQBOnWZWdlDxvsE2z5ODFA1?pwd=4a4p')
   } catch (error) {
     // 打开链接失败时静默处理
   }
@@ -39,7 +39,7 @@ async function openXunleiLink() {
  */
 async function openQuarkLink() {
   try {
-    await open('https://pan.quark.cn/s/6096f8c37ef5')
+    await openExternalUrl('https://pan.quark.cn/s/6096f8c37ef5')
   } catch (error) {
     // 打开链接失败时静默处理
   }

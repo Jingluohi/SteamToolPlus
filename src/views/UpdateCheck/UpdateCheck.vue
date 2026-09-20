@@ -110,9 +110,9 @@
  */
 
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { open } from '@tauri-apps/plugin-shell'
 import { invoke } from '@tauri-apps/api/core'
 import { listen, type UnlistenFn } from '@tauri-apps/api/event'
+import { openExternalUrl } from '../../utils/externalLink'
 import Button from '../../components/common/Button.vue'
 
 interface AppVersionInfo {
@@ -256,7 +256,7 @@ async function handleUpdateNow() {
  */
 async function openQuarkLink() {
   try {
-    await open('https://pan.quark.cn/s/bc38612b683f')
+    await openExternalUrl('https://pan.quark.cn/s/bc38612b683f')
   } catch (error) {
     // 打开链接失败时静默处理
   }
@@ -267,7 +267,7 @@ async function openQuarkLink() {
  */
 async function openDownloadLink() {
   try {
-    await open('https://pan.baidu.com/s/1w5Cm4OYT97g3kl1g6WPk5Q?pwd=vfub')
+    await openExternalUrl('https://pan.baidu.com/s/1w5Cm4OYT97g3kl1g6WPk5Q?pwd=vfub')
   } catch (error) {
     // 打开链接失败时静默处理
   }
@@ -278,7 +278,7 @@ async function openDownloadLink() {
  */
 async function openXunleiLink() {
   try {
-    await open('https://pan.xunlei.com/s/VOrkq4Tq0c0Sootmhpp4433yA1?pwd=2tmn#')
+    await openExternalUrl('https://pan.xunlei.com/s/VOrkq4Tq0c0Sootmhpp4433yA1?pwd=2tmn#')
   } catch (error) {
     // 打开链接失败时静默处理
   }

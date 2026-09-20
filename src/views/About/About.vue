@@ -77,8 +77,8 @@
  */
 
 import { ref, onMounted } from 'vue'
-import { open } from '@tauri-apps/plugin-shell'
 import { invoke } from '@tauri-apps/api/core'
+import { openExternalUrl } from '../../utils/externalLink'
 
 /**
  * 游戏信息接口
@@ -159,8 +159,8 @@ onMounted(() => {
  */
 async function openBilibili() {
   try {
-    // 使用 Tauri shell 插件在默认浏览器中打开链接
-    await open('https://space.bilibili.com/405707676')
+    // 在系统默认浏览器中打开链接（未设置默认浏览器时程序内弹友好提示）
+    await openExternalUrl('https://space.bilibili.com/405707676')
   } catch (error) {
     // 打开链接失败时静默处理
   }
@@ -171,8 +171,8 @@ async function openBilibili() {
  */
 async function openResourceSite() {
   try {
-    // 使用 Tauri shell 插件在默认浏览器中打开金山文档游戏资源链接
-    await open('https://www.kdocs.cn/l/ct1aHmwRS4LU')
+    // 在系统默认浏览器中打开金山文档游戏资源链接（未设置默认浏览器时程序内弹友好提示）
+    await openExternalUrl('https://www.kdocs.cn/l/ct1aHmwRS4LU')
   } catch (error) {
     // 打开链接失败时静默处理
   }
@@ -183,8 +183,8 @@ async function openResourceSite() {
  */
 async function openGithub() {
   try {
-    // 使用 Tauri shell 插件在默认浏览器中打开链接
-    await open('https://github.com/Jingluohi/SteamToolPlus')
+    // 在系统默认浏览器中打开链接（未设置默认浏览器时程序内弹友好提示）
+    await openExternalUrl('https://github.com/Jingluohi/SteamToolPlus')
   } catch (error) {
     // 打开链接失败时静默处理
   }

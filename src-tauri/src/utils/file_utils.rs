@@ -37,16 +37,6 @@ pub fn write_json_file<T: Serialize + ?Sized>(path: &str, data: &T) -> Result<()
     fs::write(path, content).map_err(|e| format!("写入文件失败: {}", e))
 }
 
-/// 检查文件是否存在
-pub fn file_exists(path: &str) -> bool {
-    Path::new(path).exists()
-}
-
-/// 读取文本文件
-pub fn read_text_file(path: &str) -> Result<String, String> {
-    fs::read_to_string(path).map_err(|e| format!("读取文件失败: {}", e))
-}
-
 /// 异步读取JSON文件并反序列化
 pub async fn read_json_file_async<T: DeserializeOwned>(path: &Path) -> Result<T, String> {
     use tokio::fs;

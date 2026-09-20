@@ -24,6 +24,11 @@
       :style="effectsStyle"
     ></div>
 
+    <!-- 玻璃水晶氛围层：始终存在（图片/纯色模式均保留）
+         在纯色兜底或背景图片上层叠加淡蓝辉光与顶部高光，
+         让没有背景图片的窗口同样拥有玻璃水晶般的高级质感 -->
+    <div class="background-sheen"></div>
+
     <!-- 内容插槽 -->
     <div class="background-content">
       <slot></slot>
@@ -368,6 +373,25 @@ defineExpose({
   inset: 0;
   z-index: 2;
   pointer-events: none;
+}
+
+/* 玻璃水晶氛围层：淡蓝辉光 + 顶部高光，赋予背景水晶质感
+   位于效果层之上、内容层之下，不影响任何交互 */
+.background-sheen {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background:
+    var(--glass-sheen),
+    var(--glass-highlight);
+}
+
+/* 浅色主题下减弱氛围光强度，避免画面发灰发闷 */
+[data-theme="light"] .background-sheen {
+  background:
+    radial-gradient(120% 90% at 88% -8%, rgba(87, 140, 220, 0.05) 0%, transparent 55%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0) 12%);
 }
 
 /* 内容层 */

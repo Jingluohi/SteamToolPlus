@@ -5,7 +5,7 @@ use futures_util::StreamExt;
 use reqwest;
 use serde::{Deserialize, Serialize};
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 use std::process::Command;
 use std::thread;
 use std::time::{Duration, Instant};
@@ -15,6 +15,11 @@ use tauri::Emitter;
 /// 主程序可执行文件名
 /// 发布版本统一使用 SteamToolPlus.exe，所有涉及 exe 更新的逻辑都以此为准
 const EXE_NAME: &str = "SteamToolPlus.exe";
+
+/// 补丁删除清单文件名（位于补丁解压后的根目录）
+/// 内容为相对目标程序根目录（即复制落地位置）的路径数组，用于本次一次性删除不再需要的资源
+/// 不带此清单的旧补丁行为保持不变，完全向后兼容
+const PATCH_DELETE_LIST: &str = "_delete_list.json";
 
 /// 在目录中递归查找指定名称的文件（不区分大小写）
 /// 用于从解压后的补丁包中定位主程序 exe，兼容不同打包路径
@@ -79,6 +84,37 @@ pub struct UpdateCheckResult {
     pub remote_description: Option<String>,
     pub has_exe_update: bool,
     pub patch_url: String,
+    /// 本地 resources/version.json 中的更新说明（即上一次更新的说明）
+    /// 无可用更新时，前端将其作为「公告板」的展示内容
+    pub local_description: Option<String>,
+}
+
+/// 公告板信息
+/// 由前端启动时拉取：无更新时展示 resources/announcement/announcement.md
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct AnnouncementInfo {
+    /// 公告正文（markdown 原文）
+    pub content: String,
+    /// announcement 目录绝对路径
+    /// 前端据此将 markdown 中的相对图片路径（如 img/xxx.png）转换为 asset URL
+    pub base_path: String,
+}
+
+/// 读取公告板 markdown 文件（resources/announcement/announcement.md）
+/// 文件不存在时返回 None（前端不弹公告板）
+#[tauri::command]
+pub fn get_announcement() -> Option<AnnouncementInfo> {
+    // 公告目录与 md 文件路径（相对程序 exe 的 resources/announcement/ 下，符合相对路径规范）
+    let ann_dir = get_exe_dir().join("resources").join("announcement");
+    let md_path = ann_dir.join("announcement.md");
+    if !md_path.exists() {
+        return None;
+    }
+    let content = fs::read_to_string(&md_path).ok()?;
+    Some(AnnouncementInfo {
+        content,
+        base_path: ann_dir.to_string_lossy().to_string(),
+    })
 }
 
 /// 实例重启请求文件路径
@@ -506,6 +542,8 @@ pub async fn check_for_update() -> Result<UpdateCheckResult, String> {
         remote_description: remote_info.description,
         has_exe_update: remote_info.has_exe_update,
         patch_url: remote_info.patch_url,
+        // 本地版本文件里的说明即为「上一次更新的说明」，无更新时前端作公告展示
+        local_description: local_version.description,
     })
 }
 
@@ -553,11 +591,19 @@ pub async fn apply_update(
     };
 
     let version_path = exe_dir.join("resources").join("version.json");
-    if let Err(e) = fs::write(
+    match fs::write(
         &version_path,
         serde_json::to_string_pretty(&new_version).unwrap_or_default(),
     ) {
-        log::error!("更新本地 version.json 失败: {}", e);
+        Ok(_) => {
+            // 磁盘 version.json 已更新为最新版本，同步刷新启动时的更新检查缓存，
+            // 避免资源更新完成后前端 window.location.reload() 再次读到旧的「有更新」结果，
+            // 导致弹出仍显示旧本地版本号的更新弹窗
+            crate::reset_pending_startup_update();
+        }
+        Err(e) => {
+            log::error!("更新本地 version.json 失败: {}", e);
+        }
     }
 
     // 删除补丁文件
@@ -643,10 +689,58 @@ async fn apply_patch_archive(
             .map_err(|e| format!("备份 games_config.json 失败: {}", e))?;
     }
 
+    // 先应用删除清单（删除本次要移除的资源），再做复制/替换
+    // 若补丁无 _delete_list.json 则直接跳过，不影响旧补丁
+    apply_delete_patch(&temp_dir, exe_dir)?;
+
     // 复制资源文件到 exe 目录（exe 单独处理，不在这里复制）
     copy_patch_files(&temp_dir, exe_dir)?;
 
     Ok((has_exe_update, patch_exe, temp_dir))
+}
+
+/// 应用补丁中的删除清单，先删除本次要移除的资源
+/// 清单位于补丁根目录的 _delete_list.json，内容为相对目标目录（source 对应落地位置）的路径数组
+/// 该清单为一次性标记：本次删除完成后，本身不复制到目标目录
+fn apply_delete_patch(source: &Path, target: &Path) -> Result<(), String> {
+    let manifest_path = source.join(PATCH_DELETE_LIST);
+    if !manifest_path.exists() {
+        // 旧补丁无删除清单，无需删除，保持原有行为
+        return Ok(());
+    }
+
+    let content = fs::read_to_string(&manifest_path)
+        .map_err(|e| format!("读取删除清单失败: {}", e))?;
+    let paths: Vec<String> = serde_json::from_str(&content)
+        .map_err(|e| format!("解析删除清单失败: {}", e))?;
+
+    for rel in &paths {
+        let rel = rel.trim();
+        // 跳过空路径
+        if rel.is_empty() {
+            continue;
+        }
+
+        let rel_path = Path::new(rel);
+        // 跳过绝对路径，或通过 .. 逃逸目标目录的非法路径
+        if rel_path.is_absolute()
+            || rel_path.components().any(|c| {
+                matches!(c, Component::ParentDir | Component::RootDir | Component::Prefix(_))
+            })
+        {
+            log::warn!("跳过非法删除路径: {}", rel);
+            continue;
+        }
+
+        let dest = target.join(rel);
+        if dest.is_dir() {
+            let _ = fs::remove_dir_all(&dest);
+        } else if dest.exists() {
+            let _ = fs::remove_file(&dest);
+        }
+    }
+
+    Ok(())
 }
 
 /// 递归复制补丁文件到目标目录
@@ -656,6 +750,11 @@ fn copy_patch_files(source: &Path, target: &Path) -> Result<(), String> {
         let src_path = entry.path();
         let file_name = entry.file_name();
         let dest_path = target.join(&file_name);
+
+        // 跳过删除清单文件本身，不复制到目标目录（它是本次一次性删除标记）
+        if file_name.to_string_lossy() == PATCH_DELETE_LIST {
+            continue;
+        }
 
         // 跳过主程序 exe，exe 更新由调用方单独处理
         // 使用不区分大小写匹配，兼容历史补丁中的不同命名

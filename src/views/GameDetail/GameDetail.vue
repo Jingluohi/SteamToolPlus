@@ -11,7 +11,7 @@
 
     <!-- 返回按钮和标题栏 -->
     <div class="detail-header">
-      <button class="back-btn" @click="goBack">
+      <button class="back-btn ui-btn ui-btn-sm ui-btn-outline" @click="goBack">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M19 12H5M12 19l-7-7 7-7"/>
         </svg>
@@ -61,7 +61,7 @@
               placeholder="请选择下载路径..."
               readonly
             />
-            <button class="browse-btn" @click="selectDownloadPath">浏览</button>
+            <button class="browse-btn ui-btn ui-btn-md ui-btn-outline" @click="selectDownloadPath">浏览</button>
           </div>
         </div>
 
@@ -75,14 +75,14 @@
               placeholder="请选择游戏路径..."
               readonly
             />
-            <button class="browse-btn" @click="selectGamePath">浏览</button>
+            <button class="browse-btn ui-btn ui-btn-md ui-btn-outline" @click="selectGamePath">浏览</button>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- 底部：标签页 -->
-    <div class="tabs-section">
+    <!-- 底部：标签页（所有标签都被配置关闭时不显示） -->
+    <div v-if="availableTabs.length > 0" class="tabs-section">
       <div class="tabs-header">
         <button 
           v-for="tab in availableTabs" 
@@ -107,7 +107,12 @@
           :manifest-folder-path="manifestFolderPath"
           :is-downloading="isDownloading"
           :is-verifying="isVerifying"
+          :is-updating="isUpdating"
           :is-monitoring="isMonitoring"
+          :is-paused="isPausedDownload"
+          :download-speed="downloadSpeed"
+          :download-done-bytes="downloadBytes.doneBytes"
+          :download-total-bytes="downloadBytes.totalBytes"
           :download-progress="downloadProgress"
           :download-logs="downloadLogs"
           :download-manifest-source-mode="downloadManifestSourceMode"
@@ -121,6 +126,7 @@
           @open-qingdan-qr-code="openQingdanQRCode"
           @open-download-url="openDownloadUrl"
           @verify-integrity="verifyIntegrity"
+          @update-game="handleUpdateGame"
           @replace-manifest="handleReplaceManifest"
         />
 
@@ -151,6 +157,7 @@
           :isPreparingImport="isPreparingImport"
           :importSourceReady="importSourceReady"
           :lockVersion="lockVersion"
+          :manifestCheckStatus="manifestCheckStatus"
           :importSourceMode="importSourceMode"
           :selectedImportPath="selectedImportPath"
           @importWithOpenSteamTool="importWithOpenSteamTool"
@@ -160,6 +167,7 @@
           @clearImportSource="clearImportSource"
           @update:lockVersion="lockVersion = $event"
           @update:importSourceMode="importSourceMode = $event"
+          @replace-manifest="handleReplaceManifest"
           @open-qingdan-qr-code="openQingdanQRCode"
           @openDownloadUrl="openDownloadUrl"
         />
@@ -179,11 +187,11 @@
               <div class="download-buttons">
                 <div class="download-btn-wrapper">
                   <button
-                    class="download-patch-btn"
-                    :class="{ disabled: !quarkQRCodeExists }"
-                    :disabled="!quarkQRCodeExists"
+                    class="download-patch-btn ui-btn ui-btn-md ui-btn-primary"
+                    :class="{ disabled: extractPlayStatus !== 'available' }"
+                    :disabled="extractPlayStatus !== 'available'"
                     @click="openQuarkQRCode"
-                    :title="quarkQRCodeExists ? '点击扫码下载' : '暂未上传完游戏'"
+                    :title="extractPlayTitle"
                   >
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                       <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -192,7 +200,9 @@
                     </svg>
                     夸克网盘
                   </button>
-                  <span v-if="!quarkQRCodeExists" class="pwd-hint">暂未上传完游戏</span>
+                  <span v-if="extractPlayStatus === 'unavailable'" class="pwd-hint">暂未上传完游戏</span>
+                  <span v-else-if="extractPlayStatus === 'loading'" class="pwd-hint">加载中...</span>
+                  <span v-else-if="extractPlayStatus === 'error'" class="pwd-hint">加载失败，请检查网络</span>
                 </div>
               </div>
               <p class="download-hint">（请先转存至您的网盘，避免和谐，也将给作者带来无限的更新动力）</p>
@@ -214,7 +224,7 @@
                   class="download-btn-wrapper"
                 >
                   <button
-                    class="download-patch-btn"
+                    class="download-patch-btn ui-btn ui-btn-md ui-btn-primary"
                     @click="openDownloadUrl(item.url)"
                   >
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -248,43 +258,66 @@
       </div>
     </div>
 
-    <!-- 下载完成弹窗：提示用户前往注入补丁 -->
+    <!-- 更新游戏弹窗：选择新版清单 → 开始更新（增量下载） -->
     <BaseModal
-      v-model="showDownloadCompleteModal"
-      title="下载完成"
+      v-model="showUpdateModal"
+      title="更新游戏"
       width="40%"
-      container-class="download-complete-modal"
+      container-class="update-game-modal"
       :show-confirm="false"
       :show-cancel="true"
-      cancel-text="稍后再说"
-      @close="showDownloadCompleteModal = false"
+      cancel-text="取消"
+      @close="showUpdateModal = false"
     >
       <template #body>
-        <div class="download-complete-modal-content">
-          <p class="modal-main-hint">下载完成，请前往注入补丁，补丁应用成功才能游玩</p>
-          <p class="modal-path-hint" v-if="downloadCompleteInstallPath">
-            已自动设置安装路径：<code>{{ downloadCompleteInstallPath }}</code>
-          </p>
-          <p class="modal-path-hint" v-if="downloadCompleteExePath && downloadCompleteExePath !== downloadCompleteInstallPath">
-            已自动定位游戏 exe 路径：<code>{{ downloadCompleteExePath }}</code>
-          </p>
-          <div class="patch-select-section">
-            <p class="patch-select-title">补丁选择：</p>
-            <div class="patch-select-buttons">
-              <button
-                v-for="tab in patchTabs"
-                :key="tab.id"
-                class="patch-select-btn"
-                :style="{ backgroundColor: getCategoryColor(tab.patchType) }"
-                @click="goToPatchTab(tab)"
-              >
-                {{ tab.name }}
-              </button>
-            </div>
+        <div class="update-game-modal-content">
+          <p class="modal-main-hint">更新游戏：导入新版本清单后开始更新，程序只下载与本地不一致的文件（未变化的文件自动跳过）。</p>
+
+          <!-- 新版清单来源模式 -->
+          <div class="update-mode-select">
+            <label class="radio-label">
+              <input
+                type="radio"
+                value="7z"
+                v-model="updateManifestMode"
+              />
+              <span>7z 清单压缩包</span>
+            </label>
+            <label class="radio-label">
+              <input
+                type="radio"
+                value="folder"
+                v-model="updateManifestMode"
+              />
+              <span>清单文件夹（.vdf / .lua + .manifest）</span>
+            </label>
           </div>
-          <p v-if="patchTabs.length === 0" class="no-patch-hint">
-            该游戏暂无补丁配置，请前往游戏库查看。
-          </p>
+
+          <!-- 新版清单就绪状态 -->
+          <div class="update-list-status">
+            <span class="update-status-label">新版清单：</span>
+            <span v-if="updateManifestReady" class="update-status-ready">{{ updateManifestPath }}</span>
+            <span v-else class="update-status-muted">尚未选择（选择后会替换当前清单）</span>
+          </div>
+
+          <!-- 两个操作按钮 -->
+          <div class="update-actions">
+            <button
+              class="update-select-btn ui-btn ui-btn-lg ui-btn-outline"
+              :disabled="isPreparingUpdateManifest"
+              @click="handleSelectUpdateManifest"
+            >
+              {{ isPreparingUpdateManifest ? '处理中...' : '选择新版清单' }}
+            </button>
+            <button
+              class="update-start-btn ui-btn ui-btn-lg ui-btn-primary"
+              :class="{ loading: isUpdating }"
+              :disabled="!updateManifestReady || isUpdating"
+              @click="handleStartUpdate"
+            >
+              {{ isUpdating ? '更新中...' : '开始更新' }}
+            </button>
+          </div>
         </div>
       </template>
     </BaseModal>
@@ -312,13 +345,54 @@
         </div>
       </template>
     </BaseModal>
+
+    <!-- 清单文件包误当补丁提示弹窗：用户把 Steam 清单包（lua/vdf/manifest/txt）当作补丁应用时弹出 -->
+    <BaseModal
+      v-model="showManifestPatchAlert"
+      title="提示"
+      width="420px"
+      :show-confirm="true"
+      :show-cancel="false"
+      confirm-text="知道了"
+      @confirm="closeManifestPatchAlert"
+      @close="closeManifestPatchAlert"
+    >
+      <template #body>
+        <div class="manifest-patch-alert-content">
+          <p class="modal-main-hint">检测到您选择的文件是「Steam 清单文件包」，不是游戏补丁，已取消应用，未写入任何文件。</p>
+          <p class="modal-path-hint">请到补丁页面点击网盘下载按钮，下载真正的补丁后再来应用。</p>
+        </div>
+      </template>
+    </BaseModal>
+
+    <!-- Xbox 联机补丁兼容性提示弹窗：点进 Xbox 补丁标签页时弹出 -->
+    <BaseModal
+      v-model="showXboxPatchNotice"
+      title="提示"
+      width="420px"
+      :show-confirm="true"
+      :show-cancel="false"
+      confirm-text="知道了"
+      :close-on-overlay="false"
+      @confirm="closeXboxPatchNotice"
+      @close="closeXboxPatchNotice"
+    >
+      <template #body>
+        <div class="xbox-patch-notice-content">
+          <p class="modal-main-hint">
+            该补丁只兼容微软商店游戏本体（不兼容steam下载的游戏本体），没有微软商店本体的请去解压即玩界面下载已经配置好了的游戏文件，解压后按照必看教程进行操作
+          </p>
+        </div>
+      </template>
+    </BaseModal>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { invoke } from '@tauri-apps/api/core'
+import { listen, type UnlistenFn } from '@tauri-apps/api/event'
 import { open } from '@tauri-apps/plugin-dialog'
 import { convertFileSrc } from '@tauri-apps/api/core'
 import QRCodeModal from '../../components/common/QRCodeModal.vue'
@@ -330,6 +404,7 @@ import { usePatch } from './composables/usePatch'
 import type { GameConfigData } from '../../types'
 import { getPatchSourcePath } from '../../types'
 import { loadGamesConfigFromFile } from '../../api/game.api'
+import { getExtractPlayImage } from '../../api/extractPlay.api'
 import { getCachedCoverImage } from '../../services/imageCache.service'
 import { 
   getGameData, 
@@ -376,6 +451,9 @@ const manifestCheckStatus = ref<'checking' | 'found' | 'not_found'>('checking')
 // 当前选中的标签页
 const currentTab = ref('')
 
+// Readme 云端更新事件监听句柄（组件卸载时注销）
+let unlistenReadmeUpdate: UnlistenFn | null = null
+
 // 修改器本地文件内容
 const trainerContent = ref<string>('')
 
@@ -389,10 +467,16 @@ const setDefaultTab = () => {
   } else if (game.value?.tags && game.value.tags.length > 0) {
     // 如果没有下载功能和解压即玩，默认选中第一个补丁标签
     currentTab.value = `patch-${game.value.tags[0].patch_type}`
-  } else {
-    // 以上都不满足时，入库Steam标签始终存在，默认选中它
+  } else if (game.value?.has_steam_import !== false) {
+    // 以上都不满足时，若有入库Steam选项，默认选中它
     // 覆盖"游戏仅有入库Steam选项"的情况
     currentTab.value = 'import'
+  } else if (availableTabs.value.length > 0) {
+    // 无入库Steam选项时，默认选中第一个可用的其他标签
+    currentTab.value = availableTabs.value[0].id
+  } else {
+    // 所有标签都被关闭时，不选中任何标签
+    currentTab.value = ''
   }
 }
 
@@ -405,27 +489,49 @@ const {
   patchReadmes,
   patchLocalStatus,
   patchAppliedFromFile,
+  showManifestPatchAlert,
   checkPatchLocalStatus,
   applyPatch,
   selectAndApplyPatch,
   loadPatchReadmes,
   openVirtualizationTutorial,
-  openDownloadUrl
+  openDownloadUrl,
+  closeManifestPatchAlert
 } = usePatch(game, gamePath)
 
 // 下载状态（使用全局 store 按 game_id 管理，支持多游戏同时下载和页面切换状态保持）
 const isDownloading = ref(false)
 const isVerifying = ref(false)
+/** 是否正在更新游戏（选择新清单 → 增量下载） */
+const isUpdating = ref(false)
+/** 更新游戏弹窗：是否显示 */
+const showUpdateModal = ref(false)
+/** 更新弹窗-清单源模式（7z / 文件夹） */
+const updateManifestMode = ref<'7z' | 'folder'>('7z')
+/** 更新弹窗-新版清单是否已导入就绪 */
+const updateManifestReady = ref(false)
+/** 更新弹窗-新版清单导入后的路径 */
+const updateManifestPath = ref('')
+/** 更新弹窗-正在导入新版清单 */
+const isPreparingUpdateManifest = ref(false)
 const downloadLogs = computed(() => downloadManagerStore.getGameLogs(gameId.value))
 
 // 下载进度监控（从全局 store 读取）
 const isMonitoring = computed(() => downloadManagerStore.isGameMonitoring(gameId.value))
 const downloadProgress = computed(() => downloadManagerStore.getGameProgress(gameId.value))
 
-// 下载完成弹窗
-const showDownloadCompleteModal = ref(false)
-const downloadCompleteInstallPath = ref('')
-const downloadCompleteExePath = ref('')
+// 是否处于暂停态（store 内存标记 或 game.json 已记录 paused，双保险）
+const isPausedDownload = computed(
+  () =>
+    downloadManagerStore.isGamePaused(gameId.value) ||
+    existingGameData.value?.download_status === 'paused'
+)
+
+// 该游戏实时下载速度（字节/秒），供"下载进度"头部展示
+const downloadSpeed = computed(() => downloadManagerStore.getGameSpeed(gameId.value))
+
+// 该游戏本次下载的已下载/总字节数，供"下载进度"头部估算剩余时间
+const downloadBytes = computed(() => downloadManagerStore.getGameBytes(gameId.value))
 
 // 入库成功弹窗
 const showImportSuccessModal = ref(false)
@@ -441,7 +547,8 @@ const hasVdf = ref(false)
 const hasManifest = ref(false)
 
 // OpenSteamTool高级选项
-const lockVersion = ref(false)
+// Steam 接口加密后仅支持锁定版本入库，固定为 true，界面上开关置灰不可切换
+const lockVersion = ref(true)
 
 // 自定义清单源状态
 const importSourceMode = ref<'7z' | 'folder'>('7z')
@@ -466,38 +573,73 @@ const qrCodeTitle = ref('夸克网盘下载')
 const qrCodeImageUrl = ref('')
 const qrCodeHint = ref('请使用夸克APP扫码下载')
 
-// 夸克网盘二维码是否存在
-const quarkQRCodeExists = ref(false)
+// Xbox 联机补丁兼容性提示弹窗状态
+const showXboxPatchNotice = ref(false)
 
 /**
- * 获取夸克网盘二维码图片路径
- * 图片存放在 resources/pic/Quark_QR/{game_id}.png
+ * 关闭 Xbox 补丁兼容性提示弹窗
  */
-const getQuarkQRCodePath = (gameId: string): string => {
-  // 使用相对路径，程序根目录下的 resources/pic/Quark_QR/
-  return `resources/pic/Quark_QR/${gameId}.png`
+const closeXboxPatchNotice = () => {
+  showXboxPatchNotice.value = false
 }
 
+// 解压即玩图片加载状态：loading=加载中 / available=可下载 / unavailable=暂未上传 / error=加载失败
+const extractPlayStatus = ref<'loading' | 'available' | 'unavailable' | 'error'>('loading')
+// 解压即玩图片本地缓存路径
+const extractPlayImagePath = ref('')
+
+// 解压即玩按钮的提示文字
+const extractPlayTitle = computed(() => {
+  switch (extractPlayStatus.value) {
+    case 'available':
+      return '点击扫码下载'
+    case 'loading':
+      return '加载中...'
+    case 'error':
+      return '加载失败，请检查网络后重试'
+    default:
+      return '暂未上传完游戏'
+  }
+})
+
 /**
- * 检查夸克网盘二维码是否存在
+ * 拉取当前游戏的解压即玩图片
+ * 后端会优先复用本会话已下载的本地缓存，否则实时从 Gitee 下载。
+ * 进入解压即玩标签页或切换标签页回到该页时都会重新调用，实现实时刷新。
  */
-const checkQuarkQRCodeExists = async (gameId: string): Promise<boolean> => {
+const fetchExtractPlayImage = async (gameId: string) => {
+  extractPlayStatus.value = 'loading'
   try {
-    const qrPath = getQuarkQRCodePath(gameId)
-    const exists = await invoke<boolean>('check_file_exists', { path: qrPath })
-    return exists
+    const result = await getExtractPlayImage(gameId)
+    if (result.exists && result.path) {
+      extractPlayImagePath.value = result.path
+      extractPlayStatus.value = 'available'
+    } else {
+      extractPlayStatus.value = 'unavailable'
+    }
   } catch {
-    return false
+    // 网络异常或仓库不可达时，标记为加载失败，允许用户切回标签页重试
+    extractPlayStatus.value = 'error'
   }
 }
+
+// 切换到解压即玩标签页时重新拉取图片，实现实时刷新与失败重试
+watch(currentTab, (tab) => {
+  if (tab === 'extract-play') {
+    fetchExtractPlayImage(gameId.value)
+  }
+  // 点进 Xbox 联机补丁标签页（patch_type=5 → tab id 为 patch-5）时弹出兼容性提示
+  if (tab === 'patch-5') {
+    showXboxPatchNotice.value = true
+  }
+})
 
 /**
  * 打开夸克网盘二维码弹窗
  */
-const openQuarkQRCode = async () => {
-  // 检查二维码是否存在
-  const exists = await checkQuarkQRCodeExists(gameId.value)
-  if (!exists) {
+const openQuarkQRCode = () => {
+  // 仅当图片加载成功时才允许打开
+  if (extractPlayStatus.value !== 'available' || !extractPlayImagePath.value) {
     return
   }
 
@@ -505,9 +647,8 @@ const openQuarkQRCode = async () => {
   qrCodeTitle.value = '夸克网盘下载'
   qrCodeHint.value = '请使用夸克APP扫码下载'
 
-  // 获取二维码图片URL
-  const qrPath = getQuarkQRCodePath(gameId.value)
-  qrCodeImageUrl.value = convertFileSrc(qrPath)
+  // 使用本地缓存的图片路径（convertFileSrc 转换为可访问的 URL）
+  qrCodeImageUrl.value = convertFileSrc(extractPlayImagePath.value)
 
   // 显示弹窗
   showQRCodeModal.value = true
@@ -558,8 +699,10 @@ const availableTabs = computed(() => {
     tabs.push({ id: 'extract-play', name: '解压即玩' })
   }
 
-  // 3. 入库Steam标签始终显示
-  tabs.push({ id: 'import', name: '入库Steam' })
+  // 3. 入库Steam标签（可通过 games_config.json 的 has_steam_import 关闭显示，缺省为 true 兼容旧版配置）
+  if (game.value?.has_steam_import !== false) {
+    tabs.push({ id: 'import', name: '入库Steam' })
+  }
 
   // 4. 添加游戏分类标签（各类补丁）
   game.value?.tags.forEach(tag => {
@@ -686,12 +829,16 @@ const startDownload = async () => {
   addDownloadLog(`下载路径: ${downloadPath.value}`, 'info')
 
   try {
-    // 先保存游戏数据到game.json
+    // 先保存游戏数据到game.json。
+    // 注意：game_type 不在此处标为 'downloaded'（"已下载"应代表下载完成，
+    // 由后端 finalize_download 在整包下载通过校验后写入；否则没下完/暂停/失败
+    // 时游戏库会错误显示"已下载"）。此处优先沿用库中已有 game_type（重下场景），
+    // 首次下载则留空，完成后再由 finalize 补标。
     const gameData: GameData = {
       game_id: gameId.value,
       game_name: game.value?.game_name || '',
       chinese_name: game.value?.chinese_name || '',
-      game_type: 'downloaded',
+      game_type: existingGameData.value?.game_type || '',
       install_path: downloadPath.value,
       exe_path: '', // 下载完成后需要用户设置
       is_favorite: false,
@@ -713,7 +860,9 @@ const startDownload = async () => {
     }>('start_game_download', {
       manifestPath: manifestFolderPath.value,
       downloadPath: downloadPath.value,
-      gameId: gameId.value
+      gameId: gameId.value,
+      // 下载引擎模式：false=ddv20.exe（默认稳定）/ true=新引擎（设置内开启）
+      useEngine: configStore.config?.launch?.useNewEngine ?? false
     })
 
     if (result.success) {
@@ -735,7 +884,7 @@ const startDownload = async () => {
 
 /**
  * 停止下载
- * 终止 ddv20.exe 进程，并将游戏状态设置为未下载
+ * 触发引擎取消令牌，并将游戏状态设置为未下载
  */
 const stopDownload = async () => {
   try {
@@ -795,17 +944,34 @@ const handleDownloadComplete = async () => {
     gamePath.value = finalInstallPath
   }
 
-  if (patchTabs.value.length > 0) {
-    downloadCompleteInstallPath.value = finalInstallPath
-    const exePath = finalizedGame?.exe_path || existingGameData.value?.exe_path || ''
-    downloadCompleteExePath.value = exePath ? exePath.substring(0, exePath.lastIndexOf('\\')) : ''
-    showDownloadCompleteModal.value = true
+  // 「下载完成 → 提示打补丁」弹窗由全局 App 层统一弹出（任意界面均可出现），
+  // 此处不再展示本地弹窗，避免重复
+}
+
+/**
+ * 下载结束处理（由全局 store 的结束回调触发，取消/失败统一收到）
+ * 成功路径由 handleDownloadComplete 收尾，这里只处理取消/失败：
+ * 复位下载中标记并刷新游戏数据，让界面状态与后端（idle/error）一致
+ */
+const handleDownloadFinish = async (success: boolean, message: string) => {
+  if (success) return // 成功由 handleDownloadComplete 收尾
+
+  // 取消类（download-cancelled / 下载已暂停 等）视为"暂停"而非失败
+  const isCancelled = /cancel|取消|暂停/i.test(message)
+  if (isCancelled) {
+    addDownloadLog('游戏下载已暂停', 'warning')
+  } else {
+    addDownloadLog(`下载失败: ${message}`, 'error')
   }
+  isDownloading.value = false
+  existingGameData.value = await getGameData(gameId.value)
+  // 清理监控状态（完成回调只在成功时触发，取消/失败在此显式停止）
+  stopProgressMonitoring()
 }
 
 /**
  * 验证游戏完整性
- * 使用与下载相同的参数重新运行 ddv20.exe，验证并补全缺失文件
+ * 使用与下载相同的参数重新调用下载引擎，校验并补全缺失文件
  */
 const verifyIntegrity = async () => {
   if (!manifestFolderPath.value) {
@@ -833,7 +999,11 @@ const verifyIntegrity = async () => {
     }>('start_game_download', {
       manifestPath: manifestFolderPath.value,
       downloadPath: existingGameData.value.download_path,
-      gameId: gameId.value
+      gameId: gameId.value,
+      // 校验完整性模式：忽略断点续传整包跳过，强制文件级哈希检查补下缺失/损坏文件
+      verify: true,
+      // 引擎模式：ddv20 模式也能校验（重跑清单补下缺失/损坏文件，支持续传）
+      useEngine: configStore.config?.launch?.useNewEngine ?? false
     })
 
     if (result.success) {
@@ -847,6 +1017,162 @@ const verifyIntegrity = async () => {
     addDownloadLog(`验证出错: ${error}`, 'error')
   } finally {
     isVerifying.value = false
+  }
+}
+
+/**
+ * 更新游戏（按钮入口）
+ * 打开更新弹窗，走「选择新版清单 → 开始更新」两步：
+ *   1. 选择新版清单：删除原清单目录，把新版清单导入 resources/manifest/{game_id}；
+ *   2. 开始更新：用新版清单 + 已安装目录启动增量下载（引擎整文件哈希跳过，
+ *      只下载变化/缺失/损坏文件）。
+ */
+const handleUpdateGame = async () => {
+  if (!existingGameData.value?.download_path) {
+    alert('未找到下载路径，无法更新')
+    return
+  }
+
+  // 每次打开重置就绪状态（防止上次导入结果残留）
+  updateManifestReady.value = false
+  updateManifestPath.value = ''
+  showUpdateModal.value = true
+}
+
+/**
+ * 弹窗-选择新版清单
+ * 按模式（7z / 文件夹）选择新清单 → 删除原清单目录 → 导入新版清单 → 校验就绪
+ */
+const handleSelectUpdateManifest = async () => {
+  // 1. 按模式选择新清单源
+  let selected: string | null = null
+  try {
+    if (updateManifestMode.value === '7z') {
+      const picked = await open({
+        multiple: false,
+        filters: [{ name: '7z压缩包', extensions: ['7z'] }],
+        title: '选择新版本清单7z压缩包'
+      })
+      selected = typeof picked === 'string' ? picked : null
+    } else {
+      const picked = await open({
+        multiple: false,
+        directory: true,
+        title: '选择新版本清单文件夹（含 .vdf / .lua 和 .manifest）'
+      })
+      selected = typeof picked === 'string' ? picked : null
+    }
+  } catch (error) {
+    alert(`选择清单失败: ${error}`)
+    return
+  }
+  if (!selected) return
+
+  // 2. 删除原清单 → 导入新版清单
+  isPreparingUpdateManifest.value = true
+  addDownloadLog('正在替换清单为新版本...', 'info')
+  try {
+    // 先删除原清单目录：避免新旧 .manifest 混在同一目录导致 depot 任务重复
+    await invoke('delete_game_manifest_folder', { gameId: gameId.value })
+
+    if (updateManifestMode.value === '7z') {
+      addDownloadLog(`解压新版清单: ${selected}`, 'info')
+      await invoke<string>('extract_manifest_archive', {
+        archivePath: selected,
+        gameId: gameId.value
+      })
+    } else {
+      addDownloadLog(`复制新版清单: ${selected}`, 'info')
+      await invoke<string>('copy_folder_to_manifest', {
+        sourcePath: selected,
+        gameId: gameId.value
+      })
+    }
+
+    // 3. 重新检测清单状态
+    await checkManifestFolder()
+
+    // 4. 校验新清单已就绪（含 .manifest 文件）
+    const folder = await invoke<{
+      jsonFiles: string[]
+      vdfFiles: string[]
+      manifestFiles: string[]
+    }>('read_manifest_folder', { folderPath: manifestFolderPath.value })
+
+    if (folder.manifestFiles.length === 0) {
+      alert('新清单中没有 .manifest 清单文件，请检查')
+      return
+    }
+
+    updateManifestPath.value = manifestFolderPath.value
+    updateManifestReady.value = true
+    addDownloadLog(`新版清单已就绪: ${manifestFolderPath.value}`, 'success')
+  } catch (error) {
+    addDownloadLog(`替换新版清单失败: ${error}`, 'error')
+    alert(`替换新版清单失败: ${error}`)
+    // 失败后重新检测清单状态（原清单已删，可能变为未找到）
+    await checkManifestFolder()
+  } finally {
+    isPreparingUpdateManifest.value = false
+  }
+}
+
+/**
+ * 弹窗-开始更新
+ * 用已导入的新版清单 + 已安装目录启动增量下载
+ */
+const handleStartUpdate = async () => {
+  if (!updateManifestReady.value) {
+    alert('请先选择新版清单')
+    return
+  }
+  const gameData = existingGameData.value
+  if (!gameData?.download_path) {
+    alert('未找到下载路径，无法更新')
+    return
+  }
+
+  // 关闭弹窗，进入下载流程
+  showUpdateModal.value = false
+
+  isUpdating.value = true
+  downloadManagerStore.clearLogs(gameId.value)
+  addDownloadLog('开始更新游戏...', 'info')
+  addDownloadLog(`游戏: ${game.value?.game_name || gameId.value}`, 'info')
+  addDownloadLog(`新版清单: ${manifestFolderPath.value}`, 'info')
+  addDownloadLog(`下载路径: ${gameData.download_path}`, 'info')
+
+  try {
+    // 游戏状态置为下载中
+    await upsertGameData({ ...gameData, download_status: 'downloading' })
+    existingGameData.value = { ...gameData, download_status: 'downloading' }
+
+    const result = await invoke<{
+      success: boolean
+      message: string
+      processId?: number
+    }>('start_game_download', {
+      manifestPath: manifestFolderPath.value,
+      downloadPath: gameData.download_path,
+      gameId: gameId.value,
+      // 引擎模式：更新(增量下载)只有新引擎支持，ddv20 模式下此按钮已隐藏
+      useEngine: configStore.config?.launch?.useNewEngine ?? false
+    })
+
+    if (result.success) {
+      addDownloadLog('更新命令已启动', 'success')
+      addDownloadLog(result.message, 'info')
+      // 进度监控按新版清单初始化 depot 列表
+      startProgressMonitoring()
+    } else {
+      addDownloadLog(`更新启动失败: ${result.message}`, 'error')
+      await updateGameDownloadStatus(gameId.value, 'error', 0)
+    }
+  } catch (error) {
+    addDownloadLog(`更新出错: ${error}`, 'error')
+    await updateGameDownloadStatus(gameId.value, 'error', 0)
+  } finally {
+    isUpdating.value = false
   }
 }
 
@@ -878,21 +1204,14 @@ const handleReplaceManifest = async () => {
 }
 
 /**
- * 跳转并应用指定补丁类型
- * @param tab 补丁标签页
- */
-const goToPatchTab = (tab: { id: string; name: string; patchType: number; patchPath: string; downloadUrls: { source: string; url: string; pwd?: string | null }[] }) => {
-  // 跳转到补丁页，gamePath 保持为安装根目录；补丁应用时后端会自动定位 exe 目录
-  currentTab.value = tab.id
-  showDownloadCompleteModal.value = false
-}
-
-/**
  * 开始监控下载进度
  * 使用全局 store 的统一定时器，页面切换不丢失，支持多游戏同时监控
  */
-const startProgressMonitoring = async () => {
+const startProgressMonitoring = async (manifestPathOverride?: string) => {
   if (isMonitoring.value) return
+
+  // 更新游戏时传入新版本清单路径覆盖默认清单（默认是当前已导入清单）
+  const folderPath = manifestPathOverride || manifestFolderPath.value
 
   // 首先读取manifest文件夹，获取所有depot ID
   try {
@@ -900,7 +1219,7 @@ const startProgressMonitoring = async () => {
       jsonFiles: string[]
       vdfFiles: string[]
       manifestFiles: string[]
-    }>('read_manifest_folder', { folderPath: manifestFolderPath.value })
+    }>('read_manifest_folder', { folderPath })
 
     // 从manifest文件名中提取depot ID
     // 文件名格式: "{depotId}_{version}.manifest"
@@ -919,15 +1238,16 @@ const startProgressMonitoring = async () => {
     addDownloadLog(`读取manifest文件夹失败: ${error}`, 'error')
   }
 
-  // 注册进度变化与完成回调
+  // 注册进度变化、完成与结束回调
   downloadManagerStore.onProgress(gameId.value, handleDownloadProgress)
   downloadManagerStore.onComplete(gameId.value, handleDownloadComplete)
+  downloadManagerStore.onFinish(gameId.value, handleDownloadFinish)
 
-  // 立即扫描一次
-  await downloadManagerStore.scanProgressFiles(gameId.value)
+  // 快照兜底：页面刷新/进入时引擎可能已跑了好一会，先拉一次当前进度
+  await downloadManagerStore.fetchSnapshot(gameId.value)
 
-  // 加入统一轮询
-  downloadManagerStore.startMonitoring(gameId.value)
+  // 建桥订阅引擎事件并置监控标记
+  await downloadManagerStore.startMonitoring(gameId.value)
 }
 
 /**
@@ -1000,6 +1320,9 @@ onMounted(async () => {
 
   // 初始化全局 store 中该游戏的状态
   downloadManagerStore.setGameName(gameId.value, game.value?.game_name || gameId.value)
+
+  // 恢复上次会话遗留的「已暂停」任务（程序重启后详情页仍能显示"已暂停"+ 总进度）
+  await downloadManagerStore.restorePausedGames()
 
   // 加载已存在的游戏数据
   const gameData = await safeAsync(() => getGameData(gameId.value))
@@ -1080,14 +1403,23 @@ onMounted(async () => {
 
   // 设置默认标签页
   setDefaultTab()
+  // 支持从全局「下载完成」弹窗直达某补丁标签（URL 带 ?patch=patch-xxx）
+  const patchParam = route.query.patch as string | undefined
+  if (patchParam && patchParam.startsWith('patch-')) {
+    currentTab.value = patchParam
+  }
   // 自动填充下载路径（不依赖清单文件夹是否存在）
   await autoSetDownloadPath()
   // 自动检测清单文件夹
   await checkManifestFolder()
   // 加载所有补丁说明
   await loadPatchReadmes()
-  // 检查夸克网盘二维码是否存在
-  quarkQRCodeExists.value = await checkQuarkQRCodeExists(gameId.value)
+  // 监听 Readme 云端更新事件：后台下载替换完成后静默刷新显示（不展示任何提示）
+  unlistenReadmeUpdate = await listen('readme-updated', () => {
+    loadPatchReadmes()
+  })
+  // 拉取解压即玩（夸克网盘二维码）图片
+  await fetchExtractPlayImage(gameId.value)
   // 检查本地补丁文件状态
   await checkPatchLocalStatus()
   // 检查游戏清单文件是否存在（用于入库Steam按钮）
@@ -1099,8 +1431,84 @@ onMounted(async () => {
 // 组件卸载时不再停止监控，保持全局 store 中的下载状态，
 // 支持页面切换后仍能查看和恢复下载进度。
 onUnmounted(() => {
-  // 监控定时器由全局 downloadManager store 统一管理
+  // 注销 Readme 云端更新事件监听
+  unlistenReadmeUpdate?.()
+  unlistenReadmeUpdate = null
 })
+
+// ==================== 路由级联：补丁直达（任意界面都可跳到对应补丁标签） ====================
+
+/**
+ * 应用 URL 上的补丁直达参数（?patch=patch-xxx）。
+ * 首次挂载由 onMounted 处理；此处兜底等待游戏配置就绪（最多 1s 轮询），
+ * 防止 game 尚未加载时设置标签被 setDefaultTab 覆盖。
+ *
+ * 额外动作：从「下载完成提示补丁」弹窗跳转时，组件复用（仅 query 变化、
+ * onMounted 不重跑），此处主动刷新一次游戏数据回填游戏路径——
+ * 否则下载完成刚写入的 install_path 不会反映到路径输入框。
+ */
+function applyPatchTabFromQuery() {
+  const apply = () => {
+    if (!game.value) return false
+    const patchParam = route.query.patch as string | undefined
+    if (patchParam && patchParam.startsWith('patch-')) {
+      currentTab.value = patchParam
+      refreshGamePathFromData()
+    } else {
+      setDefaultTab()
+    }
+    return true
+  }
+  if (apply()) return
+  // 游戏配置尚未就绪：短轮询等待（apply 幂等，重复触发无副作用）
+  for (let i = 1; i <= 20; i++) {
+    setTimeout(() => {
+      if (game.value) apply()
+    }, 50 * i)
+  }
+}
+
+/**
+ * 从后端最新游戏数据回填游戏路径（安装路径优先，下载路径兜底）。
+ * 用于「下载完成提示补丁」跳转等组件复用场景，补齐 onMounted 不重跑
+ * 造成的路径未刷新问题。
+ */
+async function refreshGamePathFromData() {
+  try {
+    const data = await getGameData(gameId.value)
+    if (!data) return
+    if (data.install_path) {
+      gamePath.value = data.install_path
+    } else if (data.download_path) {
+      gamePath.value = data.download_path
+    }
+    existingGameData.value = data
+  } catch {
+    // 刷新失败保持原值，不影响补丁标签切换
+  }
+}
+
+// 补丁参数变化（在同一详情页点击弹窗补丁按钮时组件复用、onMounted 不重跑，靠这里切标签）
+watch(
+  () => route.query.patch,
+  () => applyPatchTabFromQuery()
+)
+
+// 跨游戏跳转（/game/A → /game/B，组件复用）：重置与旧游戏绑定的展示状态，
+// 再应用新游戏的默认/补丁标签
+watch(
+  () => route.params.id,
+  (newId, oldId) => {
+    if (newId === oldId) return
+    gamePath.value = ''
+    downloadPath.value = ''
+    existingGameData.value = null
+    downloadManagerStore.setGameName(gameId.value, game.value?.game_name || gameId.value)
+    void loadCoverImage()
+    // 下一轮渲染后应用标签（此时 game.value 已切换到新游戏）
+    applyPatchTabFromQuery()
+  }
+)
 
 /**
  * 检查 manifest 文件夹是否存在
@@ -1657,7 +2065,14 @@ const restartSteam = async () => {
   height: 100%;
   overflow-y: auto;
   padding: 14px;
-  background-color: var(--steam-bg-secondary);
+  /* 玻璃水晶背景：半透明冷蓝底让全局背景透出，
+     叠加右上方淡蓝氛围光与顶部高光，模拟光线在玻璃切面的折射 */
+  background:
+    radial-gradient(120% 90% at 88% -8%, rgba(87, 140, 220, 0.08) 0%, transparent 55%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0) 14%),
+    rgba(var(--steam-bg-primary-rgb), 0.55);
+  backdrop-filter: blur(20px) saturate(150%);
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
 }
 
 /* 头部区域 */
@@ -1667,30 +2082,7 @@ const restartSteam = async () => {
   gap: 24px;
   margin-bottom: 14px;
   padding-bottom: 10px;
-  border-bottom: 1px solid var(--steam-border);
-}
-
-.back-btn {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 16px;
-  border: none;
-  border-radius: 8px;
-  background-color: var(--steam-bg-primary);
-  color: var(--steam-text-primary);
-  font-size: 14px;
-  cursor: pointer;
-  transition: background-color 0.15s ease;
-}
-
-.back-btn:hover {
-  background-color: var(--steam-bg-hover);
-}
-
-.back-btn svg {
-  width: 16px;
-  height: 16px;
+  border-bottom: 1px solid var(--glass-border);
 }
 
 .header-info {
@@ -1744,7 +2136,9 @@ const restartSteam = async () => {
   max-height: 300px;
   object-fit: contain;
   border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  /* 玻璃切面般的细描边 + 更柔和的深阴影 */
+  border: 1px solid var(--glass-border-strong);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
 }
 
 .paths-section {
@@ -1774,40 +2168,37 @@ const restartSteam = async () => {
 .path-input {
   flex: 1;
   padding: 10px 12px;
-  border: 1px solid var(--steam-border);
+  border: 1px solid var(--glass-border);
   border-radius: 8px;
-  background-color: var(--steam-bg-primary);
+  /* 半透明玻璃输入框，聚焦时呈现蓝色光晕 */
+  background: rgba(var(--steam-bg-tertiary-rgb), 0.45);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   color: var(--steam-text-primary);
   font-size: 13px;
   outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
 }
 
-.browse-btn {
-  padding: 10px 20px;
-  border: none;
-  border-radius: 8px;
-  background-color: var(--steam-accent-blue);
-  color: white;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background-color 0.15s ease;
+.path-input:focus {
+  border-color: rgba(var(--steam-accent-blue-rgb), 0.6);
+  background: rgba(var(--steam-bg-tertiary-rgb), 0.6);
+  box-shadow: 0 0 0 3px rgba(var(--steam-accent-blue-rgb), 0.15);
 }
 
-.browse-btn:hover {
-  background-color: var(--steam-accent-hover);
-}
-
-/* 标签页区域 */
+/* 标签页区域 - 玻璃面板 */
 .tabs-section {
-  background-color: var(--steam-bg-primary);
+  background: rgba(var(--steam-bg-secondary-rgb), 0.45);
+  backdrop-filter: blur(16px) saturate(140%);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+  border: 1px solid var(--glass-border);
   border-radius: 12px;
   overflow: hidden;
 }
 
 .tabs-header {
   display: flex;
-  border-bottom: 1px solid var(--steam-border);
+  border-bottom: 1px solid var(--glass-border);
 }
 
 .tab-btn {
@@ -1830,7 +2221,8 @@ const restartSteam = async () => {
 .tab-btn.active {
   color: var(--steam-accent-blue);
   border-bottom-color: var(--steam-accent-blue);
-  background-color: var(--steam-bg-secondary);
+  /* 激活标签使用半透明玻璃底 */
+  background-color: rgba(var(--steam-bg-primary-rgb), 0.4);
 }
 
 /* 补丁类标签页使用红色粗体显示 */
@@ -2022,7 +2414,8 @@ const restartSteam = async () => {
 
 .path-display {
   padding: 12px 16px;
-  background-color: var(--steam-bg-secondary);
+  background: rgba(var(--steam-bg-secondary-rgb), 0.55);
+  border: 1px solid var(--glass-border);
   border-radius: 8px;
   font-size: 13px;
   color: var(--steam-text-secondary);
@@ -2141,7 +2534,8 @@ const restartSteam = async () => {
 .download-description {
   margin: 12px 0;
   padding: 10px;
-  background-color: var(--steam-bg-secondary);
+  background: rgba(var(--steam-bg-secondary-rgb), 0.55);
+  border: 1px solid var(--glass-border);
   border-radius: 8px;
   border-left: 4px solid #3b82f6;
 }
@@ -2213,9 +2607,9 @@ const restartSteam = async () => {
 .download-logs {
   margin-top: 12px;
   padding: 10px;
-  background-color: var(--steam-bg-secondary);
+  background: rgba(var(--steam-bg-secondary-rgb), 0.55);
   border-radius: 8px;
-  border: 1px solid var(--steam-border);
+  border: 1px solid var(--glass-border);
 }
 
 .logs-title {
@@ -2274,7 +2668,8 @@ const restartSteam = async () => {
 
 /* 补丁说明样式 - 显示在应用补丁按钮下方 */
 .patch-readme {
-  background-color: var(--steam-bg-secondary);
+  background: rgba(var(--steam-bg-secondary-rgb), 0.55);
+  border: 1px solid var(--glass-border);
   border-radius: 8px;
   padding: 10px;
   border-left: 4px solid var(--steam-accent-blue);
@@ -2365,31 +2760,6 @@ const restartSteam = async () => {
   flex-direction: column;
   align-items: center;
   gap: 7px;
-}
-
-.download-patch-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 10px 24px;
-  border: none;
-  border-radius: 8px;
-  background-color: #3b82f6;
-  color: white;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background-color 0.15s ease;
-}
-
-.download-patch-btn:hover {
-  background-color: #2563eb;
-}
-
-.download-patch-btn svg {
-  width: 18px;
-  height: 18px;
 }
 
 .pwd-hint {
@@ -2736,11 +3106,76 @@ const restartSteam = async () => {
   max-height: 50vh !important;
 }
 
-.download-complete-modal-content {
+/* 更新游戏弹窗 */
+:global(.update-game-modal) {
+  width: 40% !important;
+  max-width: 40% !important;
+  height: auto !important;
+  max-height: 50vh !important;
+}
+
+.update-game-modal-content {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
   justify-content: flex-start;
+}
+
+/* 新版清单来源模式选择 */
+.update-mode-select {
+  display: flex;
+  gap: 18px;
+  flex-wrap: wrap;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background-color: var(--steam-bg-tertiary);
+}
+
+.update-mode-select .radio-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--steam-text-primary);
+  cursor: pointer;
+}
+
+/* 新版清单就绪状态 */
+.update-list-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.update-status-label {
+  color: var(--steam-text-secondary);
+  flex-shrink: 0;
+}
+
+.update-status-ready {
+  color: var(--steam-accent-green);
+  word-break: break-all;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.update-status-muted {
+  color: var(--steam-text-subtle);
+}
+
+/* 两个操作按钮 */
+.update-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+/* 开始更新 - 主操作样式：保留右对齐 */
+.update-start-btn {
+  margin-left: auto;
 }
 
 .modal-main-hint {
@@ -2764,51 +3199,26 @@ const restartSteam = async () => {
   word-break: break-all;
 }
 
-.patch-select-section {
+/* 清单文件包误当补丁提示弹窗 */
+.manifest-patch-alert-content {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 10px;
 }
 
-.patch-select-title {
-  margin: 0;
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--steam-text-primary);
+.manifest-patch-alert-content .modal-main-hint {
+  font-weight: 600;
 }
 
-.patch-select-buttons {
+/* Xbox 联机补丁兼容性提示弹窗 */
+.xbox-patch-notice-content {
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  width: 100%;
+  flex-direction: column;
+  gap: 10px;
 }
 
-.patch-select-btn {
-  flex: 1 1 calc(50% - 3px);
-  min-width: 100px;
-  padding: 8px 12px;
-  border: none;
-  border-radius: 6px;
-  color: white;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: opacity 0.15s ease, transform 0.15s ease;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.patch-select-btn:hover {
-  opacity: 0.85;
-  transform: translateY(-1px);
-}
-
-.no-patch-hint {
-  margin: 0;
-  font-size: 13px;
-  color: var(--steam-text-muted);
+.xbox-patch-notice-content .modal-main-hint {
+  font-weight: 600;
 }
 
 /* 入库成功弹窗 */

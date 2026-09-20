@@ -21,6 +21,12 @@ pub struct PatchState {
     pub basic_config_applied: bool,
     /// 脱壳是否成功
     pub unpack_success: bool,
+    /// 是否使用 Steam 存档路径
+    /// 勾选后应用基础配置时，将 configs.user.ini 的 local_save_path 指向
+    /// <Steam>\userdata\<账户ID>（存档写入 <Steam>\userdata\<账户ID>\<AppID>\remote，与 Steam 一致），
+    /// 并同时写入真实 SteamID64（account_steamid）
+    #[serde(default)]
+    pub use_steam_save_path: bool,
 }
 
 impl Default for PatchState {
@@ -32,6 +38,7 @@ impl Default for PatchState {
             steam_app_id: String::new(),
             basic_config_applied: false,
             unpack_success: false,
+            use_steam_save_path: false,
         }
     }
 }

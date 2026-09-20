@@ -32,7 +32,10 @@
           <p class="sponsor-tip">推荐使用支付宝</p>
         </div>
       </div>
-      <p class="sponsor-note">赞助金额≥5元支持私聊答疑，≥10元还支持远程帮助</p>
+      <div class="sponsor-note">
+        <p class="sponsor-note-main">赞助金额≥5元支持优先私聊答疑，≥10元还支持远程帮助</p>
+        <p class="sponsor-note-ps">ps 不赞助up也很愿意帮你解决问题，但是不支持远程帮助哦</p>
+      </div>
     </div>
   </div>
 </template>
@@ -150,10 +153,24 @@ onMounted(async () => {
 }
 
 .sponsor-note {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  text-align: center;
+}
+
+.sponsor-note-main {
   font-size: 17px;
   color: var(--steam-text-primary);
   margin: 0;
-  text-align: center;
   font-weight: 500;
+}
+
+.sponsor-note-ps {
+  font-size: 13px;
+  color: var(--steam-text-secondary);
+  margin: 0;
 }
 </style>

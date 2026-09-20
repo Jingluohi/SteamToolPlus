@@ -16,6 +16,20 @@ export interface AppConfig {
   launch: LaunchConfig
   /** OpenSteamTool内核配置 */
   opensteamtool: OpenSteamToolConfig
+  /** 下载记录按钮配置 */
+  recordButton: RecordButtonConfig
+}
+
+/**
+ * 下载记录按钮配置
+ * 无下载任务时右下角「下载记录」悬浮按钮的位置（距窗口右/下边缘的 px 距离），
+ * 用户可自由拖动，位置持久化到 config.json。
+ */
+export interface RecordButtonConfig {
+  /** 距离窗口右边缘的距离（px） */
+  right: number
+  /** 距离窗口底部边缘的距离（px） */
+  bottom: number
 }
 
 /**
@@ -80,6 +94,19 @@ export interface LaunchConfig {
   verifyBeforeLaunch: boolean
   /** 清单入库功能是否已完成首次初始化 */
   manifestImportInitialized: boolean
+  /**
+   * 是否使用进程内 Rust 新下载引擎。
+   * false（默认）= 外部 ddv20.exe 下载（稳定）；true = 新引擎（不稳定，容易出错）
+   */
+  useNewEngine: boolean
+  /** 分块并发数：单个下载任务同时从 CDN 拉取的数据块数量（仅新引擎生效，默认 32） */
+  chunkConcurrency: number
+  /** 全局并发上限：所有下载任务在途分块总数封顶（仅新引擎生效，默认 96） */
+  globalConcurrency: number
+  /** 并发 depot 数：同一游戏内同时下载的 depot 数量（仅新引擎生效，默认 2） */
+  concurrentDepots: number
+  /** 文件句柄缓存上限：写盘 LRU 保留的已打开文件句柄数（仅新引擎生效，默认 512） */
+  fileHandleCache: number
 }
 
 /**
@@ -108,4 +135,6 @@ export interface UpdateConfigRequest {
   launch?: LaunchConfig
   /** OpenSteamTool内核配置更新 */
   opensteamtool?: OpenSteamToolConfig
+  /** 下载记录按钮配置更新 */
+  recordButton?: RecordButtonConfig
 }

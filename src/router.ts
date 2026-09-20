@@ -41,6 +41,12 @@ const routes: RouteRecordRaw[] = [
     meta: { title: '本体下载' }
   },
   {
+    path: '/downloads',
+    name: 'Downloads',
+    component: () => import('./views/Downloads/Downloads.vue'),
+    meta: { title: '下载列表' }
+  },
+  {
     path: '/patch',
     name: 'Patch',
     component: () => import('./views/Patch/Patch.vue'),
@@ -93,18 +99,6 @@ const routes: RouteRecordRaw[] = [
     name: 'About',
     component: () => import('./views/About/About.vue'),
     meta: { title: '关于软件' }
-  },
-  {
-    path: '/help',
-    name: 'Help',
-    component: () => import('./views/Help/Help.vue'),
-    meta: { title: '使用说明' }
-  },
-  {
-    path: '/help-window',
-    name: 'HelpWindow',
-    component: () => import('./views/HelpWindow/HelpWindow.vue'),
-    meta: { title: '使用说明' }
   },
   {
     path: '/update-check',

@@ -1,0 +1,47 @@
+// Steam depot manifest V3 的 protobuf 消息定义
+// 来源：SteamKit2 Protobufs/content_manifest.proto（字段编号逐一对应）
+// 与 SteamKit 的 ContentManifest.cs 生成代码对齐：
+//   - ChunkData.crc 为 fixed32（对应 protobuf-net 的 FixedSize 数据格式）
+//   - filenames_encrypted 为 metadata 字段，为 true 时 payload 中的
+//     filename/linktarget 是 Base64 的 AES 密文，需用 depot key 解密（见 manifest.rs）
+// 本引擎只使用下载所需的消息：payload（文件/分块清单）与 metadata（depot 元数据）；
+// signature 区段仅用于官方校验清单真实性，下载流程不校验。
+
+option optimize_for = SPEED;
+option cc_generic_services = false;
+
+message ContentManifestPayload {
+	message FileMapping {
+		optional string filename = 1;
+		optional uint64 size = 2;
+		optional uint32 flags = 3;
+		optional bytes sha_filename = 4;
+		optional bytes sha_content = 5;
+		message ChunkData {
+			optional bytes sha = 1;
+			optional fixed32 crc = 2;
+			optional uint64 offset = 3;
+			optional uint32 cb_original = 4;
+			optional uint32 cb_compressed = 5;
+		}
+		repeated ChunkData chunks = 6;
+		optional string linktarget = 7;
+	}
+	repeated FileMapping mappings = 1;
+}
+
+message ContentManifestMetadata {
+	optional uint32 depot_id = 1;
+	optional uint64 gid_manifest = 2;
+	optional uint32 creation_time = 3;
+	optional bool filenames_encrypted = 4;
+	optional uint64 cb_disk_original = 5;
+	optional uint64 cb_disk_compressed = 6;
+	optional uint32 unique_chunks = 7;
+	optional uint32 crc_encrypted = 8;
+	optional uint32 crc_clear = 9;
+}
+
+message ContentManifestSignature {
+	optional bytes signature = 1;
+}

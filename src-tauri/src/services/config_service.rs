@@ -146,6 +146,9 @@ impl ConfigServiceTrait for ConfigService {
         if let Some(opensteamtool) = request.opensteamtool {
             config.opensteamtool = opensteamtool;
         }
+        if let Some(record_button) = request.record_button {
+            config.record_button = record_button;
+        }
 
         let config_clone = config.clone();
         drop(config);

@@ -98,15 +98,16 @@
             </div>
           </div>
 
-          <Tooltip text="滑到左侧允许Steam自动更新，滑到右侧锁定当前清单版本" position="top">
+          <Tooltip text="Steam已加密内容接口，仅支持锁定清单版本入库，无法跟随更新" position="top">
             <div class="setting-item">
               <div class="setting-info">
                 <h4 class="setting-name">是否更新</h4>
-                <p class="setting-desc">左侧：允许 Steam 自动更新；右侧：锁定当前清单版本，防止更新破坏补丁兼容性</p>
+                <p class="setting-desc">Steam 已加密内容接口，只能通过本地清单（manifest）连接下载，入库固定为锁定版本；未提供清单的 depot 仅解锁不锁定</p>
               </div>
               <div class="setting-control">
                 <SliderToggle
                   v-model="lockVersion"
+                  disabled
                   left-label="跟随更新"
                   right-label="锁定版本"
                 />
@@ -327,7 +328,7 @@
 import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 import { open } from '@tauri-apps/plugin-dialog'
-import { open as openShell } from '@tauri-apps/plugin-shell'
+import { openExternalUrl } from '../../utils/externalLink'
 import Button from '../../components/common/Button.vue'
 import Toggle from '../GlobalSettings/components/Toggle.vue'
 import Tooltip from '../../components/common/Tooltip.vue'
@@ -404,7 +405,8 @@ const accessToken = ref('')
 // 成就数据SteamID（用于setStat）
 const statsSteamId = ref('')
 // 锁定版本开关（生成 setManifestid）
-const lockVersion = ref(false)
+// Steam 接口加密后仅支持锁定版本入库，固定为 true，界面上开关置灰不可切换
+const lockVersion = ref(true)
 
 // 计算属性
 const sourceTypeText = computed(() => {
@@ -673,7 +675,7 @@ async function restartSteam() {
 // 打开外部链接
 async function openExternalLink(url: string) {
   try {
-    await openShell(url)
+    await openExternalUrl(url)
   } catch (error) {
     addLog(`打开链接失败: ${error}`, 'error')
   }

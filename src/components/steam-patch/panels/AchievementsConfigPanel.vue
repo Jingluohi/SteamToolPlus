@@ -253,6 +253,7 @@
 import { ref, shallowReactive, reactive, onMounted, onUnmounted } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 import { open } from '@tauri-apps/plugin-dialog'
+import { openExternalUrl } from '../../../utils/externalLink'
 import { CONFIG_EVENTS } from '../../../constants/config-events'
 import type { AchievementsConfig, Achievement } from '../../../types/steam-config.types'
 
@@ -329,7 +330,7 @@ async function openSteamDB() {
   const appId = props.gameId || prompt('请输入 Steam AppID：')
   if (appId) {
     const url = `https://steamdb.info/app/${appId}/stats/`
-    await invoke('open_external_link', { url })
+    await openExternalUrl(url)
   }
 }
 

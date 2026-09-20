@@ -118,8 +118,8 @@ const troubleshootingItems = ref<TroubleshootingItem[]>([
     id: 2,
     question: '游戏下载进度卡在 0% 不动或到某一进度不动',
     answer: [
-      '1. 点击【暂停】按钮再点【开始下载】',
-      '2. 看看任务管理器中ddv20.exe的磁盘占用，5mb/s以上，cpu占用不是0% 就没事，耐心等待一下'
+      '1. 点击【暂停】按钮再点【开始下载】（引擎支持断点续传，已下载部分不会重复下载）',
+      '2. 查看下载页面每个 depot 的说明文字：若出现红色错误日志，按日志提示处理（如网络不通、Steam 服务器不可达）；若仍在下载中且显示正在下载的文件，说明引擎在正常拉取，耐心等待即可'
     ],
     isExpanded: false
   },
@@ -186,6 +186,41 @@ const troubleshootingItems = ref<TroubleshootingItem[]>([
     question: '蓝奏云的补丁文件的密码是多少？',
     answer: [
       '1234'
+    ],
+    isExpanded: false
+  },
+  {
+    id: 10,
+    question: '启动游戏时会打开steam显示该游戏无许可',
+    answer: [
+      '在我的程序的该游戏那里打补丁（只要打一个就行）'
+    ],
+    isExpanded: false
+  },
+  {
+    id: 11,
+    question: '【How to fish 渔力全开】联机时卡船怎么解决',
+    answer: [
+      '1. 确定打了补丁',
+      '2. 如果是入库下载，steam会更新游戏导致补丁不兼容新版本，用我的程序下载后打补丁就行，或者可以去解压即玩里下载联机版',
+      '3. 还有问题检查杀毒软件或者系统防火墙是否隔离了文件'
+    ],
+    isExpanded: false
+  },
+  {
+    id: 12,
+    question: '【NBA 2K27】玩不了/报错/打开浏览器网页',
+    answer: [
+      '1. 如果是入库下载，steam会更新游戏导致补丁不兼容新版本，用我的程序下载后打补丁就行，或者可以去解压即玩里下载',
+      '2. 还有问题检查杀毒软件或者系统防火墙是否隔离了文件'
+    ],
+    isExpanded: false
+  },
+  {
+    id: 13,
+    question: '联机游戏邀请好友时显示正在玩 spacewar',
+    answer: [
+      '1. 联机就是通过 spacewar 进行路由，双方都打了补丁之后直接玩就行，不用在意 steam 显示的正在运行什么游戏'
     ],
     isExpanded: false
   }

@@ -12,6 +12,26 @@ pub async fn get_all_games_data(app: AppHandle) -> Result<Vec<GameData>, String>
     game_data_service::get_all_games(app).await
 }
 
+/// 获取已完成下载历史（持久化于 game.json，不随系统缓存清理）
+#[tauri::command]
+pub fn get_download_history() -> Result<Vec<game_data_service::DownloadHistoryEntry>, String> {
+    game_data_service::get_download_history()
+}
+
+/// 追加已完成下载历史（按 game_id 去重置顶，保留最近 50 条）
+#[tauri::command]
+pub fn append_download_history(
+    entries: Vec<game_data_service::DownloadHistoryEntry>,
+) -> Result<(), String> {
+    game_data_service::append_download_history(entries)
+}
+
+/// 移除指定游戏的已完成下载历史
+#[tauri::command]
+pub fn remove_download_history(game_ids: Vec<String>) -> Result<(), String> {
+    game_data_service::remove_download_history(&game_ids)
+}
+
 /// 获取单个游戏数据
 #[tauri::command]
 pub async fn get_game_data(app: AppHandle, game_id: String) -> Result<Option<GameData>, String> {

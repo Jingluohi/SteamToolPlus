@@ -95,6 +95,14 @@ workspace.xml
 *.temp
 .cache/
 
+# Temporary debug/test scripts & local backup (private)
+.wstest*.ps1
+cdn_diag.bat
+test_marked*.cjs
+backup/
+docs/
+engine/
+
 # Trae rules (private)
 .trae/
 

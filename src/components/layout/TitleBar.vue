@@ -21,6 +21,8 @@
           :title="menu.title"
           :items="menu.items"
         />
+        <!-- 独立赞助入口，紧跟【帮助】菜单右侧 -->
+        <RouterLink to="/sponsor" class="nav-link-btn">赞助</RouterLink>
       </nav>
     </div>
 
@@ -145,11 +147,9 @@ const navMenus: { title: string; items: NavMenuItem[] }[] = [
     title: '帮助',
     items: [
       { name: '关于软件', path: '/about' },
-      { name: '使用说明', path: '/help' },
       { name: '疑难解答', path: '/troubleshooting' },
       { name: '视频教程', path: '/video-tutorial' },
-      { name: '检查更新', path: '/update-check' },
-      { name: '赞助程序', path: '/sponsor' }
+      { name: '检查更新', path: '/update-check' }
     ]
   }
 ]
@@ -235,6 +235,42 @@ async function handleToggleTheme() {
   align-items: center;
   gap: 4px;
   -webkit-app-region: no-drag;
+}
+
+/* 独立导航入口（如【赞助】） */
+.nav-link-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 12px;
+  height: 32px;
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--steam-text-primary);
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  text-decoration: none;
+  transition: all var(--transition-fast);
+}
+
+.nav-link-btn:hover {
+  background: rgba(0, 0, 0, 0.4);
+  border-color: rgba(255, 255, 255, 0.15);
+  transform: translateY(-1px);
+  color: var(--steam-text-primary);
+}
+
+/* 浅色模式下使用更浅的偏白背景，降低对比度 */
+[data-theme="light"] .nav-link-btn {
+  background: rgba(255, 255, 255, 0.45);
+  border-color: rgba(255, 255, 255, 0.55);
+  color: var(--steam-text-primary);
+}
+
+[data-theme="light"] .nav-link-btn:hover {
+  background: rgba(255, 255, 255, 0.65);
+  border-color: rgba(255, 255, 255, 0.8);
 }
 
 /* 窗口控制按钮 */

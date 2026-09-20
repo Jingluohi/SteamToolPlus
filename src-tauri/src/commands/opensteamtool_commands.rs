@@ -62,6 +62,7 @@ pub fn install_opensteamtool_kernel(app: AppHandle, state: tauri::State<crate::A
         game_dirs: None,
         launch: None,
         opensteamtool: Some(config.opensteamtool),
+        record_button: None,
     });
 
     Ok(serde_json::json!({
@@ -85,6 +86,7 @@ pub fn uninstall_opensteamtool_kernel(state: tauri::State<crate::AppState>, stea
         game_dirs: None,
         launch: None,
         opensteamtool: Some(config.opensteamtool),
+        record_button: None,
     });
 
     Ok(serde_json::json!({
@@ -346,21 +348,25 @@ pub fn import_game_with_opensteamtool(
         return Err("未找到.lua或.vdf文件".to_string());
     }
 
-    // 没有Lua但有VDF时，自动转换VDF为Lua
+    // Steam 接口加密后仅支持通过本地清单（manifest）锁定版本下载，入库一律锁定版本。
+    // 保留 lock_version 参数以兼容旧调用，但其值不再生效。
+    let _ = lock_version;
+    let lock = true;
+
+    // 没有Lua但有VDF时，自动转换VDF为Lua（锁定版本转换会生成 setManifestid）
     if lua_files.is_empty() && !vdf_files.is_empty() {
         let converted = convert_vdf_files_to_lua(
             &vdf_files,
             access_token.as_deref(),
             stats_steam_id.as_deref(),
-            lock_version.unwrap_or(false),
+            lock,
         );
         lua_files.extend(converted);
     }
 
-    // 根据 lock_version 调整每个Lua文件内容，确保已有 Lua 文件也能响应开关
-    // 并逐文件提取入库用 app_id，主游戏、DLC、创意工坊各自保留
+    // 逐文件应用锁定版本（生成/保留 setManifestid），并逐文件提取入库用 app_id，
+    // 主游戏、DLC、创意工坊各自保留
     let manifest_map = build_manifest_map(&manifest_files);
-    let lock = lock_version.unwrap_or(false);
     let managed_lua_files = process_lua_files(&lua_files, &manifest_map, lock, app_id)?;
 
     // 主游戏Lua：内容为第一个Lua文件，app_id 沿用传入的主游戏AppID（与假入库记录/封面一致）
@@ -422,13 +428,18 @@ pub fn import_manifest_with_opensteamtool(
         return Err("未找到.lua或.vdf文件".to_string());
     }
 
-    // 没有Lua但有VDF时，自动转换VDF为Lua
+    // Steam 接口加密后仅支持通过本地清单（manifest）锁定版本下载，入库一律锁定版本。
+    // 保留 lock_version 参数以兼容旧调用，但其值不再生效。
+    let _ = lock_version;
+    let lock = true;
+
+    // 没有Lua但有VDF时，自动转换VDF为Lua（锁定版本转换会生成 setManifestid）
     if lua_files.is_empty() && !vdf_files.is_empty() {
         let converted = convert_vdf_files_to_lua(
             &vdf_files,
             access_token.as_deref(),
             stats_steam_id.as_deref(),
-            lock_version.unwrap_or(false),
+            lock,
         );
         lua_files.extend(converted);
     }
@@ -444,10 +455,9 @@ pub fn import_manifest_with_opensteamtool(
             .ok_or("无法从Lua内容中提取AppID，请手动提供")?
     };
 
-    // 根据 lock_version 调整每个Lua文件内容，确保已有 Lua 文件也能响应开关
-    // 并逐文件提取入库用 app_id，主游戏、DLC、创意工坊各自保留
+    // 逐文件应用锁定版本（生成/保留 setManifestid），并逐文件提取入库用 app_id，
+    // 主游戏、DLC、创意工坊各自保留
     let manifest_map = build_manifest_map(&manifest_files);
-    let lock = lock_version.unwrap_or(false);
     let managed_lua_files = process_lua_files(&lua_files, &manifest_map, lock, detected_app_id)?;
 
     // 主游戏Lua：内容为第一个Lua文件，app_id 使用上面确定的 detected_app_id

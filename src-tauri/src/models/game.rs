@@ -210,6 +210,11 @@ pub struct TrainerConfig {
     pub local_path: Option<String>,
 }
 
+/// serde 默认值辅助：缺省字段应视为 true（兼容旧版 games_config.json 中未配置 has_steam_import 的情况）
+fn default_true() -> bool {
+    true
+}
+
 /// 游戏配置数据（来自games_config.json）
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GameConfigData {
@@ -224,6 +229,9 @@ pub struct GameConfigData {
     /// 是否有解压即玩版本（夸克网盘二维码）
     #[serde(default)]
     pub has_extract_play: Option<bool>,
+    /// 是否有Steam入库功能（决定游戏详情页是否显示"入库Steam"标签页；缺省为true以兼容旧版配置）
+    #[serde(default = "default_true")]
+    pub has_steam_import: bool,
     /// 修改器配置
     #[serde(default)]
     pub trainer: Option<TrainerConfig>,

@@ -6,8 +6,12 @@
 import { ref, type Ref } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 import { open, message } from '@tauri-apps/plugin-dialog'
+import { openExternalUrl } from '../../../utils/externalLink'
 import type { GameConfigData } from '../../../types'
 import { getPatchSourcePath } from '../../../types'
+
+/** 误把「清单文件包」当补丁应用时的后端错误码前缀（与后端 common.rs 的 MANIFEST_PATCH_ERROR_PREFIX 保持一致） */
+const MANIFEST_PATCH_ERROR_PREFIX = 'E_MANIFEST_PATCH_DETECTED'
 
 /**
  * 补丁应用结果类型
@@ -55,6 +59,9 @@ export function usePatch(
 
   /** 已从用户选择的7z文件直接应用成功的补丁类型集合（会话内存态，不写入本地补丁源目录） */
   const patchAppliedFromFile = ref<Set<number>>(new Set())
+
+  /** 是否检测到「误把清单文件包当补丁应用」，用于控制详情页专用提示弹窗 */
+  const showManifestPatchAlert = ref(false)
 
   // ==================== 补丁方法 ====================
 
@@ -110,6 +117,12 @@ export function usePatch(
         alert('补丁应用完成，但有一些错误，请查看详情')
       }
     } catch (error) {
+      const errorMsg = String(error)
+      // 识别「误把清单文件包当补丁」的错误码，弹出专用提示弹窗而非通用错误
+      if (errorMsg.startsWith(MANIFEST_PATCH_ERROR_PREFIX)) {
+        showManifestPatchAlert.value = true
+        return
+      }
       alert('应用补丁失败: ' + error)
       patchResult.value = {
         success: false,
@@ -174,6 +187,12 @@ export function usePatch(
         alert('补丁应用完成，但有一些错误，请查看详情')
       }
     } catch (error) {
+      const errorMsg = String(error)
+      // 识别「误把清单文件包当补丁」的错误码，弹出专用提示弹窗而非通用错误
+      if (errorMsg.startsWith(MANIFEST_PATCH_ERROR_PREFIX)) {
+        showManifestPatchAlert.value = true
+        return
+      }
       alert('应用补丁失败: ' + error)
       patchResult.value = {
         success: false,
@@ -246,7 +265,7 @@ export function usePatch(
    */
   const openDownloadUrl = async (url: string) => {
     try {
-      await invoke('open_external_link', { url })
+      await openExternalUrl(url)
     } catch (error) {
       alert('打开下载链接失败: ' + error)
     }
@@ -274,6 +293,13 @@ export function usePatch(
     patchResult.value = null
   }
 
+  /**
+   * 关闭「清单文件包误当补丁」提示弹窗
+   */
+  const closeManifestPatchAlert = () => {
+    showManifestPatchAlert.value = false
+  }
+
   // ==================== 返回 ====================
 
   return {
@@ -283,6 +309,7 @@ export function usePatch(
     patchReadmes,
     patchLocalStatus,
     patchAppliedFromFile,
+    showManifestPatchAlert,
     
     // 方法
     checkPatchLocalStatus,
@@ -296,6 +323,7 @@ export function usePatch(
     openVirtualizationTutorial,
     openDownloadUrl,
     getDownloadSourceName,
-    clearPatchResult
+    clearPatchResult,
+    closeManifestPatchAlert
   }
 }

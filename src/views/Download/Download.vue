@@ -353,6 +353,9 @@
         v-if="isMonitoring || downloadProgress.depots.length > 0"
         :progress="downloadProgress"
         :is-monitoring="isMonitoring"
+        :speed="downloadSpeed"
+        :done-bytes="downloadBytes.doneBytes"
+        :total-bytes="downloadBytes.totalBytes"
         class="download-progress-section"
       />
     </div>
@@ -407,7 +410,7 @@
 import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 import { open } from '@tauri-apps/plugin-dialog'
-import { open as openShell } from '@tauri-apps/plugin-shell'
+import { openExternalUrl } from '../../utils/externalLink'
 import { useConfigStore, useDownloadStore, useDownloadManagerStore } from '../../store'
 import DownloadProgress from '../../components/download/DownloadProgress.vue'
 import QRCodeModal from '../../components/common/QRCodeModal.vue'
@@ -445,8 +448,8 @@ const handleQRCodeClose = () => {
  */
 const openExternalLink = async (url: string) => {
   try {
-    // 使用 Tauri shell 插件在默认浏览器中打开链接
-    await openShell(url)
+    // 在系统默认浏览器中打开链接（未设置默认浏览器时程序内弹友好提示）
+    await openExternalUrl(url)
   } catch (error) {
     // 打开链接失败时静默处理
   }
@@ -527,6 +530,10 @@ const currentGameId = computed(() => gameId.value)
 const downloadLogs = computed(() => downloadManagerStore.getGameLogs(currentGameId.value))
 const isMonitoring = computed(() => downloadManagerStore.isGameMonitoring(currentGameId.value))
 const downloadProgress = computed(() => downloadManagerStore.getGameProgress(currentGameId.value))
+
+/** 实时速度与字节数（"下载进度"头部展示速度/剩余时间） */
+const downloadSpeed = computed(() => downloadManagerStore.getGameSpeed(currentGameId.value))
+const downloadBytes = computed(() => downloadManagerStore.getGameBytes(currentGameId.value))
 
 // ============================================
 // 计算属性
@@ -1079,7 +1086,9 @@ const startSingleDownload = async () => {
     }>('start_game_download', {
       manifestPath: manifestPath.value,
       downloadPath: downloadPath.value,
-      gameId: gameId.value
+      gameId: gameId.value,
+      // 引擎模式：false=ddv20.exe（默认稳定）/ true=新引擎（设置内开启）
+      useEngine: configStore.config?.launch?.useNewEngine ?? false
     })
 
     if (result.success) {
@@ -1128,7 +1137,9 @@ const startBatchDownload = async () => {
       }>('start_game_download', {
         manifestPath: game.path,
         downloadPath: gameDownloadPath,
-        gameId: game.id
+        gameId: game.id,
+        // 批量下载跟随全局设置：默认 ddv20.exe（稳定）
+        useEngine: configStore.config?.launch?.useNewEngine ?? false
       })
 
       if (result.success) {
@@ -1195,44 +1206,32 @@ const waitForGameDownload = async (_game: BatchGame): Promise<void> => {
 
 /**
  * 下载完成处理（由全局 store 的完成回调触发）
+ * 引擎结束事件 success=true 时由 store 标记完成并触发本回调
  */
 const handleDownloadComplete = async () => {
   stopProgressMonitoring()
   addLog('所有depot下载完成！', 'success')
-  // 删除所有进度 JSON 文件
-  await deleteProgressFiles()
 }
 
 /**
- * 删除进度文件
+ * 下载结束处理（由全局 store 的结束回调触发，取消/失败统一收到）
+ * 成功路径由 handleDownloadComplete 收尾，这里只处理取消/失败
  */
-const deleteProgressFiles = async () => {
-  addLog('正在清理进度文件...', 'info')
-  try {
-    const progressFiles = await invoke<Array<{ name: string; path: string }>>('get_download_progress_files', {
-      gameId: currentGameId.value || undefined
-    })
-    let deletedCount = 0
+const handleDownloadFinish = (success: boolean, message: string) => {
+  if (success) return // 成功由 handleDownloadComplete 收尾
 
-    for (const file of progressFiles) {
-      try {
-        await invoke('delete_file', { filePath: file.path })
-        deletedCount++
-        addLog(`已删除进度文件: ${file.name}`, 'info')
-      } catch (error) {
-        addLog(`删除进度文件失败 ${file.name}: ${error}`, 'warning')
-      }
-    }
-
-    addLog(`进度文件清理完成，共删除 ${deletedCount} 个文件`, 'success')
-  } catch {
-    addLog('进度文件清理失败', 'warning')
+  if (message === '下载已取消') {
+    addLog('下载已停止', 'warning')
+  } else {
+    addLog(`下载失败: ${message}`, 'error')
   }
+  isDownloading.value = false
+  downloadManagerStore.setGameDownloading(currentGameId.value, false)
 }
 
 /**
- * 开始监控下载进度
- * 使用全局 store 的统一定时器，支持多实例并行下载
+ * 开始监控下载进度（事件驱动 + 快照兜底）
+ * 通过全局 store 订阅引擎进度/结束事件，多实例并行下载互不干扰
  */
 const startProgressMonitoring = async () => {
   if (isMonitoring.value) return
@@ -1245,14 +1244,15 @@ const startProgressMonitoring = async () => {
   downloadManagerStore.initDepots(currentGameId.value, depotIds)
   addLog(`检测到 ${depotIds.length} 个depot`, 'info')
 
-  // 注册下载完成回调
+  // 注册下载完成 / 结束回调
   downloadManagerStore.onComplete(currentGameId.value, handleDownloadComplete)
+  downloadManagerStore.onFinish(currentGameId.value, handleDownloadFinish)
 
-  // 立即扫描一次
-  await downloadManagerStore.scanProgressFiles(currentGameId.value)
+  // 快照兜底：页面进入时引擎可能已跑了好一会，先拉一次当前进度
+  await downloadManagerStore.fetchSnapshot(currentGameId.value)
 
-  // 加入统一轮询
-  downloadManagerStore.startMonitoring(currentGameId.value)
+  // 建桥订阅引擎事件并置监控标记
+  await downloadManagerStore.startMonitoring(currentGameId.value)
 }
 
 /**
